@@ -1,0 +1,448 @@
+<!DOCTYPE html>
+<html lang="ka">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <title>Tesla Model 3 Navigation - EV Pro</title>
+  
+  <meta name="theme-color" content="#0d1117">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  
+  <!-- Leaflet CSS (Local Offline) -->
+  <link rel="stylesheet" href="leaflet.css">
+  <!-- Custom Stylesheet -->
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <!-- Fullscreen Map Canvas -->
+  <div id="map"></div>
+
+  <!-- TOP BAR: Brand, Search, Weather, Battery, Quick POIs & Status -->
+  <header class="top-bar">
+
+    <!-- Live Weather Chip -->
+    <div class="weather-chip" id="top-weather-chip" title="ამინდი მიმდინარე ლოკაციაზე">
+      <span id="weather-icon" class="weather-icon">☀️</span>
+      <span id="weather-temp">--°C</span>
+      <span id="weather-wind" class="weather-wind">💨 -- კმ/სთ</span>
+    </div>
+
+    <!-- Battery Status Chip -->
+    <div id="top-battery-chip" class="battery-chip" title="დააჭირეთ ბატარეის %-ის შესაცვლელად">
+      <svg class="battery-icon-svg" viewBox="0 0 24 24">
+        <path d="M17 5H7a3 3 0 0 0-3 3v8a3 3 0 0 0 3 3h10a3 3 0 0 0 3-3V8a3 3 0 0 0-3-3zm1 11a1 1 0 0 1-1 1H7a1 1 0 0 1-1-1V8a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v8zm3-6h1v4h-1z"/>
+        <rect x="8" y="9" width="7" height="6" rx="1" fill="#10b981"/>
+      </svg>
+      <span id="top-battery-soc">82%</span>
+      <span id="top-battery-range" class="battery-range">380 კმ</span>
+    </div>
+
+    <!-- Yandex Traffic Score Chip (1-10 ბალი) -->
+    <div id="top-traffic-score-chip" class="traffic-score-chip" title="საცობების ინდექსი (Yandex Traffic)">
+      <span id="traffic-score-badge" class="traffic-score-badge med">5</span>
+      <span id="traffic-score-text">საცობი: 5 ბალი</span>
+    </div>
+
+    <!-- Search Input & Dropdown -->
+    <div class="search-container">
+      <div class="search-input-wrapper">
+        <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="11" cy="11" r="8"></circle>
+          <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+        </svg>
+        <input type="text" id="search-input" class="search-input" placeholder="მოძებნეთ მისამართი ან ობიექტი..." autocomplete="off">
+        <button id="clear-search-btn" class="clear-search-btn">✕</button>
+      </div>
+      <div id="search-results" class="search-results-dropdown"></div>
+    </div>
+
+
+    <!-- Right Side Status (GPS & Clock) -->
+    <div class="top-status">
+      <div class="status-chip">
+        <span id="gps-status-dot" class="gps-dot" title="GPS სიგნალი"></span>
+        <span id="top-clock">12:00</span>
+      </div>
+    </div>
+  </header>
+
+  <!-- NAVIGATION HUD CARD (Turn-by-Turn Maneuver Guide) -->
+  <aside id="nav-hud" class="nav-hud-card">
+    <!-- Next Maneuver Info -->
+    <div class="maneuver-row">
+      <div id="maneuver-icon-container" class="maneuver-icon-box">
+        <svg viewBox="0 0 24 24"><path d="M12 2L6 8h4v12h4V8h4L12 2z"/></svg>
+      </div>
+      <div class="maneuver-text-box">
+        <div id="maneuver-dist" class="maneuver-distance">300 მ</div>
+        <div id="maneuver-instruction" class="maneuver-instruction">მოუხვიეთ მარჯვნივ</div>
+        <div id="maneuver-street" class="maneuver-road-name">ილია ჭავჭავაძის გამზირი</div>
+      </div>
+    </div>
+
+    <!-- Traffic Signal Alert Banner -->
+    <div id="traffic-signal-alert" class="traffic-signal-alert">
+      <svg class="traffic-signal-icon-svg" viewBox="0 0 24 24" fill="none">
+        <rect x="7" y="2" width="10" height="20" rx="3" fill="#1e293b" stroke="#fbbf24" stroke-width="1.5"/>
+        <circle cx="12" cy="6" r="2.2" fill="#ef4444" />
+        <circle cx="12" cy="12" r="2.2" fill="#f59e0b" />
+        <circle cx="12" cy="18" r="2.2" fill="#10b981" />
+      </svg>
+      <span id="signal-alert-text">🚦 შუქნიშანი 150 მეტრში</span>
+    </div>
+
+    <!-- Lane Guidance Row (ზოლების ასისტენტი) -->
+    <div id="hud-lane-guidance" class="hud-lane-guidance" style="display:none;"></div>
+
+    <!-- Battery Consumption & Arrival SoC Row -->
+    <div id="hud-battery-row" class="hud-battery-row" style="display:none;">
+      <div class="hud-battery-stat">
+        <span id="hud-battery-kwh">⚡ ~3.4 kWh</span>
+      </div>
+      <div class="hud-battery-stat">
+        <span id="hud-battery-arrival">🔋 ჩასვლა: 76%</span>
+      </div>
+    </div>
+
+    <!-- Route Summary: Remaining Distance, Time, ETA -->
+    <div class="route-summary-box">
+      <div class="summary-col">
+        <span id="summary-dist" class="summary-val">8.4 კმ</span>
+        <span class="summary-lbl">მანძილი</span>
+      </div>
+      <div class="summary-col">
+        <span id="summary-time" class="summary-val">16 წთ</span>
+        <span class="summary-lbl">დრო</span>
+      </div>
+      <div class="summary-col">
+        <span id="summary-eta" class="summary-val">16:45</span>
+        <span class="summary-lbl">ჩასვლა (ETA)</span>
+      </div>
+    </div>
+
+    <!-- Cancel Route Button -->
+    <button id="btn-cancel-route" class="cancel-route-btn">
+      <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2">
+        <line x1="18" y1="6" x2="6" y2="18"></line>
+        <line x1="6" y1="6" x2="18" y2="18"></line>
+      </svg>
+      მარშრუტის დასრულება
+    </button>
+  </aside>
+
+  <!-- ROUTE PREVIEW CARD (Tesla Model 3 Preview before GO) -->
+  <aside id="route-preview-card" class="route-preview-card">
+    <div class="preview-header">
+      <div class="preview-badge">📍 მარშრუტის გადახედვა</div>
+      <button id="btn-preview-close" class="preview-close-btn" title="დახურვა">✕</button>
+    </div>
+    <div id="preview-dest-title" class="preview-dest-title">დანიშნულების ადგილი</div>
+    <div id="preview-dest-address" class="preview-dest-address">თბილისი, საქართველო</div>
+
+    <div class="preview-stats-grid">
+      <div class="preview-stat-card">
+        <span id="preview-time" class="preview-stat-num">0 წთ</span>
+        <span class="preview-stat-sub">სავარაუდო დრო</span>
+      </div>
+      <div class="preview-stat-card">
+        <span id="preview-dist" class="preview-stat-num">0 კმ</span>
+        <span class="preview-stat-sub">მანძილი</span>
+      </div>
+      <div class="preview-stat-card">
+        <span id="preview-eta" class="preview-stat-num">--:--</span>
+        <span class="preview-stat-sub">ჩასვლის დრო</span>
+      </div>
+    </div>
+
+    <!-- Battery Consumption Impact Preview -->
+    <div id="preview-battery-row" class="preview-battery-row">
+      <span id="preview-battery-kwh">⚡ ~0.0 kWh</span>
+      <span id="preview-battery-arrival">🔋 ჩასვლისას: --%</span>
+    </div>
+
+    <!-- Actions: GO and Cancel -->
+    <div class="preview-actions-row">
+      <button id="btn-start-go" class="preview-go-btn">
+        <svg viewBox="0 0 24 24" width="26" height="26" fill="currentColor">
+          <polygon points="5 3 19 12 5 21 5 3"></polygon>
+        </svg>
+        <span>დაწყება (GO)</span>
+      </button>
+      <button id="btn-preview-cancel" class="preview-cancel-btn">გაუქმება</button>
+    </div>
+  </aside>
+
+  <!-- BOTTOM LEFT SPEEDOMETER HUD -->
+  <section class="car-hud-stats">
+    <div class="speedometer-card">
+      <span id="speed-val" class="speed-value">0</span>
+      <span class="speed-unit">კმ / სთ</span>
+    </div>
+    <div class="speed-limit-badge" title="სიჩქარის შეზღუდვა">60</div>
+  </section>
+
+  <!-- FLOATING IN-CAR YOUTUBE MEDIA PLAYER -->
+  <aside id="media-player-card" class="media-player-card">
+    <div class="media-player-header">
+      <div class="media-title">
+        <svg viewBox="0 0 24 24" width="18" height="18" fill="#e82127">
+          <path d="M21.58 7.19a2.5 2.5 0 0 0-1.76-1.77C18.26 5 12 5 12 5s-6.26 0-7.82.42A2.5 2.5 0 0 0 2.42 7.2C2 8.76 2 12 2 12s0 3.24.42 4.81a2.5 2.5 0 0 0 1.76 1.77C5.74 19 12 19 12 19s6.26 0 7.82-.42a2.5 2.5 0 0 0 1.76-1.77C22 15.24 22 12 22 12s0-3.24-.42-4.81zM10 15V9l5.2 3L10 15z"/>
+        </svg>
+        <span>YouTube In-Car Music</span>
+      </div>
+      <div class="media-header-actions">
+        <button id="media-min-btn" class="media-btn-icon" title="ჩაკეცვა">―</button>
+        <button id="media-close-btn" class="media-btn-icon" title="დახურვა">✕</button>
+      </div>
+    </div>
+    <div class="media-player-body">
+      <div class="media-video-wrapper">
+        <iframe id="youtube-iframe" src="about:blank" allow="autoplay; encrypted-media" allowfullscreen></iframe>
+      </div>
+      <div class="media-controls-row">
+        <select id="media-preset-select" class="media-select"></select>
+      </div>
+      <div class="media-input-wrapper">
+        <input type="text" id="media-custom-url-input" class="media-input" placeholder="ჩასვით YouTube ბმული ან Video ID...">
+        <button id="media-load-custom-btn" class="media-load-btn">ჩართვა</button>
+      </div>
+    </div>
+  </aside>
+
+  <!-- RIGHT DOCK CONTROLS (Compact Vertical Touch Strip) -->
+  <nav class="dock-controls">
+    <!-- Group 1: Navigation & Zoom -->
+    <button id="btn-follow-car" class="dock-btn active" title="მანქანის ცენტრირება">
+      <svg viewBox="0 0 24 24">
+        <polygon points="3 11 22 2 13 21 11 13 3 11"></polygon>
+      </svg>
+      <span class="dock-tooltip">ცენტრირება</span>
+    </button>
+
+    <button id="btn-zoom-in" class="dock-btn" title="გადიდება (+)">
+      <svg viewBox="0 0 24 24">
+        <line x1="12" y1="5" x2="12" y2="19" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/>
+        <line x1="5" y1="12" x2="19" y2="12" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/>
+      </svg>
+      <span class="dock-tooltip">გადიდება (+)</span>
+    </button>
+
+    <button id="btn-zoom-out" class="dock-btn" title="დაპატარავება (-)">
+      <svg viewBox="0 0 24 24">
+        <line x1="5" y1="12" x2="19" y2="12" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/>
+      </svg>
+      <span class="dock-tooltip">დაპატარავება (-)</span>
+    </button>
+
+    <div class="dock-divider"></div>
+
+    <!-- Group 2: Map Theme & Layers -->
+    <button id="btn-map-style" class="dock-btn" title="რუკის ვიზუალი (Map Theme)">
+      <svg viewBox="0 0 24 24">
+        <polygon points="1 6 1 22 8 18 16 22 23 18 23 2 16 6 8 2 1 6"></polygon>
+        <line x1="8" y1="2" x2="8" y2="18"></line>
+        <line x1="16" y1="6" x2="16" y2="22"></line>
+      </svg>
+      <span class="dock-tooltip">რუკის სტილი</span>
+    </button>
+
+    <!-- Map Style Selector Popup Menu -->
+    <div id="map-style-menu" class="map-style-menu">
+      <div class="map-style-opt active" data-style="google-roads">🗺️ Google Maps (ქუჩები)</div>
+      <div class="map-style-opt" data-style="google-sat">🛰️ Google Satellite (ჰიბრიდი)</div>
+      <div class="map-style-opt" data-style="yandex">🟡 Yandex Maps (Live საცობები)</div>
+    </div>
+
+    <!-- Toggle Day / Night Mode (მთვარე / მზე) -->
+    <button id="btn-toggle-night" class="dock-btn" title="ღამის / დღის რეჟიმი">
+      <svg id="night-icon-svg" viewBox="0 0 24 24" fill="currentColor">
+        <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+      </svg>
+      <span class="dock-tooltip" id="night-tooltip-text">ღამის რეჟიმი</span>
+    </button>
+
+    <button id="btn-toggle-traffic" class="dock-btn traffic-active" title="საცობების ფენა">
+      <svg viewBox="0 0 24 24">
+        <path d="M19 17h2c.6 0 1-.4 1-1v-3c0-.9-.7-1.7-1.5-1.9C18.7 10.6 16 10 16 10s-1.3-1.4-2.2-2.3c-.5-.4-1.1-.7-1.8-.7H5c-.6 0-1.1.4-1.4.9l-1.5 2.6C1.4 11 1 11.7 1 12.5V16c0 .6.4 1 1 1h2"/>
+        <circle cx="7" cy="17" r="2"/>
+        <circle cx="17" cy="17" r="2"/>
+      </svg>
+      <span class="dock-tooltip">საცობები</span>
+    </button>
+
+    <button id="btn-toggle-chargers" class="dock-btn signals-active" title="EV დამტენების ფენა">
+      <svg viewBox="0 0 24 24">
+        <path d="M11 21h-1l1-7H7.5c-.58 0-.57-.32-.38-.66.19-.34.05-.08.07-.12C8.48 10.94 10.42 7.54 13 3h1l-1 7h3.5c.49 0 .56.33.47.51l-.07.15-5.9 10.34z" fill="currentColor"/>
+      </svg>
+      <span class="dock-tooltip">EV დამტენები</span>
+    </button>
+
+    <button id="btn-toggle-signals" class="dock-btn signals-active" title="შუქნიშნების ჩვენება">
+      <svg viewBox="0 0 24 24">
+        <rect x="6" y="2" width="12" height="20" rx="3" stroke="currentColor" fill="none"/>
+        <circle cx="12" cy="7" r="2" fill="currentColor"/>
+        <circle cx="12" cy="12" r="2" fill="currentColor"/>
+        <circle cx="12" cy="17" r="2" fill="currentColor"/>
+      </svg>
+      <span class="dock-tooltip">შუქნიშნები</span>
+    </button>
+
+    <button id="btn-toggle-incidents" class="dock-btn signals-active" title="ინციდენტები / კამერები">
+      <svg viewBox="0 0 24 24">
+        <polygon points="12 2 1 21 23 21 12 2" stroke="currentColor" fill="none" stroke-width="2"/>
+        <line x1="12" y1="9" x2="12" y2="13" stroke="currentColor" stroke-width="2"/>
+        <circle cx="12" cy="17" r="1.5" fill="currentColor"/>
+      </svg>
+      <span class="dock-tooltip">ინციდენტები / კამერები</span>
+    </button>
+
+    <div class="dock-divider"></div>
+
+    <!-- Group 3: Media & System Tools -->
+    <button id="btn-toggle-media" class="dock-btn" title="YouTube / მუსიკა">
+      <svg viewBox="0 0 24 24">
+        <rect x="2" y="3" width="20" height="14" rx="2" stroke="currentColor" fill="none"/>
+        <polygon points="10 7 15 10 10 13 10 7" fill="currentColor"/>
+        <line x1="8" y1="21" x2="16" y2="21"></line>
+        <line x1="12" y1="17" x2="12" y2="21"></line>
+      </svg>
+      <span class="dock-tooltip">YouTube მუსიკა</span>
+    </button>
+
+    <button id="btn-toggle-voice" class="dock-btn active" title="ხმოვანი ნავიგაცია">
+      <svg viewBox="0 0 24 24">
+        <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon>
+        <path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"></path>
+      </svg>
+      <span class="dock-tooltip">ხმა (Voice)</span>
+    </button>
+
+    <button id="btn-sim-drive" class="dock-btn" title="ტესტ-დრაივი / სიმულაცია">
+      <svg viewBox="0 0 24 24">
+        <polygon points="5 3 19 12 5 21 5 3" fill="currentColor"></polygon>
+      </svg>
+      <span class="dock-tooltip">ტესტ-დრაივი</span>
+    </button>
+
+    <button id="btn-fullscreen" class="dock-btn" title="სრული ეკრანი">
+      <svg viewBox="0 0 24 24">
+        <path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"></path>
+      </svg>
+      <span class="dock-tooltip">სრული ეკრანი</span>
+    </button>
+
+    <button id="btn-remote-phone" class="dock-btn" title="ტელეფონით მართვა (QR Remote)">
+      <svg viewBox="0 0 24 24">
+        <rect x="5" y="2" width="14" height="20" rx="3" stroke="currentColor" fill="none"/>
+        <line x1="10" y1="18" x2="14" y2="18" stroke="currentColor"/>
+      </svg>
+      <span class="dock-tooltip">ტელეფონით მართვა</span>
+    </button>
+
+    <button id="btn-settings" class="dock-btn" title="პარამეტრები">
+      <svg viewBox="0 0 24 24">
+        <circle cx="12" cy="12" r="3"></circle>
+        <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+      </svg>
+      <span class="dock-tooltip">პარამეტრები</span>
+    </button>
+  </nav>
+
+  <!-- REMOTE PHONE PAIRING MODAL -->
+  <div id="remote-modal" class="modal-overlay">
+    <div class="modal-window" style="max-width: 440px; text-align: center;">
+      <div class="modal-header">
+        <h2 class="modal-title">📱 ტელეფონით დაწყვილება</h2>
+        <button id="remote-modal-close-btn" class="modal-close-btn">✕</button>
+      </div>
+      <div class="modal-body" style="display: flex; flex-direction: column; align-items: center; gap: 14px;">
+        <p style="font-size: 0.9rem; color: var(--text-secondary); line-height: 1.4;">
+          დაასკანერეთ ტელეფონის კამერით, რათა აკრიფოთ მისამართი ტელეფონიდან ან გააზიაროთ ტელეფონის მაღალი სიზუსტის GPS:
+        </p>
+        <div id="qrcode-container" style="background: #ffffff; padding: 14px; border-radius: 16px; display: inline-block;">
+          <div id="qrcode"></div>
+        </div>
+        <div style="font-size: 1.15rem; font-weight: 800; color: var(--accent-cyan); letter-spacing: 2px;">
+          სესიის კოდი: <span id="remote-code-text">----</span>
+        </div>
+        <div id="remote-status-pill" style="font-size: 0.82rem; background: rgba(255,255,255,0.06); padding: 6px 14px; border-radius: 20px; color: var(--text-muted);">
+          🟡 ელოდება ტელეფონის დაკავშირებას...
+        </div>
+        <div style="font-size: 0.78rem; color: var(--text-muted); word-break: break-all;">
+          ბმული: <a id="remote-url-link" href="#" target="_blank" style="color: var(--accent-cyan);">---</a>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SETTINGS MODAL -->
+  <div id="settings-modal" class="modal-overlay">
+    <div class="modal-window">
+      <div class="modal-header">
+        <h2 class="modal-title">⚙️ Tesla Model 3 პარამეტრები</h2>
+        <button id="modal-close-btn" class="modal-close-btn">✕</button>
+      </div>
+      <div class="modal-body">
+        <div class="setting-group">
+          <label class="setting-label">ავტომობილის მოდელი (Model 3 პროფილი):</label>
+          <select id="select-tesla-model" class="setting-select">
+            <option value="sr">Model 3 Standard Range / RWD (60 kWh)</option>
+            <option value="lr">Model 3 Long Range AWD (78 kWh)</option>
+            <option value="perf">Model 3 Performance (82 kWh)</option>
+          </select>
+        </div>
+
+        <div class="setting-group">
+          <label class="setting-label">მიმდინარე ბატარეის მუხტი (%):</label>
+          <input type="number" id="input-initial-soc" class="setting-input" min="1" max="100" placeholder="80">
+        </div>
+
+        <div class="setting-group" style="display: flex; align-items: center; justify-content: space-between; gap: 12px;">
+          <div>
+            <label class="setting-label" style="margin-bottom: 2px;">🛣️ გრუნტის / უასფალტო გზების არიდება:</label>
+            <span style="font-size: 0.78rem; color: var(--text-muted);">Avoid unpaved / dirt tracks OSRM მარშრუტზე</span>
+          </div>
+          <input type="checkbox" id="input-avoid-unpaved" style="width: 22px; height: 22px; cursor: pointer; accent-color: var(--accent-cyan);">
+        </div>
+
+        <div class="setting-group">
+          <label class="setting-label">TomTom Traffic API Key (სურვილისამებრ, ლაივ საცობებისთვის):</label>
+          <input type="text" id="input-tomtom-key" class="setting-input" placeholder="ჩასვით TomTom გასაღები...">
+        </div>
+
+        <div class="setting-group">
+          <label class="setting-label">🏠 სახლის მისამართი (Home):</label>
+          <input type="text" id="input-home-addr" class="setting-input" placeholder="მაგ. რუსთაველის გამზირი 12, თბილისი">
+        </div>
+
+        <div class="setting-group">
+          <label class="setting-label">🏢 სამსახურის მისამართი (Work):</label>
+          <input type="text" id="input-work-addr" class="setting-input" placeholder="მაგ. ჭავჭავაძის გამზირი 37, თბილისი">
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button id="modal-cancel-btn" class="btn-secondary">გაუქმება</button>
+        <button id="modal-save-btn" class="btn-primary">შენახვა</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Leaflet JS (Local Offline) -->
+  <script src="leaflet.js"></script>
+  <!-- QR Code Generator -->
+  <script src="qrcode.min.js"></script>
+  <!-- Application Engines -->
+  <script src="speech.js"></script>
+  <script src="weather.js"></script>
+  <script src="battery.js"></script>
+  <script src="chargers.js"></script>
+  <script src="traffic-signals.js"></script>
+  <script src="traffic.js"></script>
+  <script src="media-player.js"></script>
+  <script src="yandex.js"></script>
+  <script src="routing.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>

@@ -1,0 +1,504 @@
+<!DOCTYPE html>
+<html lang="ka">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Tesla Model 3 - Remote Mobile Assistant</title>
+  <link rel="icon" href="data:,">
+  <style>
+    :root {
+      --bg-dark: #0a0d14;
+      --bg-card: rgba(22, 27, 38, 0.92);
+      --border-subtle: rgba(255, 255, 255, 0.1);
+      --accent-cyan: #00d2ff;
+      --accent-blue: #0088ff;
+      --accent-green: #10b981;
+      --accent-red: #ef4444;
+      --text-main: #f1f5f9;
+      --text-muted: #94a3b8;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: var(--bg-dark);
+      color: var(--text-main);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      padding: 16px;
+      min-height: 100vh;
+      -webkit-font-smoothing: antialiased;
+    }
+    .header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 12px 16px;
+      background: var(--bg-card);
+      border: 1px solid var(--border-subtle);
+      border-radius: 16px;
+      margin-bottom: 16px;
+    }
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 1.05rem;
+      font-weight: 800;
+      letter-spacing: -0.3px;
+    }
+    .session-badge {
+      font-size: 0.75rem;
+      font-weight: 700;
+      background: rgba(0, 210, 255, 0.15);
+      color: var(--accent-cyan);
+      border: 1px solid rgba(0, 210, 255, 0.3);
+      padding: 4px 10px;
+      border-radius: 20px;
+    }
+    .connection-status {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 0.82rem;
+      color: var(--text-muted);
+      margin-bottom: 16px;
+      padding: 0 4px;
+    }
+    .status-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--accent-green);
+      box-shadow: 0 0 8px var(--accent-green);
+    }
+    .status-dot.offline {
+      background: var(--accent-red);
+      box-shadow: 0 0 8px var(--accent-red);
+    }
+    .card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-subtle);
+      border-radius: 20px;
+      padding: 18px;
+      margin-bottom: 16px;
+      box-shadow: 0 10px 25px rgba(0,0,0,0.4);
+    }
+    .card-title {
+      font-size: 1.02rem;
+      font-weight: 700;
+      margin-bottom: 12px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .search-wrapper {
+      position: relative;
+      margin-bottom: 12px;
+    }
+    .search-input {
+      width: 100%;
+      background: rgba(0, 0, 0, 0.4);
+      border: 1.5px solid rgba(255, 255, 255, 0.15);
+      border-radius: 14px;
+      padding: 14px 44px 14px 16px;
+      color: #fff;
+      font-size: 1rem;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+    .search-input:focus {
+      border-color: var(--accent-cyan);
+      box-shadow: 0 0 12px rgba(0, 210, 255, 0.2);
+    }
+    .clear-btn {
+      position: absolute;
+      right: 12px;
+      top: 50%;
+      transform: translateY(-50%);
+      background: none;
+      border: none;
+      color: var(--text-muted);
+      font-size: 1.1rem;
+      cursor: pointer;
+      display: none;
+    }
+    .results-list {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      max-height: 260px;
+      overflow-y: auto;
+    }
+    .result-item {
+      padding: 12px 14px;
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid rgba(255, 255, 255, 0.06);
+      border-radius: 12px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      transition: background 0.15s;
+    }
+    .result-item:active {
+      background: rgba(0, 210, 255, 0.15);
+      border-color: var(--accent-cyan);
+    }
+    .result-info {
+      overflow: hidden;
+    }
+    .result-name {
+      font-size: 0.95rem;
+      font-weight: 600;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .result-sub {
+      font-size: 0.78rem;
+      color: var(--text-muted);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      margin-top: 2px;
+    }
+    .btn-send-res {
+      background: linear-gradient(135deg, var(--accent-blue), var(--accent-cyan));
+      color: #fff;
+      border: none;
+      border-radius: 8px;
+      padding: 6px 12px;
+      font-size: 0.8rem;
+      font-weight: 700;
+      flex-shrink: 0;
+    }
+    .gps-toggle-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 6px 0;
+    }
+    .gps-desc {
+      font-size: 0.84rem;
+      color: var(--text-muted);
+      margin-top: 4px;
+      line-height: 1.4;
+    }
+    .toggle-switch {
+      position: relative;
+      width: 52px;
+      height: 30px;
+      flex-shrink: 0;
+    }
+    .toggle-switch input {
+      opacity: 0;
+      width: 0;
+      height: 0;
+    }
+    .slider {
+      position: absolute;
+      cursor: pointer;
+      inset: 0;
+      background-color: rgba(255, 255, 255, 0.15);
+      transition: 0.3s;
+      border-radius: 30px;
+    }
+    .slider:before {
+      position: absolute;
+      content: "";
+      height: 22px;
+      width: 22px;
+      left: 4px;
+      bottom: 4px;
+      background-color: white;
+      transition: 0.3s;
+      border-radius: 50%;
+    }
+    input:checked + .slider {
+      background-color: var(--accent-cyan);
+    }
+    input:checked + .slider:before {
+      transform: translateX(22px);
+    }
+    .gps-metrics {
+      display: grid;
+      grid-template-cols: 1fr 1fr;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 10px;
+      margin-top: 14px;
+      padding-top: 14px;
+      border-top: 1px solid rgba(255, 255, 255, 0.08);
+      display: none;
+    }
+    .metric-box {
+      background: rgba(0, 0, 0, 0.3);
+      padding: 10px;
+      border-radius: 10px;
+      text-align: center;
+    }
+    .metric-val {
+      font-size: 1.25rem;
+      font-weight: 800;
+      color: var(--accent-cyan);
+    }
+    .metric-lbl {
+      font-size: 0.72rem;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      margin-top: 2px;
+    }
+    .toast {
+      position: fixed;
+      bottom: 24px;
+      left: 50%;
+      transform: translateX(-50%) translateY(50px);
+      background: rgba(16, 185, 129, 0.95);
+      color: #fff;
+      padding: 12px 24px;
+      border-radius: 30px;
+      font-weight: 700;
+      font-size: 0.92rem;
+      box-shadow: 0 10px 25px rgba(0,0,0,0.4);
+      opacity: 0;
+      transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+      pointer-events: none;
+      z-index: 100;
+      white-space: nowrap;
+    }
+    .toast.show {
+      opacity: 1;
+      transform: translateX(-50%) translateY(0);
+    }
+  </style>
+</head>
+<body>
+
+  <div class="header">
+    <div class="brand">
+      <span>⚡ Tesla Remote</span>
+    </div>
+    <div id="session-code-display" class="session-badge">კოდი: #----</div>
+  </div>
+
+  <div class="connection-status">
+    <span id="conn-dot" class="status-dot"></span>
+    <span id="conn-text">მანქანასთან კავშირი მყარდება...</span>
+  </div>
+
+  <!-- SEND DESTINATION CARD -->
+  <div class="card">
+    <div class="card-title">
+      <span>📍 დანიშნულების გაგზავნა</span>
+    </div>
+    <div class="search-wrapper">
+      <input type="text" id="phone-search-input" class="search-input" placeholder="ჩაწერეთ მისამართი (თბილისი, ბათუმი...)" autocomplete="off">
+      <button id="phone-clear-btn" class="clear-btn">✕</button>
+    </div>
+    <div id="phone-results-list" class="results-list"></div>
+  </div>
+
+  <!-- PHONE GPS STREAMING CARD -->
+  <div class="card">
+    <div class="card-title">
+      <span>📡 ტელეფონის GPS გაზიარება</span>
+    </div>
+    <div class="gps-toggle-row">
+      <div style="padding-right: 12px;">
+        <div style="font-weight: 700; font-size: 0.95rem;">ზუსტი GPS ტრანსლაცია</div>
+        <div class="gps-desc">ტელეფონის GPS ჩიპის სიგნალის რეალურ დროში გაგზავნა Tesla-ს ეკრანზე.</div>
+      </div>
+      <label class="toggle-switch">
+        <input type="checkbox" id="gps-stream-toggle">
+        <span class="slider"></span>
+      </label>
+    </div>
+
+    <div id="gps-metrics-row" class="gps-metrics">
+      <div class="metric-box">
+        <div id="gps-accuracy-val" class="metric-val">±0 მ</div>
+        <div class="metric-lbl">სიზუსტე</div>
+      </div>
+      <div class="metric-box">
+        <div id="gps-speed-val" class="metric-val">0 კმ/სთ</div>
+        <div class="metric-lbl">სიჩქარე</div>
+      </div>
+    </div>
+  </div>
+
+  <div id="toast" class="toast">✅ გაგზავნილია Tesla-ს ეკრანზე!</div>
+
+  <script>
+    const urlParams = new URLSearchParams(window.location.search);
+    const sessionCode = (urlParams.get('code') || '').toUpperCase().trim();
+
+    const codeDisplay = document.getElementById('session-code-display');
+    const connDot = document.getElementById('conn-dot');
+    const connText = document.getElementById('conn-text');
+    const searchInput = document.getElementById('phone-search-input');
+    const clearBtn = document.getElementById('phone-clear-btn');
+    const resultsList = document.getElementById('phone-results-list');
+    const gpsToggle = document.getElementById('gps-stream-toggle');
+    const gpsMetricsRow = document.getElementById('gps-metrics-row');
+    const accuracyVal = document.getElementById('gps-accuracy-val');
+    const speedVal = document.getElementById('gps-speed-val');
+    const toast = document.getElementById('toast');
+
+    if (sessionCode) {
+      codeDisplay.textContent = `კოდი: #${sessionCode}`;
+      checkSessionStatus();
+    } else {
+      codeDisplay.textContent = `კოდი არ არის`;
+      connDot.classList.add('offline');
+      connText.textContent = 'გთხოვთ დაასკანეროთ Tesla-ს ეკრანზე ნაჩვენები QR კოდი.';
+    }
+
+    function showToast(msg) {
+      toast.textContent = msg;
+      toast.classList.add('show');
+      setTimeout(() => toast.classList.remove('show'), 2500);
+    }
+
+    async function checkSessionStatus() {
+      try {
+        const res = await fetch(`/api/session/status?code=${sessionCode}`);
+        const data = await res.json();
+        if (data.active) {
+          connDot.classList.remove('offline');
+          connText.textContent = '🟢 დაკავშირებულია Tesla-ს ეკრანთან!';
+        } else {
+          connDot.classList.add('offline');
+          connText.textContent = '🟡 მანქანის ეკრანი ელოდება კავშირს...';
+        }
+      } catch (e) {
+        connDot.classList.add('offline');
+        connText.textContent = '🔴 სერვერთან კავშირი ვერ დამყარდა.';
+      }
+    }
+    setInterval(checkSessionStatus, 8000);
+
+    // Send payload to car
+    async function sendToCar(type, data) {
+      if (!sessionCode) {
+        showToast('❌ სესიის კოდი არასწორია');
+        return false;
+      }
+      try {
+        const res = await fetch('/api/session/send', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ code: sessionCode, type, data })
+        });
+        const resp = await res.json();
+        if (resp.success) {
+          return true;
+        } else {
+          showToast(`❌ შეცდომა: ${resp.error || 'უცნობი'}`);
+          return false;
+        }
+      } catch (e) {
+        showToast('❌ კავშირის შეცდომა');
+        return false;
+      }
+    }
+
+    // Search Autocomplete
+    let debounceTimer;
+    searchInput.addEventListener('input', (e) => {
+      const val = e.target.value.trim();
+      clearBtn.style.display = val ? 'block' : 'none';
+      clearTimeout(debounceTimer);
+      if (val.length < 2) {
+        resultsList.innerHTML = '';
+        return;
+      }
+      debounceTimer = setTimeout(() => executeSearch(val), 350);
+    });
+
+    clearBtn.addEventListener('click', () => {
+      searchInput.value = '';
+      clearBtn.style.display = 'none';
+      resultsList.innerHTML = '';
+    });
+
+    async function executeSearch(query) {
+      resultsList.innerHTML = '<div style="padding:10px;text-align:center;color:#94a3b8;font-size:0.85rem;">იძებნება...</div>';
+      try {
+        const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query)}&format=json&addressdetails=1&countrycodes=ge&limit=5&accept-language=ka,en`;
+        const res = await fetch(url);
+        const data = await res.json();
+        resultsList.innerHTML = '';
+        if (!data || data.length === 0) {
+          resultsList.innerHTML = '<div style="padding:10px;text-align:center;color:#94a3b8;font-size:0.85rem;">მისამართი ვერ მოიძებნა</div>';
+          return;
+        }
+        data.forEach(item => {
+          const el = document.createElement('div');
+          el.className = 'result-item';
+          const mainName = item.name || item.display_name.split(',')[0];
+          el.innerHTML = `
+            <div class="result-info">
+              <div class="result-name">📍 ${mainName}</div>
+              <div class="result-sub">${item.display_name}</div>
+            </div>
+            <button class="btn-send-res">გაგზავნა</button>
+          `;
+          el.addEventListener('click', async () => {
+            const ok = await sendToCar('destination', {
+              name: mainName,
+              fullName: item.display_name,
+              lat: parseFloat(item.lat),
+              lng: parseFloat(item.lon)
+            });
+            if (ok) {
+              showToast(`🚀 ${mainName} გაგზავნილია Tesla-ში!`);
+            }
+          });
+          resultsList.appendChild(el);
+        });
+      } catch (err) {
+        resultsList.innerHTML = '<div style="padding:10px;text-align:center;color:#ef4444;font-size:0.85rem;">ძებნა ვერ მოხერხდა</div>';
+      }
+    }
+
+    // High accuracy Phone GPS streaming
+    let watchId = null;
+    gpsToggle.addEventListener('change', (e) => {
+      if (e.target.checked) {
+        if (!navigator.geolocation) {
+          alert('თქვენს ბრაუზერს არ აქვს Geolocation მხარდაჭერა');
+          e.target.checked = false;
+          return;
+        }
+        gpsMetricsRow.style.display = 'grid';
+        showToast('📡 GPS ტრანსლაცია ჩაირთო');
+        watchId = navigator.geolocation.watchPosition(
+          pos => {
+            const { latitude, longitude, heading, speed, accuracy } = pos.coords;
+            const speedKmh = Math.round((speed || 0) * 3.6);
+            accuracyVal.textContent = `±${Math.round(accuracy)} მ`;
+            speedVal.textContent = `${speedKmh} კმ/სთ`;
+            sendToCar('gps', {
+              lat: latitude,
+              lng: longitude,
+              heading: heading || 0,
+              speedKmh: speedKmh,
+              accuracy: accuracy
+            });
+          },
+          err => {
+            console.error(err);
+            showToast('⚠️ GPS წვდომა დაბლოკილია');
+          },
+          { enableHighAccuracy: true, maximumAge: 0, timeout: 5000 }
+        );
+      } else {
+        if (watchId !== null) {
+          navigator.geolocation.clearWatch(watchId);
+          watchId = null;
+        }
+        gpsMetricsRow.style.display = 'none';
+        showToast('GPS ტრანსლაცია შეჩერდა');
+      }
+    });
+  </script>
+</body>
+</html>
