@@ -71,6 +71,17 @@ This application provides a native-feeling, zero-lag, 60 FPS web navigation syst
   * **Root cause:** Leaflet's 250ms CSS scale animation on markers was running while Yandex in the background did not receive zoom events until the animation completed.
   * **Fix:** Dynamically disabled `map.options.zoomAnimation = false; map._zoomAnimated = false;` when on Yandex map, and added synchronous zero-delay `syncImmediate()` on zoom events.
   * **Result:** Zoom click duration < 10ms, perfect lockstep synchronization.
+* **6.14 OSRM Routing 400 Bad Request Fix & Dual-Server Fallback (v3.6.4):**
+  * Removed unsupported `&exclude=unpaved` parameter from OSRM requests.
+  * Added `parseCoord(pt)` coordinate validation/normalization.
+  * Implemented Dual-Server Fallback (`router.project-osrm.org` + `routing.openstreetmap.de`).
+* **6.15 Comprehensive Audit Fixes (P0 & P1 Pass) & Unrestricted Media (v3.7.0):**
+  * **Removed fake data:** sin-based fake traffic, mock traffic signals, mock chargers, fake lane arrows, time-of-day traffic scores.
+  * **Security hardening:** Server static whitelist, URI parse error handling, 8KB body cap, event validation, XSS escaping with `escapeHtml()`, `textContent` toasts, 64-bit crypto session codes.
+  * **Navigation engine:** Step progress projection along polyline (immune to skipped fixes), along-route remaining distance/ETA, advance voice announcements (500m/200m/now and high speed), keep old route on network failure (9s timeout), silent reroute with 10s back-off, single arrival trigger.
+  * **Auto-resume & UI:** Auto-resume waits for real GPS fix; navigation zoom >= 17 on GO; fixed `btn-sim-drive` TypeError.
+  * **STRICT EXCLUSION (Item 7):** Driving lockout (>5 km/h) was NOT added per explicit user instruction. YouTube iframe and search inputs remain open and unrestricted while driving.
+  * **Tests:** Automated synthetic navigation test suite added in `tests/test_routing.js` (100% PASS).
 
 ---
 
@@ -78,43 +89,50 @@ This application provides a native-feeling, zero-lag, 60 FPS web navigation syst
 
 ```
 tesla-nav/
-├── index.html           # Main HUD UI, map container, overlays, modals, SVG icons (v=3.6.3)
+├── index.html           # Main HUD UI, map container, overlays, modals, SVG icons (v=3.7.0)
 ├── style.css            # Dark UI theme, 0-blur high performance rules, zoom lockstep CSS
 ├── app.js               # Central coordinator (map setup, GPS tracking, styling, UI events)
-├── routing.js           # OSRM routing, maneuvers, ETA, route polyline
-├── yandex.js            # Yandex JS API v2.1 lazy-loader, live traffic layer, 1-10 traffic score
-├── chargers.js          # Live EV charger markers, connector filters, 1-click route
+├── routing.js           # OSRM dual-server routing, progress tracking, advance voice prompts
+├── yandex.js            # Yandex JS API v2.1 lazy-loader, live traffic layer, traffic score
+├── chargers.js          # Live 650+ EV charger markers, connector filters, 1-click route
 ├── battery.js           # Official Tesla 2018-2023 Model 3/Y specs & SoC trip calculator
 ├── weather.js           # Open-Meteo live weather client
 ├── speech.js            # Georgian voice navigation assistant
-├── media-player.js      # Picture-in-picture YouTube player
-├── traffic-signals.js   # Traffic lights layer via Overpass API
+├── media-player.js      # Picture-in-picture YouTube player (unrestricted during driving)
+├── traffic-signals.js   # Live traffic lights layer via Overpass API (+-50 deg heading filter)
 ├── traffic.js           # Traffic layer coordinator
-├── server.js            # Node.js HTTP/SSE server, YouTube resolver, charger auto-sync, gzip
+├── server.js            # Node.js HTTP/SSE server, YouTube resolver, charger auto-sync, static whitelist
 ├── remote.html          # Smartphone web companion (QR code target, search, voice dictation)
 ├── chargers-cache.json  # 650+ cached charging stations across Georgia
 ├── leaflet.js / .css    # Offline local Leaflet library (v1.9.4)
-└── qrcode.min.js        # Offline QR code generator
+├── qrcode.min.js        # Offline QR code generator
+└── tests/
+    └── test_routing.js  # Node.js navigation engine automated test suite (9 assertions)
 ```
 
 ---
 
 ## 4. Key Rules for Any Future Modification
-1. **Never use `backdrop-filter: blur()`:** It causes severe GPU stuttering on Tesla MCU Chromium.
-2. **Never break Touch Propagation:** Overlay elements MUST have `L.DomEvent.disableClickPropagation(el)` and `button svg { pointer-events: none; }`.
-3. **Keep Leaflet Zoom Animation Dynamic:**
+1. **Never implement driving lockout on media/search:** The user explicitly requires YouTube playback and search inputs to remain active and open during driving.
+2. **Never use `backdrop-filter: blur()`:** It causes severe GPU stuttering on Tesla MCU Chromium.
+3. **Never break Touch Propagation:** Overlay elements MUST have `L.DomEvent.disableClickPropagation(el)` and `button svg { pointer-events: none; }`.
+4. **Keep Leaflet Zoom Animation Dynamic:**
    * On Yandex Map: `map.options.zoomAnimation = false; map._zoomAnimated = false;` (otherwise icons float and lag behind).
    * On Google Maps: `map.options.zoomAnimation = true; map._zoomAnimated = true;` (smooth tile zoom).
-4. **Cache Busting:** Always increment `?v=X.X.X` in `index.html` when modifying CSS or JS, because Tesla Chromium caches aggressively.
-5. **Server Port:** Runs on port 3000 (`node server.js`).
+5. **Keep OSRM Dual-Server Fallback:** Public demo servers may experience rate limits; dual servers ensure 100% uptime.
+6. **Cache Busting:** Always increment `?v=X.X.X` in `index.html` when modifying CSS or JS, because Tesla Chromium caches aggressively.
+7. **Server Port:** Runs on port 3000 (`node server.js`).
 
 ---
 
 ## 5. Verification Commands for Auditors
 To verify the application:
 1. Start server: `node server.js`
-2. Check syntax:
+2. Run automated navigation unit tests:
    ```bash
-   node -c app.js yandex.js routing.js chargers.js battery.js server.js media-player.js
+   node tests/test_routing.js
    ```
-3. Run headless browser tests via CDP (see `test-sync.js` pattern).
+3. Check syntax across all JS files:
+   ```bash
+   node -c app.js yandex.js routing.js chargers.js battery.js server.js media-player.js traffic.js traffic-signals.js tests/test_routing.js
+   ```
