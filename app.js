@@ -1094,15 +1094,6 @@ function initEventListeners() {
     btnSignals.classList.toggle("signals-active", enabled);
   });
 
-  // Toggle Road Incidents / Cameras (საგზაო ინციდენტები)
-  const btnIncidents = document.getElementById("btn-toggle-incidents");
-  if (btnIncidents) {
-    btnIncidents.addEventListener("click", () => {
-      const show = yandexEngine.toggleIncidents();
-      btnIncidents.classList.toggle("signals-active", show);
-    });
-  }
-
   // Toggle EV Chargers Layer
   const btnChargers = document.getElementById("btn-toggle-chargers");
   if (btnChargers) {

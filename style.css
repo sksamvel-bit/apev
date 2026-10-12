@@ -1696,41 +1696,6 @@ body.map-style-yandex .leaflet-container {
   box-shadow: 0 0 10px rgba(239, 68, 68, 0.6);
 }
 
-/* Road Incidents Markers (ავარიები, სამუშაოები, კამერები) */
-.incident-badge {
-  width: 38px;
-  height: 38px;
-  border-radius: 50%;
-  background: #1e293b;
-  border: 2.5px solid rgba(255, 255, 255, 0.2);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 1.25rem;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
-  cursor: pointer;
-  transition: transform 0.2s ease;
-}
-
-.incident-badge:hover {
-  transform: scale(1.25);
-}
-
-.incident-badge.crash {
-  border-color: #ef4444;
-  box-shadow: 0 0 12px rgba(239, 68, 68, 0.6);
-}
-
-.incident-badge.works {
-  border-color: #f59e0b;
-  box-shadow: 0 0 12px rgba(245, 158, 11, 0.6);
-}
-
-.incident-badge.camera {
-  border-color: #00d2ff;
-  box-shadow: 0 0 12px rgba(0, 210, 255, 0.6);
-}
-
 /* Lane Guidance HUD Row */
 .hud-lane-guidance {
   display: flex;

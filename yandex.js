@@ -22,10 +22,7 @@ class YandexEngine {
 
     // Road Incidents Layer (Leaflet LayerGroup)
     this.incidentsLayer = L.layerGroup();
-    this.showIncidents = true;
-
-    // Immediate lightweight incidents render (zero SDK overhead)
-    this.loadRoadIncidents();
+    this.showIncidents = false;
 
     // Default heuristic traffic score based on peak hours
     const hour = new Date().getHours();
@@ -166,53 +163,11 @@ class YandexEngine {
 
   // Road Incidents (ავარიები, საგზაო სამუშაოები, კამერები)
   loadRoadIncidents() {
-    const INCIDENTS_DATA = [
-      { lat: 41.7145, lon: 44.7820, type: "works", title: "საგზაო სამუშაოები", desc: "გმირთა მოედანი - მარჯვენა ზოლი შეზღუდულია" },
-      { lat: 41.7205, lon: 44.7750, type: "camera", title: "სიჩქარის რადარი (60 კმ/სთ)", desc: "პეკინის გამზირი" },
-      { lat: 41.7085, lon: 44.7712, type: "camera", title: "ზოლის კამერა (Bus Lane)", desc: "ჭავჭავაძის გამზირი" },
-      { lat: 41.7280, lon: 44.7890, type: "works", title: "საგზაო სამუშაოები", desc: "წერეთლის გამზირი" },
-      { lat: 41.6980, lon: 44.8020, type: "camera", title: "სიჩქარის რადარი (60 კმ/სთ)", desc: "მემარჯვენე სანაპირო" },
-      { lat: 41.7015, lon: 44.7930, type: "crash", title: "ავარია (შეფერხება)", desc: "რუსთაველის გამზირი" }
-    ];
-
-    INCIDENTS_DATA.forEach(inc => {
-      let iconHtml = "";
-      if (inc.type === "crash") {
-        iconHtml = `<div class="incident-badge crash" title="${inc.title}">💥</div>`;
-      } else if (inc.type === "works") {
-        iconHtml = `<div class="incident-badge works" title="${inc.title}">🚧</div>`;
-      } else if (inc.type === "camera") {
-        iconHtml = `<div class="incident-badge camera" title="${inc.title}">📹</div>`;
-      }
-
-      const icon = L.divIcon({
-        className: "incident-custom-icon",
-        html: iconHtml,
-        iconSize: [30, 30],
-        iconAnchor: [15, 15]
-      });
-
-      const marker = L.marker([inc.lat, inc.lon], { icon }).bindPopup(`
-        <div style="font-weight:700; color:#fff; font-size:1rem;">${inc.title}</div>
-        <div style="font-size:0.85rem; color:#94a3b8; margin-top:4px;">${inc.desc}</div>
-      `);
-
-      this.incidentsLayer.addLayer(marker);
-    });
-
-    if (this.showIncidents) {
-      this.incidentsLayer.addTo(this.map);
-    }
+    // Demo markers removed for Tesla MCU lightweight performance
   }
 
   toggleIncidents() {
-    this.showIncidents = !this.showIncidents;
-    if (this.showIncidents) {
-      this.incidentsLayer.addTo(this.map);
-    } else {
-      this.map.removeLayer(this.incidentsLayer);
-    }
-    return this.showIncidents;
+    return false;
   }
 }
 
