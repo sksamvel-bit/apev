@@ -312,10 +312,11 @@ const server = http.createServer((req, res) => {
       ext === '.html' || ext === '.css' || ext === '.js' || ext === '.json' || ext === '.svg'
     );
 
-    // Caching headers: 1 day for assets (.js, .css, images, fonts), no-cache for html
-    const cacheControl = (ext === '.js' || ext === '.css' || ext === '.png' || ext === '.jpg' || ext === '.svg' || ext === '.ico')
-      ? 'public, max-age=86400, stale-while-revalidate=3600'
-      : 'no-cache';
+    // Caching headers: no-cache for app code (HTML, JS, CSS) to ensure instant Tesla updates
+    const isCode = ext === '.html' || ext === '.js' || ext === '.css';
+    const cacheControl = isCode
+      ? 'no-cache, no-store, must-revalidate, max-age=0'
+      : 'public, max-age=86400, stale-while-revalidate=3600';
 
     const headers = {
       'Content-Type': contentType,

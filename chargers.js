@@ -188,11 +188,6 @@ class ChargersEngine {
     }
   }
 
-    if (this.isEnabled) {
-      this.layerGroup.addLayer(marker);
-    }
-  }
-
   toggle() {
     this.isEnabled = !this.isEnabled;
     if (this.isEnabled) {

@@ -40,15 +40,15 @@ const MANEUVER_ICONS = {
 };
 
 document.addEventListener("DOMContentLoaded", () => {
-  initClock();
-  initMap();
-  applyNightMode(isNightMode);
-  initSubsystems();
-  initEventListeners();
-  requestWakeLock();
-  initGeolocation();
-  initRemoteSession();
-  restoreActiveRouteState();
+  try { initClock(); } catch (e) { console.error("initClock error:", e); }
+  try { initMap(); } catch (e) { console.error("initMap error:", e); }
+  try { applyNightMode(isNightMode); } catch (e) { console.error("applyNightMode error:", e); }
+  try { initSubsystems(); } catch (e) { console.error("initSubsystems error:", e); }
+  try { initEventListeners(); } catch (e) { console.error("initEventListeners error:", e); }
+  try { requestWakeLock(); } catch (e) { console.error("requestWakeLock error:", e); }
+  try { initGeolocation(); } catch (e) { console.error("initGeolocation error:", e); }
+  try { initRemoteSession(); } catch (e) { console.error("initRemoteSession error:", e); }
+  try { restoreActiveRouteState(); } catch (e) { console.error("restoreActiveRouteState error:", e); }
 });
 
 // Real-time Top Clock (Strict 24-Hour Format)
@@ -77,6 +77,7 @@ function initMap() {
     inertiaDeceleration: 3200,
     inertiaMaxSpeed: 1600
   });
+  window.map = map;
 
   // Set initial map style (persisted or Google Roads by default)
   const savedStyle = localStorage.getItem("tesla_nav_map_style");
@@ -241,28 +242,39 @@ function applyNightMode(enable) {
 }
 
 function initSubsystems() {
-  speechAssistant = new SpeechAssistant();
-  batteryEngine = new BatteryEngine();
-  weatherEngine = new WeatherEngine();
-  trafficSignalsEngine = new TrafficSignalsEngine(map);
-  trafficEngine = new TrafficEngine(map);
-  chargersEngine = new ChargersEngine(map, (chargerData) => {
-    prepareRoutePreview(chargerData, chargerData.name || "EV დამტენი სადგური", chargerData.address || "ელექტრომობილის დამტენი");
-  });
-  mediaEngine = new MediaPlayerEngine();
+  try { speechAssistant = new SpeechAssistant(); window.speechAssistant = speechAssistant; } catch (e) { console.warn("speechAssistant init notice:", e); }
+  try { batteryEngine = new BatteryEngine(); window.batteryEngine = batteryEngine; } catch (e) { console.warn("batteryEngine init notice:", e); }
+  try { weatherEngine = new WeatherEngine(); window.weatherEngine = weatherEngine; } catch (e) { console.warn("weatherEngine init notice:", e); }
+  try { trafficSignalsEngine = new TrafficSignalsEngine(map); window.trafficSignalsEngine = trafficSignalsEngine; } catch (e) { console.warn("trafficSignalsEngine init notice:", e); }
+  try { trafficEngine = new TrafficEngine(map); window.trafficEngine = trafficEngine; } catch (e) { console.warn("trafficEngine init notice:", e); }
+  try {
+    chargersEngine = new ChargersEngine(map, (chargerData) => {
+      prepareRoutePreview(chargerData, chargerData.name || "EV დამტენი სადგური", chargerData.address || "ელექტრომობილის დამტენი");
+    });
+    window.chargersEngine = chargersEngine;
+  } catch (e) { console.warn("chargersEngine init notice:", e); }
+  try { mediaEngine = new MediaPlayerEngine(); window.mediaEngine = mediaEngine; } catch (e) { console.warn("mediaEngine init notice:", e); }
 
   // Initialize Yandex Engine (Live Traffic & Score)
-  yandexEngine = new YandexEngine(map, (score) => {
-    updateTrafficScoreUI(score);
-  });
+  try {
+    yandexEngine = new YandexEngine(map, (score) => {
+      updateTrafficScoreUI(score);
+    });
+    window.yandexEngine = yandexEngine;
+  } catch (e) { console.warn("yandexEngine init notice:", e); }
 
-  routingEngine = new RoutingEngine(map, trafficEngine, trafficSignalsEngine, speechAssistant, batteryEngine);
-  const avoidUnpavedSaved = localStorage.getItem("avoid_unpaved") === "true";
-  routingEngine.setAvoidUnpaved(avoidUnpavedSaved);
+  try {
+    routingEngine = new RoutingEngine(map, trafficEngine, trafficSignalsEngine, speechAssistant, batteryEngine);
+    const avoidUnpavedSaved = localStorage.getItem("avoid_unpaved") === "true";
+    routingEngine.setAvoidUnpaved(avoidUnpavedSaved);
+    window.routingEngine = routingEngine;
+  } catch (e) { console.warn("routingEngine init notice:", e); }
 
   // Initial battery stats render
-  updateBatteryUI(batteryEngine.getStats());
-  batteryEngine.onBatteryChange = (stats) => updateBatteryUI(stats);
+  if (batteryEngine) {
+    updateBatteryUI(batteryEngine.getStats());
+    batteryEngine.onBatteryChange = (stats) => updateBatteryUI(stats);
+  }
 
   // Cached DOM elements & dirty-checking states for 60 FPS HUD rendering
   const navHudEl = document.getElementById("nav-hud");

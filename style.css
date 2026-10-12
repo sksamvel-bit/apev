@@ -810,6 +810,9 @@ button svg * {
 .dock-btn {
   width: 42px;
   height: 42px;
+  min-width: 42px;
+  min-height: 42px;
+  flex-shrink: 0;
   background: transparent;
   border: 1px solid transparent;
   border-radius: 10px;
