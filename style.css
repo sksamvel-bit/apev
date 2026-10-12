@@ -1028,10 +1028,8 @@ button svg * {
 .modal-overlay {
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.7);
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
-  z-index: 100;
+  background: rgba(8, 10, 15, 0.88);
+  z-index: 2000;
   display: none;
   align-items: center;
   justify-content: center;
@@ -1049,14 +1047,12 @@ button svg * {
 }
 
 .modal-window {
-  background: var(--bg-card);
-  backdrop-filter: var(--backdrop-blur);
-  -webkit-backdrop-filter: var(--backdrop-blur);
-  border: 1px solid var(--border-subtle);
+  background: #0e121a;
+  border: 1px solid rgba(255, 255, 255, 0.15);
   border-radius: var(--radius-lg);
   width: 100%;
-  max-width: 540px;
-  box-shadow: var(--shadow-lg);
+  max-width: 580px;
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.9), 0 0 30px rgba(0, 210, 255, 0.15);
   display: flex;
   flex-direction: column;
   overflow: hidden;
@@ -1100,8 +1096,23 @@ button svg * {
   display: flex;
   flex-direction: column;
   gap: 18px;
-  max-height: 70vh;
+  max-height: 75vh;
   overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.2) transparent;
+}
+
+.modal-body::-webkit-scrollbar {
+  width: 5px;
+}
+
+.modal-body::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.modal-body::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 4px;
 }
 
 .setting-group {
@@ -1138,6 +1149,67 @@ button svg * {
   color: var(--text-primary);
   font-size: 0.95rem;
   outline: none;
+}
+
+.setting-select optgroup {
+  background: #111827;
+  color: var(--accent-cyan);
+  font-weight: 700;
+  padding: 6px 0;
+}
+
+.setting-select option {
+  background: #1e293b;
+  color: #ffffff;
+  padding: 8px;
+}
+
+/* Dynamic Vehicle Specs Card inside Settings Modal */
+.model-specs-card {
+  background: rgba(255, 255, 255, 0.035);
+  border: 1px solid rgba(0, 210, 255, 0.25);
+  border-radius: var(--radius-md);
+  padding: 14px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.specs-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px 14px;
+}
+
+.spec-item {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.spec-label {
+  font-size: 0.74rem;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  font-weight: 600;
+}
+
+.spec-val {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: #ffffff;
+}
+
+.spec-tip-badge {
+  background: rgba(0, 210, 255, 0.1);
+  border: 1px solid rgba(0, 210, 255, 0.25);
+  border-radius: var(--radius-sm);
+  padding: 8px 12px;
+  font-size: 0.82rem;
+  color: var(--accent-cyan);
+  font-weight: 600;
+  line-height: 1.4;
 }
 
 .modal-footer {

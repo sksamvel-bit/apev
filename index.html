@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-  <title>Tesla Model 3 Navigation - EV Pro</title>
+  <title>Tesla Model 3 & Model Y Navigation - EV Pro</title>
   
   <meta name="theme-color" content="#0d1117">
   <meta name="apple-mobile-web-app-capable" content="yes">
@@ -12,7 +12,7 @@
   <!-- Leaflet CSS (Local Offline) -->
   <link rel="stylesheet" href="leaflet.css">
   <!-- Custom Stylesheet -->
-  <link rel="stylesheet" href="style.css?v=3.2.0">
+  <link rel="stylesheet" href="style.css?v=3.3.0">
 </head>
 <body>
 
@@ -410,17 +410,50 @@
   <div id="settings-modal" class="modal-overlay">
     <div class="modal-window">
       <div class="modal-header">
-        <h2 class="modal-title">⚙️ Tesla Model 3 პარამეტრები</h2>
+        <h2 class="modal-title">⚙️ Tesla პარამეტრები (Model 3 & Model Y)</h2>
         <button id="modal-close-btn" class="modal-close-btn">✕</button>
       </div>
       <div class="modal-body">
         <div class="setting-group">
-          <label class="setting-label">ავტომობილის მოდელი (Model 3 პროფილი):</label>
+          <label class="setting-label">🚗 ავტომობილის მოდელი (Model 3 / Model Y 2018–2023):</label>
           <select id="select-tesla-model" class="setting-select">
-            <option value="sr">Model 3 Standard Range / RWD (60 kWh)</option>
-            <option value="lr">Model 3 Long Range AWD (78 kWh)</option>
-            <option value="perf">Model 3 Performance (82 kWh)</option>
+            <optgroup label="─── Tesla Model 3 (2018–2023) ───">
+              <option value="m3_rwd_lfp">Model 3 RWD (2021–2023) • 60 kWh LFP (491 კმ)</option>
+              <option value="m3_sr_plus">Model 3 Standard Range+ (2018–2020) • 54 kWh NCA (409 კმ)</option>
+              <option value="m3_lr_awd">Model 3 Long Range AWD (2021–2023) • 82 kWh NMC (602 კმ)</option>
+              <option value="m3_lr_awd_pre">Model 3 Long Range AWD (2018–2020) • 75 kWh NCA (560 კმ)</option>
+              <option value="m3_perf">Model 3 Performance AWD (2021–2023) • 82 kWh NMC (547 კმ)</option>
+              <option value="m3_perf_pre">Model 3 Performance AWD (2018–2020) • 75 kWh NCA (530 კმ)</option>
+            </optgroup>
+            <optgroup label="─── Tesla Model Y (2020–2023) ───">
+              <option value="my_rwd_lfp">Model Y RWD (2022–2023) • 60 kWh LFP (455 კმ)</option>
+              <option value="my_lr_awd">Model Y Long Range AWD (2020–2023) • 82 kWh NMC (533 კმ)</option>
+              <option value="my_perf">Model Y Performance AWD (2020–2023) • 82 kWh NMC (514 კმ)</option>
+            </optgroup>
           </select>
+        </div>
+
+        <!-- Dynamic Vehicle Specs Card inside Modal -->
+        <div id="model-specs-card" class="model-specs-card">
+          <div class="specs-grid">
+            <div class="spec-item">
+              <span class="spec-label">ბატარეა (Net / Gross):</span>
+              <span id="spec-battery-val" class="spec-val">-- kWh</span>
+            </div>
+            <div class="spec-item">
+              <span class="spec-label">საშ. მოხმარება:</span>
+              <span id="spec-consumption-val" class="spec-val">-- kWh/100კმ</span>
+            </div>
+            <div class="spec-item">
+              <span class="spec-label">ქარხნული გარბენი:</span>
+              <span id="spec-range-val" class="spec-val">-- კმ (WLTP)</span>
+            </div>
+            <div class="spec-item">
+              <span class="spec-label">წამყვანი თვლები:</span>
+              <span id="spec-drive-val" class="spec-val">--</span>
+            </div>
+          </div>
+          <div id="spec-charge-tip" class="spec-tip-badge">--</div>
         </div>
 
         <div class="setting-group">
@@ -463,15 +496,15 @@
   <!-- QR Code Generator -->
   <script src="qrcode.min.js"></script>
   <!-- Application Engines -->
-  <script src="speech.js?v=3.2.0"></script>
-  <script src="weather.js?v=3.2.0"></script>
-  <script src="battery.js?v=3.2.0"></script>
-  <script src="chargers.js?v=3.2.0"></script>
-  <script src="traffic-signals.js?v=3.2.0"></script>
-  <script src="traffic.js?v=3.2.0"></script>
-  <script src="media-player.js?v=3.2.0"></script>
-  <script src="yandex.js?v=3.2.0"></script>
-  <script src="routing.js?v=3.2.0"></script>
-  <script src="app.js?v=3.2.0"></script>
+  <script src="speech.js?v=3.3.0"></script>
+  <script src="weather.js?v=3.3.0"></script>
+  <script src="battery.js?v=3.3.0"></script>
+  <script src="chargers.js?v=3.3.0"></script>
+  <script src="traffic-signals.js?v=3.3.0"></script>
+  <script src="traffic.js?v=3.3.0"></script>
+  <script src="media-player.js?v=3.3.0"></script>
+  <script src="yandex.js?v=3.3.0"></script>
+  <script src="routing.js?v=3.3.0"></script>
+  <script src="app.js?v=3.3.0"></script>
 </body>
 </html>

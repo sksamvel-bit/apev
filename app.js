@@ -1058,7 +1058,8 @@ function initEventListeners() {
   if (batteryChip) {
     batteryChip.addEventListener("click", () => {
       const current = batteryEngine.currentSoC;
-      const input = prompt("მიუთითეთ Tesla Model 3-ის მიმდინარე ბატარეა (%) :", current);
+      const modelName = batteryEngine.getModelConfig().name;
+      const input = prompt(`მიუთითეთ Tesla-ს მიმდინარე ბატარეა (%) [${modelName}]:`, current);
       if (input !== null) {
         const val = parseInt(input, 10);
         if (!isNaN(val) && val >= 1 && val <= 100) {
@@ -1210,7 +1211,40 @@ function initEventListeners() {
 
   // Settings Modal
   const modal = document.getElementById("settings-modal");
+  const selectTeslaModel = document.getElementById("select-tesla-model");
+
+  function updateModelSpecsCard(modelKey) {
+    if (!window.TESLA_MODELS) return;
+    const config = window.TESLA_MODELS[modelKey];
+    if (!config) return;
+
+    const batteryEl = document.getElementById("spec-battery-val");
+    const consumptionEl = document.getElementById("spec-consumption-val");
+    const rangeEl = document.getElementById("spec-range-val");
+    const driveEl = document.getElementById("spec-drive-val");
+    const tipEl = document.getElementById("spec-charge-tip");
+
+    if (batteryEl) batteryEl.textContent = `${config.usableKwh} kWh Usable (${config.batteryKwh} kWh Gross)`;
+    if (consumptionEl) consumptionEl.textContent = `${config.consumptionPer100Km} kWh/100კმ`;
+    if (rangeEl) rangeEl.textContent = `${config.officialRangeKm} კმ (WLTP)`;
+    if (driveEl) driveEl.textContent = `${config.drive} • ${config.chemistry}`;
+    if (tipEl) tipEl.textContent = config.chargeTip;
+  }
+
+  if (selectTeslaModel) {
+    selectTeslaModel.value = batteryEngine.modelKey;
+    updateModelSpecsCard(batteryEngine.modelKey);
+    selectTeslaModel.addEventListener("change", () => {
+      updateModelSpecsCard(selectTeslaModel.value);
+    });
+  }
+
   document.getElementById("btn-settings").addEventListener("click", () => {
+    if (selectTeslaModel) {
+      selectTeslaModel.value = batteryEngine.modelKey;
+      updateModelSpecsCard(batteryEngine.modelKey);
+    }
+    document.getElementById("input-initial-soc").value = batteryEngine.currentSoC;
     modal.classList.add("open");
   });
   document.getElementById("modal-close-btn").addEventListener("click", () => {
@@ -1236,7 +1270,8 @@ function initEventListeners() {
     localStorage.setItem("saved_home", document.getElementById("input-home-addr").value.trim());
     localStorage.setItem("saved_work", document.getElementById("input-work-addr").value.trim());
     modal.classList.remove("open");
-    showToast("პარამეტრები შენახულია! ✅", "success");
+    const activeModel = batteryEngine.getModelConfig();
+    showToast(`პარამეტრები შენახულია! (${activeModel.name}) ✅`, "success");
   });
 
   // Populate settings inputs
@@ -1244,7 +1279,7 @@ function initEventListeners() {
   document.getElementById("input-home-addr").value = localStorage.getItem("saved_home") || "";
   document.getElementById("input-work-addr").value = localStorage.getItem("saved_work") || "";
   document.getElementById("input-avoid-unpaved").checked = localStorage.getItem("avoid_unpaved") === "true";
-  document.getElementById("select-tesla-model").value = batteryEngine.modelKey;
+  if (selectTeslaModel) selectTeslaModel.value = batteryEngine.modelKey;
   document.getElementById("input-initial-soc").value = batteryEngine.currentSoC;
 
   // Remote Phone Companion Modal & Pairing Setup
