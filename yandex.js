@@ -19,6 +19,7 @@ class YandexEngine {
     this.trafficProvider = null;
     this.container = null;
     this.isActive = false;
+    this.isTrafficEnabled = true;
 
     // Road Incidents Layer (Leaflet LayerGroup)
     this.incidentsLayer = L.layerGroup();
@@ -94,7 +95,9 @@ class YandexEngine {
 
     // 2. Enable Real-Time Traffic Provider (Яндекс Пробки)
     this.trafficProvider = new ymaps.traffic.provider.Actual({}, { infoLayerShown: true });
-    this.trafficProvider.setMap(this.ymapsMap);
+    if (this.isTrafficEnabled) {
+      this.trafficProvider.setMap(this.ymapsMap);
+    }
 
     // 3. Listen for Traffic Score (1-10 Score)
     const updateScore = () => {
@@ -146,12 +149,32 @@ class YandexEngine {
       const c = this.map.getCenter();
       this.ymapsMap.setCenter([c.lat, c.lng]);
       this.ymapsMap.setZoom(this.map.getZoom());
+      if (this.trafficProvider) {
+        this.trafficProvider.setMap(this.isTrafficEnabled ? this.ymapsMap : null);
+      }
       setTimeout(() => {
         if (this.ymapsMap && this.ymapsMap.container) {
           this.ymapsMap.container.fitToViewport();
         }
       }, 50);
     }
+  }
+
+  toggleTraffic(explicitState) {
+    if (typeof explicitState === "boolean") {
+      this.isTrafficEnabled = explicitState;
+    } else {
+      this.isTrafficEnabled = !this.isTrafficEnabled;
+    }
+
+    if (this.trafficProvider && this.ymapsMap) {
+      if (this.isTrafficEnabled) {
+        this.trafficProvider.setMap(this.ymapsMap);
+      } else {
+        this.trafficProvider.setMap(null);
+      }
+    }
+    return this.isTrafficEnabled;
   }
 
   disable() {

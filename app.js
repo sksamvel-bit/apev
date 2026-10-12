@@ -164,7 +164,11 @@ function setMapStyle(styleKey) {
 
   // Toggle Yandex Map container
   if (styleKey === "yandex") {
-    if (yandexEngine) yandexEngine.enable();
+    if (yandexEngine) {
+      const isTrafficActive = trafficEngine ? trafficEngine.isEnabled : true;
+      yandexEngine.toggleTraffic(isTrafficActive);
+      yandexEngine.enable();
+    }
   } else {
     if (yandexEngine) yandexEngine.disable();
   }
@@ -265,6 +269,9 @@ function initSubsystems() {
     yandexEngine = new YandexEngine(map, (score) => {
       updateTrafficScoreUI(score);
     });
+    if (trafficEngine) {
+      yandexEngine.isTrafficEnabled = trafficEngine.isEnabled;
+    }
     window.yandexEngine = yandexEngine;
   } catch (e) { console.warn("yandexEngine init notice:", e); }
 
@@ -1085,7 +1092,17 @@ function initEventListeners() {
   const btnTraffic = document.getElementById("btn-toggle-traffic");
   btnTraffic.addEventListener("click", () => {
     const enabled = trafficEngine.toggle();
+    if (yandexEngine) {
+      yandexEngine.toggleTraffic(enabled);
+    }
     btnTraffic.classList.toggle("traffic-active", enabled);
+
+    const scoreChip = document.getElementById("top-traffic-score-chip");
+    if (scoreChip) {
+      scoreChip.style.opacity = enabled ? "1" : "0.35";
+    }
+
+    showToast(enabled ? "🚦 საცობების ფენა ჩართულია" : "🚦 საცობების ფენა გამორთულია", "info", 1800);
   });
 
   const btnSignals = document.getElementById("btn-toggle-signals");
