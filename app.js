@@ -1389,9 +1389,12 @@ function initRemoteSession() {
   fetch("/api/info")
     .then(res => res.json())
     .then(info => {
+      const isPublicOrHttps = window.location.protocol === "https:" || (window.location.hostname !== "localhost" && window.location.hostname !== "127.0.0.1");
       const bestIp = (info.localIps && info.localIps[0]) || window.location.hostname;
       const port = info.port || window.location.port || 3000;
-      const remoteUrl = `http://${bestIp}:${port}/remote.html?code=${code}`;
+      const remoteUrl = isPublicOrHttps
+        ? `${window.location.origin}/remote.html?code=${code}`
+        : `http://${bestIp}:${port}/remote.html?code=${code}`;
 
       const linkEl = document.getElementById("remote-url-link");
       if (linkEl) {
