@@ -456,15 +456,16 @@ function updateBatteryUI(stats) {
 
 // Update Top Bar Yandex Traffic Score UI
 function updateTrafficScoreUI(score) {
+  const chip = document.getElementById("top-traffic-score-chip");
   const badge = document.getElementById("traffic-score-badge");
   const text = document.getElementById("traffic-score-text");
-  if (!badge || !text) return;
+  if (!chip || !badge || !text) return;
 
-  if (score === null || score === undefined) {
-    badge.textContent = "--";
-    badge.className = "traffic-score-badge";
-    text.textContent = "საცობი: მონაცემი არ არის";
+  if (score === null || score === undefined || typeof score !== "number" || isNaN(score)) {
+    // If no numeric 1-10 index is reported, hide chip so it never clutters screen with "მონაცემი არ არის"
+    chip.style.display = "none";
   } else {
+    chip.style.display = "flex";
     badge.textContent = score;
     badge.className = "traffic-score-badge " + (score <= 3 ? "low" : score <= 6 ? "med" : "high");
     text.textContent = `საცობი: ${score} ბალი`;

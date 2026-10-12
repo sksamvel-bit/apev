@@ -66,24 +66,24 @@ class ChargersEngine {
       className: 'ev-charger-custom-marker',
       html: `
         <div style="
-          width: 34px;
-          height: 34px;
+          width: 24px;
+          height: 24px;
           background: #0f172a;
-          border: 2px solid ${glowColor};
+          border: 1.8px solid ${glowColor};
           border-radius: 50%;
           display: flex;
           align-items: center;
           justify-content: center;
-          box-shadow: 0 0 10px ${glowColor}70;
+          box-shadow: 0 0 8px ${glowColor}60;
           cursor: pointer;
         ">
-          <svg viewBox="0 0 24 24" width="18" height="18" fill="${glowColor}">
+          <svg viewBox="0 0 24 24" width="13" height="13" fill="${glowColor}">
             <path d="M11 21h-1l1-7H7.5c-.58 0-.57-.32-.38-.66.19-.34.05-.08.07-.12C8.48 10.94 10.42 7.54 13 3h1l-1 7h3.5c.49 0 .56.33.47.51l-.07.15-5.9 10.34z"/>
           </svg>
         </div>
       `,
-      iconSize: [34, 34],
-      iconAnchor: [17, 17]
+      iconSize: [24, 24],
+      iconAnchor: [12, 12]
     });
   }
 

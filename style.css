@@ -80,13 +80,13 @@ html, body {
 /* TOP STATUS & SEARCH BAR */
 .top-bar {
   position: absolute;
-  top: 14px;
-  left: 16px;
-  right: 16px;
+  top: 10px;
+  left: 12px;
+  right: 12px;
   z-index: 100;
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 6px;
   pointer-events: none;
 }
 
@@ -142,10 +142,10 @@ html, body {
   background: var(--bg-card);
   border: 1px solid var(--border-subtle);
   border-radius: var(--radius-md);
-  padding: 4px 14px;
+  padding: 2px 10px;
   box-shadow: var(--shadow-card);
   transition: all 0.2s ease;
-  min-height: 42px;
+  min-height: 34px;
 }
 
 .search-input-wrapper:focus-within {
@@ -155,9 +155,9 @@ html, body {
 
 .search-icon {
   color: var(--text-muted);
-  width: 18px;
-  height: 18px;
-  margin-right: 10px;
+  width: 15px;
+  height: 15px;
+  margin-right: 8px;
   flex-shrink: 0;
 }
 
@@ -167,8 +167,8 @@ html, body {
   border: none;
   outline: none;
   color: var(--text-primary);
-  font-size: 0.95rem;
-  padding: 8px 0;
+  font-size: 0.88rem;
+  padding: 6px 0;
   user-select: text;
 }
 
@@ -341,22 +341,23 @@ html, body {
 .top-status {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 6px;
   margin-left: auto;
+  flex-shrink: 0;
 }
 
 .status-chip {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
   background: var(--bg-card);
   border: 1px solid var(--border-subtle);
-  padding: 6px 14px;
+  padding: 4px 10px;
   border-radius: var(--radius-md);
-  font-size: 0.95rem;
+  font-size: 0.82rem;
   font-weight: 700;
   box-shadow: var(--shadow-card);
-  min-height: 40px;
+  min-height: 32px;
 }
 
 .gps-dot {
@@ -799,7 +800,7 @@ html, body {
 /* FLOATING CONTROLS DOCK (Right Side - Automotive Touch Strip) */
 .dock-controls {
   position: absolute;
-  right: 14px;
+  right: 10px;
   top: 50%;
   transform: translateY(-50%) translateZ(0);
   will-change: transform;
@@ -808,15 +809,15 @@ html, body {
   flex-direction: column;
   background: rgba(14, 18, 26, 0.94);
   border: 1px solid rgba(255, 255, 255, 0.12);
-  border-radius: 18px;
-  padding: 5px 3px;
-  gap: 3px;
+  border-radius: 14px;
+  padding: 3px 2px;
+  gap: 2px;
   pointer-events: auto;
   touch-action: manipulation;
   user-select: none;
   -webkit-user-select: none;
-  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.55), inset 0 1px 0 rgba(255, 255, 255, 0.08);
-  max-height: calc(100vh - 110px);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.55), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  max-height: calc(100vh - 80px);
   overflow-y: auto;
   overflow-x: hidden;
   scrollbar-width: none;
@@ -832,14 +833,14 @@ button svg * {
 }
 
 .dock-btn {
-  width: 42px;
-  height: 42px;
-  min-width: 42px;
-  min-height: 42px;
+  width: 34px;
+  height: 34px;
+  min-width: 34px;
+  min-height: 34px;
   flex-shrink: 0;
   background: transparent;
   border: 1px solid transparent;
-  border-radius: 10px;
+  border-radius: 8px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -852,8 +853,8 @@ button svg * {
 }
 
 .dock-btn svg {
-  width: 20px;
-  height: 20px;
+  width: 16px;
+  height: 16px;
   stroke: currentColor;
   fill: none;
   stroke-width: 2.0;
@@ -1244,17 +1245,101 @@ button svg * {
   cursor: pointer;
 }
 
-/* RESPONSIVE / TESLA ADAPTATIONS */
+/* RESPONSIVE / TESLA & MOBILE TOUCH ADAPTATIONS */
 @media (max-width: 900px) {
+  .top-bar {
+    top: 8px;
+    left: 8px;
+    right: 8px;
+    gap: 5px;
+  }
+  .weather-wind {
+    display: none !important;
+  }
+  .battery-range {
+    display: none !important;
+  }
   .nav-hud-card {
-    width: calc(100vw - 40px);
-    left: 20px;
-    right: 20px;
+    width: calc(100vw - 24px);
+    left: 12px;
+    right: 12px;
   }
   .search-container {
     max-width: 100%;
   }
   .quick-poi-bar {
+    display: none;
+  }
+  .dock-controls {
+    right: 6px;
+    padding: 2px 1px;
+    gap: 2px;
+  }
+  .dock-btn {
+    width: 32px;
+    height: 32px;
+    min-width: 32px;
+    min-height: 32px;
+  }
+  .dock-btn svg {
+    width: 15px;
+    height: 15px;
+  }
+}
+
+@media (max-width: 600px) {
+  .top-bar {
+    gap: 4px;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+  .weather-chip, .battery-chip {
+    padding: 3px 6px;
+    font-size: 0.75rem;
+    min-height: 28px;
+  }
+  .weather-icon {
+    font-size: 0.95rem;
+  }
+  .status-chip {
+    padding: 3px 6px;
+    min-height: 28px;
+    font-size: 0.75rem;
+  }
+  .dock-controls {
+    right: 4px;
+  }
+  .dock-btn {
+    width: 28px;
+    height: 28px;
+    min-width: 28px;
+    min-height: 28px;
+  }
+  .dock-btn svg {
+    width: 14px;
+    height: 14px;
+  }
+}
+
+@media (max-height: 650px) {
+  .dock-controls {
+    top: 52%;
+    padding: 2px 1px;
+    gap: 1px;
+    max-height: calc(100vh - 50px);
+  }
+  .dock-btn {
+    width: 28px;
+    height: 28px;
+    min-width: 28px;
+    min-height: 28px;
+  }
+  .dock-btn svg {
+    width: 14px;
+    height: 14px;
+  }
+  .dock-divider {
     display: none;
   }
 }
@@ -1267,47 +1352,49 @@ button svg * {
 .weather-chip {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
   background: var(--bg-card);
   border: 1px solid var(--border-subtle);
-  padding: 6px 14px;
+  padding: 4px 10px;
   border-radius: var(--radius-md);
-  font-size: 0.9rem;
+  font-size: 0.82rem;
   font-weight: 700;
   box-shadow: var(--shadow-card);
   color: var(--text-primary);
-  min-height: 40px;
+  min-height: 32px;
   touch-action: manipulation;
+  flex-shrink: 0;
 }
 
 .weather-icon {
-  font-size: 1.25rem;
+  font-size: 1.05rem;
 }
 
 .weather-wind {
-  font-size: 0.78rem;
+  font-size: 0.74rem;
   color: var(--text-muted);
   border-left: 1px solid rgba(255, 255, 255, 0.15);
-  padding-left: 6px;
+  padding-left: 5px;
   margin-left: 2px;
 }
 
 .battery-chip {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
   background: var(--bg-card);
   border: 1px solid var(--border-subtle);
-  padding: 6px 14px;
+  padding: 4px 10px;
   border-radius: var(--radius-md);
-  font-size: 0.9rem;
+  font-size: 0.82rem;
   font-weight: 700;
   box-shadow: var(--shadow-card);
   cursor: pointer;
   transition: all 0.18s ease;
   color: #34d399;
-  min-height: 40px;
+  min-height: 32px;
   touch-action: manipulation;
+  flex-shrink: 0;
 }
 
 .battery-chip:hover {
@@ -1316,13 +1403,13 @@ button svg * {
 }
 
 .battery-icon-svg {
-  width: 20px;
-  height: 20px;
+  width: 16px;
+  height: 16px;
   fill: currentColor;
 }
 
 .battery-range {
-  font-size: 0.8rem;
+  font-size: 0.74rem;
   color: var(--text-secondary);
   font-weight: 600;
 }
