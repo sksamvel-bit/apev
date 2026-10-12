@@ -889,20 +889,20 @@ function renderFavoritesDropdown() {
 
   container.innerHTML = `
     <div class="search-favorites-box">
-      <div class="fav-header">⭐ რჩეული ადგილები (1-კლიკით ნავიგაცია)</div>
+      <div class="fav-header">⭐ რჩეული ადგილები</div>
       <div class="fav-row">
         <button type="button" class="fav-btn" id="fav-go-home">
           <span class="fav-icon">🏠</span>
           <div class="fav-text">
             <div class="fav-title">სახლი</div>
-            <div class="fav-sub">${homeAddr || 'დააყენეთ პარამეტრებში...'}</div>
+            <div class="fav-sub" title="${homeAddr || 'პარამეტრებიდან მითითება'}">${homeAddr || 'დააყენეთ...'}</div>
           </div>
         </button>
         <button type="button" class="fav-btn" id="fav-go-work">
           <span class="fav-icon">🏢</span>
           <div class="fav-text">
             <div class="fav-title">სამსახური</div>
-            <div class="fav-sub">${workAddr || 'დააყენეთ პარამეტრებში...'}</div>
+            <div class="fav-sub" title="${workAddr || 'პარამეტრებიდან მითითება'}">${workAddr || 'დააყენეთ...'}</div>
           </div>
         </button>
       </div>
