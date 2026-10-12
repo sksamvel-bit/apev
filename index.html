@@ -12,7 +12,7 @@
   <!-- Leaflet CSS (Local Offline) -->
   <link rel="stylesheet" href="leaflet.css">
   <!-- Custom Stylesheet -->
-  <link rel="stylesheet" href="style.css?v=3.0.0">
+  <link rel="stylesheet" href="style.css?v=3.1.0">
 </head>
 <body>
 
@@ -248,13 +248,6 @@
       <span class="dock-tooltip">რუკის სტილი</span>
     </button>
 
-    <!-- Map Style Selector Popup Menu -->
-    <div id="map-style-menu" class="map-style-menu">
-      <div class="map-style-opt active" data-style="google-roads">🗺️ Google Maps (ქუჩები)</div>
-      <div class="map-style-opt" data-style="google-sat">🛰️ Google Satellite (ჰიბრიდი)</div>
-      <div class="map-style-opt" data-style="yandex">🟡 Yandex Maps (Live საცობები)</div>
-    </div>
-
     <!-- Toggle Day / Night Mode (მთვარე / მზე) -->
     <button id="btn-toggle-night" class="dock-btn" title="ღამის / დღის რეჟიმი">
       <svg id="night-icon-svg" viewBox="0 0 24 24" fill="currentColor">
@@ -350,6 +343,42 @@
     </button>
   </nav>
 
+  <!-- FLOATING MAP STYLE SELECTOR (Never clipped, high touch priority) -->
+  <aside id="map-style-menu" class="map-style-menu">
+    <div class="map-style-header">
+      <span class="map-style-title">🗺️ რუკის არჩევა</span>
+      <button id="map-style-close-btn" class="map-style-close" title="დახურვა">✕</button>
+    </div>
+    <div class="map-style-list">
+      <button type="button" class="map-style-opt active" data-style="google-roads">
+        <span class="map-opt-icon">🗺️</span>
+        <div class="map-opt-text">
+          <div class="map-opt-name">Google Maps</div>
+          <div class="map-opt-sub">სტანდარტული ქუჩები (Google)</div>
+        </div>
+        <span class="map-opt-check">✓</span>
+      </button>
+
+      <button type="button" class="map-style-opt" data-style="yandex">
+        <span class="map-opt-icon">🟡</span>
+        <div class="map-opt-text">
+          <div class="map-opt-name">Yandex Maps</div>
+          <div class="map-opt-sub">იანდექსი + Live საცობები</div>
+        </div>
+        <span class="map-opt-check">✓</span>
+      </button>
+
+      <button type="button" class="map-style-opt" data-style="google-sat">
+        <span class="map-opt-icon">🛰️</span>
+        <div class="map-opt-text">
+          <div class="map-opt-name">Google Satellite</div>
+          <div class="map-opt-sub">სატელიტური ჰიბრიდი</div>
+        </div>
+        <span class="map-opt-check">✓</span>
+      </button>
+    </div>
+  </aside>
+
   <!-- REMOTE PHONE PAIRING MODAL -->
   <div id="remote-modal" class="modal-overlay">
     <div class="modal-window" style="max-width: 440px; text-align: center;">
@@ -434,15 +463,15 @@
   <!-- QR Code Generator -->
   <script src="qrcode.min.js"></script>
   <!-- Application Engines -->
-  <script src="speech.js?v=3.0.0"></script>
-  <script src="weather.js?v=3.0.0"></script>
-  <script src="battery.js?v=3.0.0"></script>
-  <script src="chargers.js?v=3.0.0"></script>
-  <script src="traffic-signals.js?v=3.0.0"></script>
-  <script src="traffic.js?v=3.0.0"></script>
-  <script src="media-player.js?v=3.0.0"></script>
-  <script src="yandex.js?v=3.0.0"></script>
-  <script src="routing.js?v=3.0.0"></script>
-  <script src="app.js?v=3.0.0"></script>
+  <script src="speech.js?v=3.1.0"></script>
+  <script src="weather.js?v=3.1.0"></script>
+  <script src="battery.js?v=3.1.0"></script>
+  <script src="chargers.js?v=3.1.0"></script>
+  <script src="traffic-signals.js?v=3.1.0"></script>
+  <script src="traffic.js?v=3.1.0"></script>
+  <script src="media-player.js?v=3.1.0"></script>
+  <script src="yandex.js?v=3.1.0"></script>
+  <script src="routing.js?v=3.1.0"></script>
+  <script src="app.js?v=3.1.0"></script>
 </body>
 </html>

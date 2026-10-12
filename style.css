@@ -945,32 +945,33 @@ button svg * {
   opacity: 0.92;
 }
 
-/* CUSTOM CAR MARKER */
+/* CUSTOM NAVIGATION ARROW CURSOR (Automotive Red Chevron matching user photo) */
 .tesla-car-marker-container {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 54px;
-  height: 54px;
+  width: 44px;
+  height: 44px;
   position: relative;
-  transition: transform 0.3s ease;
 }
 
 .car-heading-cone {
   position: absolute;
-  width: 70px;
-  height: 70px;
-  background: radial-gradient(circle, rgba(0, 210, 255, 0.35) 0%, rgba(0, 210, 255, 0) 70%);
+  width: 58px;
+  height: 58px;
+  background: radial-gradient(circle, rgba(255, 71, 58, 0.28) 0%, rgba(255, 71, 58, 0) 70%);
   border-radius: 50%;
   z-index: 1;
   pointer-events: none;
 }
 
-.tesla-car-icon-body {
-  width: 44px;
-  height: 44px;
+.tesla-car-icon-body, .nav-arrow-body {
+  width: 36px;
+  height: 36px;
   z-index: 2;
-  filter: drop-shadow(0 4px 10px rgba(0, 0, 0, 0.7));
+  transform-origin: 50% 50%;
+  transition: transform 0.15s ease-out;
+  filter: drop-shadow(0 3px 6px rgba(0, 0, 0, 0.65));
 }
 
 /* TRAFFIC LIGHT MARKER */
@@ -1409,47 +1410,145 @@ button svg * {
   cursor: pointer;
 }
 
-/* MAP STYLE SELECTOR POPUP */
+/* FLOATING MAP STYLE SELECTOR POPUP (Positioned outside dock, 100% visible) */
 .map-style-menu {
-  position: absolute;
-  right: calc(100% + 14px);
+  position: fixed;
+  right: 68px;
   top: 50%;
-  transform: translateY(-50%);
-  background: var(--bg-card);
-  backdrop-filter: var(--backdrop-blur);
-  -webkit-backdrop-filter: var(--backdrop-blur);
-  border: 1px solid var(--border-subtle);
-  border-radius: var(--radius-lg);
-  padding: 10px;
+  transform: translateY(-50%) translateZ(0);
+  background: rgba(14, 18, 26, 0.96);
+  border: 1.5px solid rgba(0, 210, 255, 0.35);
+  border-radius: 20px;
+  padding: 14px;
   display: none;
   flex-direction: column;
-  gap: 8px;
-  box-shadow: var(--shadow-lg);
-  z-index: 40;
-  min-width: 270px;
+  gap: 10px;
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.8), 0 0 24px rgba(0, 210, 255, 0.2);
+  z-index: 1000;
+  width: 320px;
+  touch-action: manipulation;
+  pointer-events: auto;
 }
 
 .map-style-menu.open {
   display: flex;
+  animation: slide-in-left 0.2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes slide-in-left {
+  from { opacity: 0; transform: translateY(-50%) translateX(20px); }
+  to { opacity: 1; transform: translateY(-50%) translateX(0); }
+}
+
+.map-style-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-bottom: 8px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.map-style-title {
+  font-size: 1.05rem;
+  font-weight: 800;
+  color: var(--text-primary);
+}
+
+.map-style-close {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  font-size: 1.25rem;
+  cursor: pointer;
+  padding: 4px 8px;
+  line-height: 1;
+  touch-action: manipulation;
+}
+
+.map-style-close:hover {
+  color: #fff;
+}
+
+.map-style-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
 }
 
 .map-style-opt {
   display: flex;
   align-items: center;
   gap: 12px;
-  padding: 14px 18px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1.5px solid rgba(255, 255, 255, 0.08);
   border-radius: var(--radius-md);
-  font-size: 1.05rem;
-  font-weight: 700;
+  padding: 12px 14px;
   cursor: pointer;
-  min-height: 52px;
+  text-align: left;
   color: var(--text-primary);
-  transition: background 0.15s ease;
+  min-height: 54px;
+  transition: all 0.15s ease;
+  touch-action: manipulation;
+  width: 100%;
 }
 
-.map-style-opt:hover, .map-style-opt.active {
-  background: rgba(0, 136, 255, 0.2);
+.map-style-opt:hover, .map-style-opt:active {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.map-style-opt.active {
+  border-color: var(--accent-cyan);
+  background: rgba(0, 210, 255, 0.15);
+  box-shadow: 0 0 14px rgba(0, 210, 255, 0.25);
+}
+
+.map-opt-icon {
+  font-size: 1.5rem;
+  flex-shrink: 0;
+}
+
+.map-opt-text {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  overflow: hidden;
+}
+
+.map-opt-name {
+  font-size: 1.02rem;
+  font-weight: 800;
+  color: #ffffff;
+}
+
+.map-opt-sub {
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+  margin-top: 1px;
+}
+
+.map-opt-check {
+  font-size: 1.2rem;
+  font-weight: 900;
   color: var(--accent-cyan);
+  opacity: 0;
+  flex-shrink: 0;
+}
+
+.map-style-opt.active .map-opt-check {
+  opacity: 1;
+}
+
+/* Yandex Mode Transparent Container rule so underlying SDK map shows 100% */
+body.map-style-yandex #map,
+body.map-style-yandex .leaflet-container {
+  background: transparent !important;
+}
+
+.dock-btn.yandex-active {
+  border-color: rgba(245, 158, 11, 0.7);
+  background: rgba(245, 158, 11, 0.22);
+  color: #fbbf24;
+  box-shadow: 0 0 12px rgba(245, 158, 11, 0.35);
 }
 
 /* ==========================================================================

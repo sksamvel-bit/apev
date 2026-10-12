@@ -84,25 +84,24 @@ function initMap() {
   const initialStyle = (savedStyle === "google-sat" || savedStyle === "yandex") ? savedStyle : "google-roads";
   setMapStyle(initialStyle);
 
-  // Custom Tesla Vehicle Marker
+  // Custom Automotive Navigation Arrow Marker (Red Chevron with White Outline, matching photo)
   const carIcon = L.divIcon({
     className: "tesla-car-marker-container",
     html: `
       <div class="car-heading-cone" id="car-cone"></div>
-      <svg class="tesla-car-icon-body" id="car-svg-icon" viewBox="0 0 40 40">
+      <svg class="tesla-car-icon-body nav-arrow-body" id="car-svg-icon" viewBox="0 0 36 36" width="36" height="36">
         <defs>
-          <linearGradient id="teslaBodyGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-            <stop offset="0%" stop-color="#3b82f6"/>
-            <stop offset="100%" stop-color="#1d4ed8"/>
+          <linearGradient id="navArrowGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+            <stop offset="0%" stop-color="#ff473a"/>
+            <stop offset="100%" stop-color="#cc1a1a"/>
           </linearGradient>
         </defs>
-        <rect x="11" y="4" width="18" height="32" rx="7" fill="#0f172a" stroke="#00d2ff" stroke-width="1.8"/>
-        <path d="M13 13 Q20 10 27 13 L26 19 Q20 18 14 19 Z" fill="#38bdf8"/>
-        <path d="M14 22 Q20 21 26 22 L25 29 Q20 30 15 29 Z" fill="#1e293b"/>
-        <circle cx="13" cy="5" r="1.5" fill="#f8fafc"/>
-        <circle cx="27" cy="5" r="1.5" fill="#f8fafc"/>
-        <rect x="12" y="34.5" width="4" height="1.5" rx="0.5" fill="#ef4444"/>
-        <rect x="24" y="34.5" width="4" height="1.5" rx="0.5" fill="#ef4444"/>
+        <path d="M18 3.5 L31.5 30 L18 23.5 L4.5 30 Z"
+              fill="url(#navArrowGrad)"
+              stroke="#ffffff"
+              stroke-width="2.6"
+              stroke-linejoin="round"
+              stroke-linecap="round"/>
       </svg>
     `,
     iconSize: [44, 44],
@@ -186,6 +185,7 @@ function setMapStyle(styleKey) {
     // Official Google Maps Satellite Hybrid with Georgian street labels
     currentBaseTileLayer = L.tileLayer("https://mt{s}.google.com/vt/lyrs=y&hl=ka&gl=GE&x={x}&y={y}&z={z}", perfTileOptions).addTo(map);
   }
+  window.currentBaseTileLayer = currentBaseTileLayer;
 
   // Update body class for styling
   document.body.classList.remove("map-style-google-roads", "map-style-google-sat", "map-style-yandex");
@@ -195,6 +195,11 @@ function setMapStyle(styleKey) {
   document.querySelectorAll(".map-style-opt").forEach(opt => {
     opt.classList.toggle("active", opt.dataset.style === styleKey);
   });
+
+  const btnMapStyle = document.getElementById("btn-map-style");
+  if (btnMapStyle) {
+    btnMapStyle.classList.toggle("yandex-active", styleKey === "yandex");
+  }
 }
 
 // Global Night Mode (1-Click Dark/Light Toggle for ALL maps)
@@ -1118,17 +1123,28 @@ function initEventListeners() {
   // Map Style Menu Toggle
   const btnMapStyle = document.getElementById("btn-map-style");
   const mapStyleMenu = document.getElementById("map-style-menu");
+  const mapStyleCloseBtn = document.getElementById("map-style-close-btn");
   if (btnMapStyle && mapStyleMenu) {
     btnMapStyle.addEventListener("click", (e) => {
       e.stopPropagation();
       mapStyleMenu.classList.toggle("open");
     });
 
+    if (mapStyleCloseBtn) {
+      mapStyleCloseBtn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        mapStyleMenu.classList.remove("open");
+      });
+    }
+
     document.querySelectorAll(".map-style-opt").forEach(opt => {
-      opt.addEventListener("click", () => {
+      opt.addEventListener("click", (e) => {
+        e.stopPropagation();
         const style = opt.dataset.style;
         setMapStyle(style);
         mapStyleMenu.classList.remove("open");
+        const styleName = style === "yandex" ? "🟡 Yandex Maps (ცოცხალი საცობები)" : style === "google-sat" ? "🛰️ Google Satellite (ჰიბრიდი)" : "🗺️ Google Maps (ქუჩები)";
+        showToast(styleName + " ჩაირთო ✅", "success", 2500);
       });
     });
 
