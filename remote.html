@@ -98,7 +98,7 @@
       background: rgba(0, 0, 0, 0.4);
       border: 1.5px solid rgba(255, 255, 255, 0.15);
       border-radius: 14px;
-      padding: 14px 44px 14px 16px;
+      padding: 14px 84px 14px 16px;
       color: #fff;
       font-size: 1rem;
       outline: none;
@@ -110,7 +110,7 @@
     }
     .clear-btn {
       position: absolute;
-      right: 12px;
+      right: 48px;
       top: 50%;
       transform: translateY(-50%);
       background: none;
@@ -119,6 +119,62 @@
       font-size: 1.1rem;
       cursor: pointer;
       display: none;
+      padding: 4px;
+    }
+    .mic-btn {
+      position: absolute;
+      right: 10px;
+      top: 50%;
+      transform: translateY(-50%);
+      background: rgba(255, 255, 255, 0.08);
+      border: 1px solid rgba(255, 255, 255, 0.18);
+      border-radius: 50%;
+      width: 34px;
+      height: 34px;
+      color: #fff;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+    .mic-btn:active {
+      transform: translateY(-50%) scale(0.9);
+    }
+    .mic-btn.listening {
+      background: #ef4444;
+      border-color: #fca5a5;
+      color: #fff;
+      animation: micWave 1.2s infinite alternate;
+    }
+    @keyframes micWave {
+      0% { transform: translateY(-50%) scale(1); box-shadow: 0 0 6px rgba(239, 68, 68, 0.6); }
+      100% { transform: translateY(-50%) scale(1.15); box-shadow: 0 0 18px rgba(239, 68, 68, 0.9); }
+    }
+    .voice-banner {
+      display: none;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      background: rgba(239, 68, 68, 0.15);
+      border: 1px solid rgba(239, 68, 68, 0.35);
+      border-radius: 12px;
+      padding: 10px 14px;
+      margin-bottom: 12px;
+      font-size: 0.88rem;
+      color: #fca5a5;
+      font-weight: 600;
+      animation: fadeIn 0.2s ease;
+    }
+    .voice-banner.active {
+      display: flex;
+    }
+    .voice-pulse-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: #ef4444;
+      animation: micWave 0.8s infinite alternate;
     }
     .results-list {
       display: flex;
@@ -307,9 +363,21 @@
     <div class="card-title">
       <span>📍 დანიშნულების გაგზავნა</span>
     </div>
+    <div id="dest-voice-banner" class="voice-banner">
+      <span class="voice-pulse-dot"></span>
+      <span id="dest-voice-banner-text">🎙️ გისმენთ... თქვით მისამართი</span>
+    </div>
     <div class="search-wrapper">
-      <input type="text" id="phone-search-input" class="search-input" placeholder="ჩაწერეთ მისამართი (თბილისი, ბათუმი...)" autocomplete="off">
+      <input type="text" id="phone-search-input" class="search-input" placeholder="ჩაწერეთ ან უკარნახეთ ხმით..." autocomplete="off">
       <button id="phone-clear-btn" class="clear-btn">✕</button>
+      <button id="phone-voice-btn" class="mic-btn" title="ხმოვანი კარნახი (მიკროფონი)">
+        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/>
+          <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
+          <line x1="12" y1="19" x2="12" y2="23"/>
+          <line x1="8" y1="23" x2="16" y2="23"/>
+        </svg>
+      </button>
     </div>
     <div id="phone-results-list" class="results-list"></div>
   </div>
@@ -320,9 +388,21 @@
       <span style="color: #ef4444;">▶</span>
       <span>YouTube მუსიკის მართვა</span>
     </div>
+    <div id="media-voice-banner" class="voice-banner">
+      <span class="voice-pulse-dot"></span>
+      <span id="media-voice-banner-text">🎙️ გისმენთ... თქვით სიმღერა</span>
+    </div>
     <div class="search-wrapper">
-      <input type="text" id="phone-media-input" class="search-input" placeholder="სიმღერა, შემსრულებელი ან YouTube ლინკი..." autocomplete="off">
+      <input type="text" id="phone-media-input" class="search-input" placeholder="სიმღერა, შემსრულებელი ან ლინკი..." autocomplete="off">
       <button id="phone-media-clear-btn" class="clear-btn">✕</button>
+      <button id="phone-media-voice-btn" class="mic-btn" title="ხმოვანი ძებნა (მიკროფონი)">
+        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/>
+          <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
+          <line x1="12" y1="19" x2="12" y2="23"/>
+          <line x1="8" y1="23" x2="16" y2="23"/>
+        </svg>
+      </button>
     </div>
     <button id="btn-phone-media-play" style="width: 100%; padding: 13px; border-radius: 12px; font-weight: 800; font-size: 0.95rem; background: linear-gradient(135deg, #ef4444, #b91c1c); color: #fff; border: none; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; box-shadow: 0 4px 15px rgba(232, 33, 39, 0.4);">
       ▶ გაშვება Tesla-ს ეკრანზე
@@ -584,6 +664,123 @@
         });
       });
     }
+
+    // Voice Recognition Engine (ქართული ხმოვანი ბრძანება & კარნახი)
+    function setupVoiceRecognition(buttonId, inputId, bannerId, bannerTextId, onComplete) {
+      const btn = document.getElementById(buttonId);
+      const input = document.getElementById(inputId);
+      const banner = document.getElementById(bannerId);
+      const bannerText = document.getElementById(bannerTextId);
+      if (!btn || !input) return;
+
+      const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+
+      if (!SpeechRecognition) {
+        btn.addEventListener('click', () => {
+          input.focus();
+          showToast('🎙️ გამოიყენეთ კლავიატურის მიკროფონი (Dictation)', 3500);
+        });
+        return;
+      }
+
+      let recognition = null;
+      let isListening = false;
+
+      function stopListening() {
+        if (recognition && isListening) {
+          try { recognition.stop(); } catch(e){}
+        }
+        isListening = false;
+        btn.classList.remove('listening');
+        if (banner) banner.classList.remove('active');
+      }
+
+      btn.addEventListener('click', () => {
+        if (isListening) {
+          stopListening();
+          return;
+        }
+
+        try {
+          recognition = new SpeechRecognition();
+          recognition.lang = 'ka-GE'; // ქართული ენის ამოცნობა
+          recognition.continuous = false;
+          recognition.interimResults = true;
+          recognition.maxAlternatives = 1;
+
+          recognition.onstart = () => {
+            isListening = true;
+            btn.classList.add('listening');
+            if (banner) {
+              banner.classList.add('active');
+              if (bannerText) bannerText.textContent = '🎙️ გისმენთ... თქვით ქართულად';
+            }
+          };
+
+          recognition.onresult = (e) => {
+            let transcript = '';
+            for (let i = e.resultIndex; i < e.results.length; ++i) {
+              transcript += e.results[i][0].transcript;
+            }
+            input.value = transcript;
+            input.dispatchEvent(new Event('input'));
+
+            if (e.results[0] && e.results[0].isFinal) {
+              stopListening();
+              if (bannerText) bannerText.textContent = `✅ "${transcript}"`;
+              if (onComplete) {
+                setTimeout(() => onComplete(transcript), 300);
+              }
+            }
+          };
+
+          recognition.onerror = (e) => {
+            console.warn('Speech error:', e.error);
+            stopListening();
+            if (e.error === 'not-allowed') {
+              showToast('⚠️ გთხოვთ დართოთ მიკროფონის ნებართვა ბრაუზერში');
+            } else if (e.error === 'no-speech') {
+              showToast('⚠️ ხმა ვერ დაფიქსირდა, სცადეთ ხელახლა');
+            } else {
+              input.focus();
+              showToast('🎙️ გამოიყენეთ კლავიატურის მიკროფონი (Dictation)', 3000);
+            }
+          };
+
+          recognition.onend = () => {
+            stopListening();
+          };
+
+          recognition.start();
+        } catch (err) {
+          console.warn('Recognition start exception:', err);
+          input.focus();
+          showToast('🎙️ გამოიყენეთ კლავიატურის მიკროფონი (Dictation)', 3000);
+        }
+      });
+    }
+
+    // Wire Voice Recognition for Destination Search
+    setupVoiceRecognition(
+      'phone-voice-btn',
+      'phone-search-input',
+      'dest-voice-banner',
+      'dest-voice-banner-text',
+      (query) => executeSearch(query)
+    );
+
+    // Wire Voice Recognition for YouTube Media Player
+    setupVoiceRecognition(
+      'phone-media-voice-btn',
+      'phone-media-input',
+      'media-voice-banner',
+      'media-voice-banner-text',
+      (query) => {
+        if (typeof triggerMediaPlay === 'function') {
+          triggerMediaPlay(query);
+        }
+      }
+    );
   </script>
 </body>
 </html>
