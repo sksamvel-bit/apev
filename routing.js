@@ -14,9 +14,13 @@ class RoutingEngine {
 
     this.activeRoute = null;
     this.routeLine = null;
+    this.routeLinePassed = null;
     this.steps = [];
     this.currentStepIndex = 0;
     this.isNavigating = false;
+    this.offRouteStrikes = 0;
+    this.isRerouting = false;
+    this.lastClosestIndex = 0;
 
     // Simulation state
     this.isSimulating = false;
@@ -86,7 +90,19 @@ class RoutingEngine {
         destName: endLatLng.name || "დანიშნულების ადგილი"
       };
 
-      // Base glowing guide path
+      this.lastClosestIndex = 0;
+      this.offRouteStrikes = 0;
+
+      // Passed path (subtle slate gray behind vehicle)
+      this.routeLinePassed = L.polyline([], {
+        color: "#64748b",
+        weight: 6,
+        opacity: 0.5,
+        lineCap: "round",
+        lineJoin: "round"
+      }).addTo(this.map);
+
+      // Upcoming glowing guide path
       this.routeLine = L.polyline(latlngs, {
         color: "#00d2ff",
         weight: 6,
@@ -196,6 +212,58 @@ class RoutingEngine {
   updateVehiclePosition(currentLatLng, speedKmh = 0, headingDeg = 0) {
     if (!this.isNavigating || !this.activeRoute || this.steps.length === 0) return null;
 
+    // 1. Dynamic Polyline Trimming & Off-Route Detection (TMap / Tesla OEM Standard)
+    const coords = this.activeRoute.coordinates;
+    if (coords && coords.length > 1) {
+      let minDeviation = Infinity;
+      let bestSegIndex = this.lastClosestIndex;
+
+      // Local search window around last known position for high-performance 60 FPS
+      const searchStart = Math.max(0, this.lastClosestIndex - 2);
+      const searchEnd = Math.min(coords.length - 1, this.lastClosestIndex + 30);
+
+      for (let i = searchStart; i < searchEnd; i++) {
+        const d = this.distanceToSegmentMeters(currentLatLng, coords[i], coords[i + 1]);
+        if (d < minDeviation) {
+          minDeviation = d;
+          bestSegIndex = i;
+        }
+      }
+
+      // If deviation is high in local window, do a global scan in case vehicle jumped/shortcutted
+      if (minDeviation > 45) {
+        for (let i = 0; i < coords.length - 1; i++) {
+          const d = this.distanceToSegmentMeters(currentLatLng, coords[i], coords[i + 1]);
+          if (d < minDeviation) {
+            minDeviation = d;
+            bestSegIndex = i;
+          }
+        }
+      }
+
+      this.lastClosestIndex = bestSegIndex;
+
+      // Dynamically trim polylines: passed part is gray, upcoming part is cyan
+      if (this.routeLine && this.routeLinePassed) {
+        const passedPart = coords.slice(0, bestSegIndex + 1);
+        passedPart.push([currentLatLng.lat, currentLatLng.lng]);
+        const upcomingPart = [[currentLatLng.lat, currentLatLng.lng], ...coords.slice(bestSegIndex + 1)];
+
+        this.routeLinePassed.setLatLngs(passedPart);
+        this.routeLine.setLatLngs(upcomingPart);
+      }
+
+      // Off-route check: > 38 meters deviation for 3 consecutive GPS updates
+      if (minDeviation > 38) {
+        this.offRouteStrikes++;
+        if (this.offRouteStrikes >= 3 && !this.isRerouting) {
+          this.triggerAutoReroute(currentLatLng);
+        }
+      } else {
+        this.offRouteStrikes = 0;
+      }
+    }
+
     const currentStep = this.steps[this.currentStepIndex];
     if (!currentStep) return null;
 
@@ -235,6 +303,56 @@ class RoutingEngine {
     this.updateRouteSummary(currentLatLng);
 
     return upcomingSignal;
+  }
+
+  async triggerAutoReroute(currentLatLng) {
+    if (this.isRerouting || !this.activeRoute || !this.activeRoute.destination) return;
+    this.isRerouting = true;
+    this.offRouteStrikes = 0;
+
+    const dest = this.activeRoute.destination;
+    const destName = this.activeRoute.destName;
+
+    if (window.showToast) {
+      window.showToast("🔄 მარშრუტს აცდით — ახლდება...", "info", 3000);
+    }
+    if (this.speech) {
+      this.speech.speak("მარშრუტს აცდით. ახალი მარშრუტი ითვლება.");
+    }
+
+    try {
+      dest.name = destName;
+      await this.calculateRoute(currentLatLng, dest, true);
+    } catch (err) {
+      console.warn("Auto-reroute failed:", err);
+    } finally {
+      this.isRerouting = false;
+    }
+  }
+
+  distanceToSegmentMeters(p, a, b) {
+    const latMid = (p.lat * Math.PI) / 180;
+    const cosLat = Math.cos(latMid);
+    const mPerDegLat = 111139;
+    const mPerDegLng = 111139 * cosLat;
+
+    const px = p.lng * mPerDegLng;
+    const py = p.lat * mPerDegLat;
+    const ax = a[1] * mPerDegLng;
+    const ay = a[0] * mPerDegLat;
+    const bx = b[1] * mPerDegLng;
+    const by = b[0] * mPerDegLat;
+
+    const abx = bx - ax;
+    const aby = by - ay;
+    const segLenSq = abx * abx + aby * aby;
+    if (segLenSq === 0) {
+      return Math.hypot(px - ax, py - ay);
+    }
+    const t = Math.max(0, Math.min(1, ((px - ax) * abx + (py - ay) * aby) / segLenSq));
+    const projX = ax + t * abx;
+    const projY = ay + t * aby;
+    return Math.hypot(px - projX, py - projY);
   }
 
   getLaneGuidance(icon) {
@@ -363,9 +481,16 @@ class RoutingEngine {
   clearRoute() {
     this.stopSimulation();
     this.isNavigating = false;
+    this.offRouteStrikes = 0;
+    this.isRerouting = false;
+    this.lastClosestIndex = 0;
     if (this.routeLine) {
       this.map.removeLayer(this.routeLine);
       this.routeLine = null;
+    }
+    if (this.routeLinePassed) {
+      this.map.removeLayer(this.routeLinePassed);
+      this.routeLinePassed = null;
     }
     if (this.trafficEngine) {
       this.trafficEngine.clearRouteTraffic();

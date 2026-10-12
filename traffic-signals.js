@@ -64,17 +64,17 @@ class TrafficSignalsEngine {
       className: 'traffic-signal-custom-icon',
       html: `
         <div class="traffic-signal-pin" title="შუქნიშანი" style="
-          width: 38px;
-          height: 38px;
+          width: 30px;
+          height: 30px;
           background: #0f172a;
-          border: 2px solid #64748b;
+          border: 1.5px solid #64748b;
           border-radius: 50%;
           display: flex;
           align-items: center;
           justify-content: center;
-          box-shadow: 0 4px 12px rgba(0,0,0,0.6);
+          box-shadow: 0 3px 8px rgba(0,0,0,0.5);
         ">
-          <svg viewBox="0 0 24 24" width="24" height="24" fill="none">
+          <svg viewBox="0 0 24 24" width="18" height="18" fill="none">
             <rect x="7" y="2" width="10" height="20" rx="3" fill="#1e293b" stroke="#64748b" stroke-width="1.5"/>
             <circle cx="12" cy="6" r="2.2" fill="#ef4444" />
             <circle cx="12" cy="12" r="2.2" fill="#f59e0b" />
@@ -82,8 +82,8 @@ class TrafficSignalsEngine {
           </svg>
         </div>
       `,
-      iconSize: [38, 38],
-      iconAnchor: [19, 19]
+      iconSize: [30, 30],
+      iconAnchor: [15, 15]
     });
   }
 

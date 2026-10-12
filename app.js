@@ -104,8 +104,8 @@ function initMap() {
         <rect x="24" y="34.5" width="4" height="1.5" rx="0.5" fill="#ef4444"/>
       </svg>
     `,
-    iconSize: [54, 54],
-    iconAnchor: [27, 27]
+    iconSize: [44, 44],
+    iconAnchor: [22, 22]
   });
 
   carMarker = L.marker([currentPos.lat, currentPos.lng], {
@@ -119,6 +119,29 @@ function initMap() {
 
   map.on("dragstart", () => {
     setFollowCarMode(false);
+  });
+
+  // CRITICAL FOR AUTOMOTIVE TOUCHSCREENS:
+  // Prevent Leaflet from intercepting touch events or stealing clicks on UI overlays!
+  const overlaySelectors = [
+    ".top-bar",
+    ".dock-controls",
+    "#nav-hud",
+    "#route-preview-card",
+    ".car-hud-stats",
+    "#map-style-menu",
+    "#search-results",
+    "#settings-modal",
+    "#remote-modal",
+    "#media-player-card"
+  ];
+
+  overlaySelectors.forEach(sel => {
+    const el = document.querySelector(sel);
+    if (el) {
+      L.DomEvent.disableClickPropagation(el);
+      L.DomEvent.disableScrollPropagation(el);
+    }
   });
 }
 
@@ -412,7 +435,7 @@ function initGeolocation() {
       currentHeading = heading;
       currentSpeedKmh = speed;
 
-      updateVehicleMarker(lat, lng, heading, speed);
+      updateVehicleMarker(lat, lng, heading, speed, coords.accuracy);
       fetchWeatherForPos(lat, lng);
 
       if (routingEngine.isNavigating && !routingEngine.isSimulating) {
@@ -454,8 +477,29 @@ let lastRenderedSpeed = -1;
 let lastRenderedHeading = -999;
 let cachedSpeedValEl = null;
 let cachedCarIconEl = null;
+let lastGpsPos = null;
+let lastGpsTime = 0;
 
-function updateVehicleMarker(lat, lng, headingDeg, speedKmh) {
+function updateVehicleMarker(lat, lng, headingDeg, speedKmh, accuracyMeters = null) {
+  const now = performance.now();
+
+  // GPS Jitter & Impossible Jump Filter (TMap standard)
+  if (lastGpsPos && lastGpsTime > 0) {
+    const dt = Math.max(0.2, (now - lastGpsTime) / 1000);
+    const dMeters = routingEngine ? routingEngine.haversineMeters(lastGpsPos.lat, lastGpsPos.lng, lat, lng) : 0;
+    // If impossible speed (> 270 km/h) or crazy glitch, apply heavy smoothing
+    if (dMeters / dt > 75 && dMeters > 50) {
+      lat = lastGpsPos.lat * 0.85 + lat * 0.15;
+      lng = lastGpsPos.lng * 0.85 + lng * 0.15;
+    } else {
+      // Smooth interpolation (75% new, 25% previous) to eliminate micro-jitter
+      lat = lastGpsPos.lat * 0.25 + lat * 0.75;
+      lng = lastGpsPos.lng * 0.25 + lng * 0.75;
+    }
+  }
+
+  lastGpsPos = { lat, lng };
+  lastGpsTime = now;
   currentPos = { lat, lng };
   currentHeading = headingDeg;
   currentSpeedKmh = speedKmh;
@@ -480,8 +524,41 @@ function updateVehicleMarker(lat, lng, headingDeg, speedKmh) {
     lastRenderedSpeed = speedKmh;
   }
 
+  // GPS Accuracy status update
+  if (accuracyMeters != null) {
+    updateGpsStatusQuality(accuracyMeters);
+  }
+
+  // Forward Look-Ahead Camera Offset (TMap standard: 70m ahead along heading)
   if (isFollowCar && map) {
-    map.panTo([lat, lng], { animate: true, duration: 0.4 });
+    let targetLat = lat;
+    let targetLng = lng;
+    if (headingDeg != null && (speedKmh > 5 || (routingEngine && routingEngine.isNavigating))) {
+      const R = 6378137;
+      const offsetDist = 70; // 70 meters forward offset
+      const rad = headingDeg * (Math.PI / 180);
+      const dLat = (offsetDist * Math.cos(rad)) / R;
+      const dLng = (offsetDist * Math.sin(rad)) / (R * Math.cos(lat * (Math.PI / 180)));
+      targetLat = lat + dLat * (180 / Math.PI);
+      targetLng = lng + dLng * (180 / Math.PI);
+    }
+    map.panTo([targetLat, targetLng], { animate: true, duration: 0.35 });
+  }
+}
+
+function updateGpsStatusQuality(accuracyMeters) {
+  const dot = document.getElementById("gps-status-dot");
+  if (!dot) return;
+  dot.classList.remove("simulated", "gps-weak", "gps-good", "gps-exact");
+  if (accuracyMeters <= 8) {
+    dot.classList.add("gps-exact");
+    dot.title = `GPS: ზუსტი (±${Math.round(accuracyMeters)} მ)`;
+  } else if (accuracyMeters <= 20) {
+    dot.classList.add("gps-good");
+    dot.title = `GPS: მისაღები (±${Math.round(accuracyMeters)} მ)`;
+  } else {
+    dot.classList.add("gps-weak");
+    dot.title = `GPS: სუსტი (±${Math.round(accuracyMeters)} მ)`;
   }
 }
 
@@ -491,7 +568,9 @@ function setFollowCarMode(enabled) {
   if (btn) {
     if (isFollowCar) {
       btn.classList.add("active");
-      if (map && currentPos) map.panTo([currentPos.lat, currentPos.lng]);
+      if (map && currentPos) {
+        map.panTo([currentPos.lat, currentPos.lng]);
+      }
     } else {
       btn.classList.remove("active");
     }
@@ -508,12 +587,12 @@ function handleMapClick(latlng) {
     icon: L.divIcon({
       className: 'dest-custom-icon',
       html: `
-        <svg viewBox="0 0 24 24" width="46" height="46" fill="#e82127" style="filter: drop-shadow(0 4px 8px rgba(0,0,0,0.6));">
+        <svg viewBox="0 0 24 24" width="38" height="38" fill="#e82127" style="filter: drop-shadow(0 3px 6px rgba(0,0,0,0.6));">
           <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/>
         </svg>
       `,
-      iconSize: [46, 46],
-      iconAnchor: [23, 46]
+      iconSize: [38, 38],
+      iconAnchor: [19, 38]
     })
   }).addTo(map);
 
@@ -562,12 +641,12 @@ async function prepareRoutePreview(destLatLng, destTitle = "დანიშნ�
       icon: L.divIcon({
         className: 'dest-custom-icon',
         html: `
-          <svg viewBox="0 0 24 24" width="46" height="46" fill="#e82127" style="filter: drop-shadow(0 4px 8px rgba(0,0,0,0.6));">
+          <svg viewBox="0 0 24 24" width="38" height="38" fill="#e82127" style="filter: drop-shadow(0 3px 6px rgba(0,0,0,0.6));">
             <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/>
           </svg>
         `,
-        iconSize: [46, 46],
-        iconAnchor: [23, 46]
+        iconSize: [38, 38],
+        iconAnchor: [19, 38]
       })
     }).addTo(map);
 
@@ -1248,12 +1327,31 @@ function initRemoteSession() {
           statusPill.style.color = "#10b981";
         }
 
+        const currentSpeed = payload.speedKmh != null ? payload.speedKmh : currentSpeedKmh;
+        const currentHead = payload.heading || currentHeading;
+
         updateVehicleMarker(
           payload.lat,
           payload.lng,
-          payload.heading || currentHeading,
-          payload.speedKmh != null ? payload.speedKmh : currentSpeedKmh
+          currentHead,
+          currentSpeed,
+          payload.accuracy
         );
+
+        if (routingEngine && routingEngine.isNavigating && !routingEngine.isSimulating) {
+          const signalAhead = routingEngine.updateVehiclePosition(
+            { lat: payload.lat, lng: payload.lng },
+            currentSpeed,
+            currentHead
+          );
+          const alertBanner = document.getElementById("traffic-signal-alert");
+          if (signalAhead) {
+            alertBanner.classList.add("active");
+            document.getElementById("signal-alert-text").textContent = `🚦 შუქნიშანი ${signalAhead.distanceMeters} მეტრში`;
+          } else {
+            alertBanner.classList.remove("active");
+          }
+        }
       } catch (err) {
         console.error("Malformed remote GPS packet:", err);
       }

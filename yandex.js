@@ -188,8 +188,8 @@ class YandexEngine {
       const icon = L.divIcon({
         className: "incident-custom-icon",
         html: iconHtml,
-        iconSize: [38, 38],
-        iconAnchor: [19, 19]
+        iconSize: [30, 30],
+        iconAnchor: [15, 15]
       });
 
       const marker = L.marker([inc.lat, inc.lon], { icon }).bindPopup(`

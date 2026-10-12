@@ -80,13 +80,13 @@ html, body {
 /* TOP STATUS & SEARCH BAR */
 .top-bar {
   position: absolute;
-  top: 16px;
-  left: 20px;
-  right: 20px;
-  z-index: 20;
+  top: 14px;
+  left: 16px;
+  right: 16px;
+  z-index: 100;
   display: flex;
   align-items: center;
-  gap: 14px;
+  gap: 10px;
   pointer-events: none;
 }
 
@@ -98,34 +98,32 @@ html, body {
 .brand-badge {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
   background: var(--bg-card);
-  backdrop-filter: var(--backdrop-blur);
-  -webkit-backdrop-filter: var(--backdrop-blur);
-  padding: 10px 18px;
+  padding: 6px 14px;
   border-radius: var(--radius-md);
   border: 1px solid var(--border-subtle);
   box-shadow: var(--shadow-card);
 }
 
 .tesla-logo-icon {
-  width: 28px;
-  height: 28px;
+  width: 22px;
+  height: 22px;
   fill: var(--accent-red);
 }
 
 .brand-text {
   font-weight: 700;
-  font-size: 1.15rem;
-  letter-spacing: 2px;
+  font-size: 1.0rem;
+  letter-spacing: 1.5px;
   color: var(--text-primary);
 }
 
 .brand-model {
-  font-size: 0.78rem;
+  font-size: 0.72rem;
   color: var(--accent-cyan);
   background: rgba(0, 210, 255, 0.12);
-  padding: 3px 9px;
+  padding: 2px 7px;
   border-radius: var(--radius-sm);
   font-weight: 600;
   letter-spacing: 0.5px;
@@ -135,21 +133,19 @@ html, body {
 .search-container {
   position: relative;
   flex: 1;
-  max-width: 620px;
+  max-width: 500px;
 }
 
 .search-input-wrapper {
   display: flex;
   align-items: center;
   background: var(--bg-card);
-  backdrop-filter: var(--backdrop-blur);
-  -webkit-backdrop-filter: var(--backdrop-blur);
   border: 1px solid var(--border-subtle);
   border-radius: var(--radius-md);
-  padding: 6px 18px;
+  padding: 4px 14px;
   box-shadow: var(--shadow-card);
-  transition: all 0.25s ease;
-  min-height: 52px;
+  transition: all 0.2s ease;
+  min-height: 42px;
 }
 
 .search-input-wrapper:focus-within {
@@ -159,9 +155,9 @@ html, body {
 
 .search-icon {
   color: var(--text-muted);
-  width: 24px;
-  height: 24px;
-  margin-right: 14px;
+  width: 18px;
+  height: 18px;
+  margin-right: 10px;
   flex-shrink: 0;
 }
 
@@ -171,8 +167,8 @@ html, body {
   border: none;
   outline: none;
   color: var(--text-primary);
-  font-size: 1.15rem;
-  padding: 12px 0;
+  font-size: 0.95rem;
+  padding: 8px 0;
   user-select: text;
 }
 
@@ -185,13 +181,14 @@ html, body {
   border: none;
   color: var(--text-muted);
   cursor: pointer;
-  padding: 8px 12px;
+  padding: 4px 8px;
   display: none;
-  font-size: 1.35rem;
-  min-width: 44px;
-  min-height: 44px;
+  font-size: 1.15rem;
+  min-width: 36px;
+  min-height: 36px;
   align-items: center;
   justify-content: center;
+  touch-action: manipulation;
 }
 
 .clear-search-btn.active {
@@ -327,31 +324,29 @@ html, body {
 .status-chip {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
   background: var(--bg-card);
-  backdrop-filter: var(--backdrop-blur);
-  -webkit-backdrop-filter: var(--backdrop-blur);
   border: 1px solid var(--border-subtle);
-  padding: 12px 20px;
+  padding: 6px 14px;
   border-radius: var(--radius-md);
-  font-size: 1.15rem;
+  font-size: 0.95rem;
   font-weight: 700;
   box-shadow: var(--shadow-card);
-  min-height: 52px;
+  min-height: 40px;
 }
 
 .gps-dot {
-  width: 11px;
-  height: 11px;
+  width: 9px;
+  height: 9px;
   border-radius: 50%;
   background: var(--accent-green);
-  box-shadow: 0 0 12px var(--accent-green);
+  box-shadow: 0 0 10px var(--accent-green);
   animation: pulse-dot 2s infinite ease-in-out;
 }
 
 .gps-dot.simulated {
   background: var(--accent-amber);
-  box-shadow: 0 0 10px var(--accent-amber);
+  box-shadow: 0 0 8px var(--accent-amber);
 }
 
 @keyframes pulse-dot {
@@ -362,32 +357,32 @@ html, body {
 /* NAVIGATION HUD / TURN-BY-TURN CARD (Top Left) */
 .nav-hud-card {
   position: absolute;
-  top: 86px;
-  left: 20px;
-  width: 380px;
-  background: var(--bg-card);
-  backdrop-filter: var(--backdrop-blur);
-  -webkit-backdrop-filter: var(--backdrop-blur);
-  border: 1px solid var(--border-subtle);
-  border-radius: var(--radius-lg);
+  top: 68px;
+  left: 16px;
+  width: 350px;
+  background: rgba(14, 18, 26, 0.94);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 20px;
   box-shadow: var(--shadow-lg);
-  z-index: 25;
-  padding: 20px;
+  z-index: 100;
+  padding: 16px;
   display: none;
   flex-direction: column;
-  gap: 16px;
+  gap: 12px;
   transform: translateZ(0);
   will-change: transform;
-  transition: opacity 0.25s ease, transform 0.25s ease;
+  touch-action: manipulation;
+  pointer-events: auto;
+  transition: opacity 0.2s ease, transform 0.2s ease;
 }
 
 .nav-hud-card.active {
   display: flex;
-  animation: slide-in-down 0.4s ease forwards;
+  animation: slide-in-down 0.3s ease forwards;
 }
 
 @keyframes slide-in-down {
-  from { opacity: 0; transform: translateY(-20px); }
+  from { opacity: 0; transform: translateY(-15px); }
   to { opacity: 1; transform: translateY(0); }
 }
 
@@ -395,25 +390,25 @@ html, body {
 .maneuver-row {
   display: flex;
   align-items: center;
-  gap: 18px;
+  gap: 14px;
 }
 
 .maneuver-icon-box {
-  width: 72px;
-  height: 72px;
+  width: 54px;
+  height: 54px;
   background: linear-gradient(135deg, rgba(0, 136, 255, 0.25), rgba(0, 210, 255, 0.15));
   border: 1.5px solid var(--accent-cyan);
-  border-radius: var(--radius-lg);
+  border-radius: 14px;
   display: flex;
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
-  box-shadow: 0 0 20px rgba(0, 210, 255, 0.25);
+  box-shadow: 0 0 16px rgba(0, 210, 255, 0.25);
 }
 
 .maneuver-icon-box svg {
-  width: 44px;
-  height: 44px;
+  width: 32px;
+  height: 32px;
   fill: #ffffff;
 }
 
@@ -424,7 +419,7 @@ html, body {
 }
 
 .maneuver-distance {
-  font-size: 2.0rem;
+  font-size: 1.65rem;
   font-weight: 800;
   color: var(--accent-cyan);
   letter-spacing: -0.5px;
@@ -432,7 +427,7 @@ html, body {
 }
 
 .maneuver-instruction {
-  font-size: 1.2rem;
+  font-size: 1.05rem;
   font-weight: 700;
   color: var(--text-primary);
   margin-top: 4px;
@@ -539,25 +534,28 @@ html, body {
 /* ==========================================================================
    ROUTE PREVIEW CARD (Tesla Model 3 Preview before GO)
    ========================================================================== */
+/* ==========================================================================
+   ROUTE PREVIEW CARD (Tesla Model 3 Preview before GO)
+   ========================================================================== */
 .route-preview-card {
   position: absolute;
-  top: 86px;
-  left: 20px;
-  width: 420px;
-  background: var(--bg-card);
-  backdrop-filter: var(--backdrop-blur);
-  -webkit-backdrop-filter: var(--backdrop-blur);
-  border: 1px solid var(--border-subtle);
-  border-radius: var(--radius-lg);
+  top: 68px;
+  left: 16px;
+  width: 350px;
+  background: rgba(14, 18, 26, 0.94);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 20px;
   box-shadow: var(--shadow-lg);
-  z-index: 35;
-  padding: 22px;
+  z-index: 105;
+  padding: 16px;
   display: none;
   flex-direction: column;
-  gap: 14px;
+  gap: 10px;
   transform: translateZ(0);
   will-change: transform;
-  transition: opacity 0.25s ease, transform 0.25s ease;
+  touch-action: manipulation;
+  pointer-events: auto;
+  transition: opacity 0.2s ease, transform 0.2s ease;
 }
 
 .route-preview-card.active {
@@ -572,13 +570,13 @@ html, body {
 }
 
 .preview-badge {
-  font-size: 0.85rem;
+  font-size: 0.78rem;
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.5px;
   color: var(--accent-cyan);
   background: rgba(0, 210, 255, 0.12);
-  padding: 4px 10px;
+  padding: 3px 8px;
   border-radius: var(--radius-sm);
 }
 
@@ -586,10 +584,11 @@ html, body {
   background: none;
   border: none;
   color: var(--text-muted);
-  font-size: 1.4rem;
+  font-size: 1.25rem;
   cursor: pointer;
-  padding: 4px 8px;
+  padding: 2px 6px;
   line-height: 1;
+  touch-action: manipulation;
   transition: color 0.15s ease;
 }
 
@@ -598,17 +597,17 @@ html, body {
 }
 
 .preview-dest-title {
-  font-size: 1.35rem;
+  font-size: 1.15rem;
   font-weight: 800;
   color: #ffffff;
-  line-height: 1.25;
+  line-height: 1.2;
 }
 
 .preview-dest-address {
-  font-size: 0.88rem;
+  font-size: 0.82rem;
   color: var(--text-secondary);
-  line-height: 1.4;
-  margin-top: -6px;
+  line-height: 1.35;
+  margin-top: -4px;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -617,28 +616,28 @@ html, body {
 .preview-stats-grid {
   display: grid;
   grid-template-columns: 1fr 1fr 1fr;
-  gap: 10px;
+  gap: 8px;
   background: rgba(255, 255, 255, 0.04);
   border: 1px solid rgba(255, 255, 255, 0.06);
   border-radius: var(--radius-md);
-  padding: 14px 10px;
+  padding: 10px 8px;
   text-align: center;
 }
 
 .preview-stat-card {
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: 1px;
 }
 
 .preview-stat-num {
-  font-size: 1.4rem;
+  font-size: 1.2rem;
   font-weight: 800;
   color: var(--accent-cyan);
 }
 
 .preview-stat-sub {
-  font-size: 0.72rem;
+  font-size: 0.68rem;
   text-transform: uppercase;
   color: var(--text-muted);
   font-weight: 600;
@@ -651,16 +650,16 @@ html, body {
   background: rgba(16, 185, 129, 0.12);
   border: 1px solid rgba(16, 185, 129, 0.3);
   border-radius: var(--radius-md);
-  padding: 10px 14px;
-  font-size: 0.92rem;
+  padding: 8px 12px;
+  font-size: 0.85rem;
   font-weight: 700;
   color: #34d399;
 }
 
 .preview-actions-row {
   display: flex;
-  gap: 10px;
-  margin-top: 4px;
+  gap: 8px;
+  margin-top: 2px;
 }
 
 .preview-go-btn {
@@ -669,22 +668,22 @@ html, body {
   color: #ffffff;
   border: none;
   border-radius: var(--radius-md);
-  padding: 14px 20px;
-  font-size: 1.2rem;
+  padding: 10px 16px;
+  font-size: 1.05rem;
   font-weight: 800;
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 10px;
-  min-height: 56px;
-  box-shadow: 0 4px 20px rgba(16, 185, 129, 0.38);
-  transition: all 0.2s ease;
+  gap: 8px;
+  min-height: 46px;
+  touch-action: manipulation;
+  box-shadow: 0 4px 16px rgba(16, 185, 129, 0.35);
+  transition: all 0.15s ease;
 }
 
 .preview-go-btn:hover {
   background: linear-gradient(135deg, #047857, #059669);
-  transform: translateY(-1px);
 }
 
 .preview-go-btn:active {
@@ -697,12 +696,13 @@ html, body {
   border: 1px solid rgba(255, 255, 255, 0.12);
   color: var(--text-secondary);
   border-radius: var(--radius-md);
-  padding: 14px;
-  font-size: 1.05rem;
+  padding: 10px;
+  font-size: 0.92rem;
   font-weight: 700;
   cursor: pointer;
-  min-height: 56px;
-  transition: all 0.18s ease;
+  min-height: 46px;
+  touch-action: manipulation;
+  transition: all 0.15s ease;
 }
 
 .preview-cancel-btn:hover {
@@ -713,12 +713,12 @@ html, body {
 /* SPEEDOMETER & CAR STATS (Bottom Left HUD) */
 .car-hud-stats {
   position: absolute;
-  bottom: 24px;
-  left: 20px;
-  z-index: 20;
+  bottom: 20px;
+  left: 16px;
+  z-index: 90;
   display: flex;
   align-items: flex-end;
-  gap: 14px;
+  gap: 10px;
   pointer-events: none;
 }
 
@@ -727,23 +727,21 @@ html, body {
 }
 
 .speedometer-card {
-  background: var(--bg-card);
-  backdrop-filter: var(--backdrop-blur);
-  -webkit-backdrop-filter: var(--backdrop-blur);
-  border: 1px solid var(--border-subtle);
-  border-radius: var(--radius-lg);
-  padding: 16px 24px;
+  background: rgba(14, 18, 26, 0.94);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 16px;
+  padding: 10px 18px;
   box-shadow: var(--shadow-card);
   display: flex;
   flex-direction: column;
   align-items: center;
-  min-width: 120px;
+  min-width: 95px;
   transform: translateZ(0);
   will-change: transform;
 }
 
 .speed-value {
-  font-size: 3.2rem;
+  font-size: 2.2rem;
   font-weight: 900;
   color: var(--text-primary);
   line-height: 1;
@@ -751,71 +749,89 @@ html, body {
 }
 
 .speed-unit {
-  font-size: 0.88rem;
+  font-size: 0.76rem;
   color: var(--text-secondary);
   font-weight: 700;
   text-transform: uppercase;
-  letter-spacing: 1px;
-  margin-top: 4px;
+  letter-spacing: 0.5px;
+  margin-top: 3px;
 }
 
 .speed-limit-badge {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 58px;
-  height: 58px;
+  width: 42px;
+  height: 42px;
   background: #ffffff;
-  border: 4.5px solid #e11d48;
+  border: 3.5px solid #e11d48;
   border-radius: 50%;
   color: #000000;
   font-weight: 900;
-  font-size: 1.45rem;
+  font-size: 1.15rem;
   box-shadow: var(--shadow-card);
 }
 
 /* FLOATING CONTROLS DOCK (Right Side - Automotive Touch Strip) */
 .dock-controls {
   position: absolute;
-  right: 16px;
+  right: 14px;
   top: 50%;
   transform: translateY(-50%) translateZ(0);
   will-change: transform;
-  z-index: 20;
+  z-index: 100;
   display: flex;
   flex-direction: column;
   background: rgba(14, 18, 26, 0.94);
-  backdrop-filter: none;
-  -webkit-backdrop-filter: none;
   border: 1px solid rgba(255, 255, 255, 0.12);
-  border-radius: 24px;
-  padding: 8px 6px;
-  gap: 5px;
-  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  border-radius: 18px;
+  padding: 5px 3px;
+  gap: 3px;
+  pointer-events: auto;
+  touch-action: manipulation;
+  user-select: none;
+  -webkit-user-select: none;
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.55), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  max-height: calc(100vh - 110px);
+  overflow-y: auto;
+  overflow-x: hidden;
+  scrollbar-width: none;
+}
+
+.dock-controls::-webkit-scrollbar {
+  display: none;
+}
+
+button svg,
+button svg * {
+  pointer-events: none;
 }
 
 .dock-btn {
-  width: 52px;
-  height: 52px;
+  width: 42px;
+  height: 42px;
   background: transparent;
   border: 1px solid transparent;
-  border-radius: 14px;
+  border-radius: 10px;
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
+  touch-action: manipulation;
+  pointer-events: auto;
   color: var(--text-primary);
-  transition: all 0.18s cubic-bezier(0.16, 1, 0.3, 1);
+  transition: all 0.15s ease;
   position: relative;
 }
 
 .dock-btn svg {
-  width: 27px;
-  height: 27px;
+  width: 20px;
+  height: 20px;
   stroke: currentColor;
   fill: none;
-  stroke-width: 2.2;
+  stroke-width: 2.0;
   transition: transform 0.15s ease;
+  pointer-events: none;
 }
 
 .dock-btn:hover {
@@ -824,40 +840,37 @@ html, body {
   color: #ffffff;
 }
 
-.dock-btn:hover svg {
-  transform: scale(1.1);
-}
-
 .dock-btn:active {
   transform: scale(0.92);
+  background: rgba(255, 255, 255, 0.18);
 }
 
 .dock-btn.active {
   border-color: rgba(0, 210, 255, 0.6);
   background: rgba(0, 136, 255, 0.22);
   color: var(--accent-cyan);
-  box-shadow: 0 0 12px rgba(0, 210, 255, 0.25);
+  box-shadow: 0 0 10px rgba(0, 210, 255, 0.25);
 }
 
 .dock-btn.traffic-active {
   border-color: rgba(245, 158, 11, 0.6);
   color: #fbbf24;
   background: rgba(245, 158, 11, 0.22);
-  box-shadow: 0 0 12px rgba(245, 158, 11, 0.25);
+  box-shadow: 0 0 10px rgba(245, 158, 11, 0.25);
 }
 
 .dock-btn.signals-active {
   border-color: rgba(16, 185, 129, 0.6);
   color: #34d399;
   background: rgba(16, 185, 129, 0.22);
-  box-shadow: 0 0 12px rgba(16, 185, 129, 0.25);
+  box-shadow: 0 0 10px rgba(16, 185, 129, 0.25);
 }
 
 .dock-divider {
-  width: 32px;
+  width: 24px;
   height: 1px;
   background: rgba(255, 255, 255, 0.14);
-  margin: 4px auto;
+  margin: 2px auto;
   border-radius: 1px;
 }
 
@@ -1152,49 +1165,47 @@ html, body {
 .weather-chip {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
   background: var(--bg-card);
-  backdrop-filter: var(--backdrop-blur);
-  -webkit-backdrop-filter: var(--backdrop-blur);
   border: 1px solid var(--border-subtle);
-  padding: 10px 18px;
+  padding: 6px 14px;
   border-radius: var(--radius-md);
-  font-size: 1.05rem;
+  font-size: 0.9rem;
   font-weight: 700;
   box-shadow: var(--shadow-card);
   color: var(--text-primary);
-  min-height: 52px;
+  min-height: 40px;
+  touch-action: manipulation;
 }
 
 .weather-icon {
-  font-size: 1.45rem;
+  font-size: 1.25rem;
 }
 
 .weather-wind {
-  font-size: 0.85rem;
+  font-size: 0.78rem;
   color: var(--text-muted);
   border-left: 1px solid rgba(255, 255, 255, 0.15);
-  padding-left: 8px;
-  margin-left: 4px;
+  padding-left: 6px;
+  margin-left: 2px;
 }
 
 .battery-chip {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
   background: var(--bg-card);
-  backdrop-filter: var(--backdrop-blur);
-  -webkit-backdrop-filter: var(--backdrop-blur);
   border: 1px solid var(--border-subtle);
-  padding: 10px 18px;
+  padding: 6px 14px;
   border-radius: var(--radius-md);
-  font-size: 1.05rem;
+  font-size: 0.9rem;
   font-weight: 700;
   box-shadow: var(--shadow-card);
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: all 0.18s ease;
   color: #34d399;
-  min-height: 52px;
+  min-height: 40px;
+  touch-action: manipulation;
 }
 
 .battery-chip:hover {
@@ -1203,13 +1214,13 @@ html, body {
 }
 
 .battery-icon-svg {
-  width: 24px;
-  height: 24px;
+  width: 20px;
+  height: 20px;
   fill: currentColor;
 }
 
 .battery-range {
-  font-size: 0.88rem;
+  font-size: 0.8rem;
   color: var(--text-secondary);
   font-weight: 600;
 }
@@ -1446,30 +1457,29 @@ html, body {
 .traffic-score-chip {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
   background: var(--bg-card);
-  backdrop-filter: var(--backdrop-blur);
-  -webkit-backdrop-filter: var(--backdrop-blur);
   border: 1px solid var(--border-subtle);
-  padding: 10px 18px;
+  padding: 6px 14px;
   border-radius: var(--radius-md);
-  font-size: 1.05rem;
+  font-size: 0.9rem;
   font-weight: 700;
   box-shadow: var(--shadow-card);
   cursor: pointer;
-  transition: all 0.2s ease;
-  min-height: 52px;
+  transition: all 0.18s ease;
+  min-height: 40px;
+  touch-action: manipulation;
 }
 
 .traffic-score-badge {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 28px;
-  height: 28px;
+  width: 24px;
+  height: 24px;
   border-radius: 50%;
   font-weight: 900;
-  font-size: 0.95rem;
+  font-size: 0.85rem;
   color: #fff;
 }
 
@@ -1702,4 +1712,23 @@ html, body {
   color: #a5b4fc;
   background: rgba(99, 102, 241, 0.22);
   box-shadow: 0 0 12px rgba(99, 102, 241, 0.35);
+}
+
+/* ==========================================================================
+   AUTOMOTIVE FAST-TAP TOUCH OPTIMIZATION (Tesla Chromium In-Car Browser)
+   ========================================================================== */
+button, input, select, .dock-btn, .poi-btn, .search-item, .map-style-opt, .popup-dest-btn, .fav-btn {
+  touch-action: manipulation !important;
+  -webkit-tap-highlight-color: transparent;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+input {
+  user-select: text !important;
+  -webkit-user-select: text !important;
+}
+
+.dock-btn:active, .popup-dest-btn:active, .fav-btn:active, .preview-go-btn:active {
+  transform: scale(0.93) !important;
 }
