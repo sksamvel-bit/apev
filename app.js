@@ -455,7 +455,7 @@ function initGeolocation() {
       updateVehicleMarker(lat, lng, heading, speed, coords.accuracy);
       fetchWeatherForPos(lat, lng);
 
-      if (routingEngine.isNavigating && !routingEngine.isSimulating) {
+      if (routingEngine && routingEngine.isNavigating) {
         const signalAhead = routingEngine.updateVehiclePosition(currentPos, speed, heading);
         const alertBanner = document.getElementById("traffic-signal-alert");
         if (signalAhead) {
@@ -1170,26 +1170,6 @@ function initEventListeners() {
     btnVoice.classList.toggle("active", !muted);
   });
 
-  // Demo Drive Simulation Button
-  const btnSimDrive = document.getElementById("btn-sim-drive");
-  btnSimDrive.addEventListener("click", () => {
-    if (!routingEngine.activeRoute) {
-      const sampleDest = { lat: 41.7082, lng: 44.7750 }; // Vake Chavchavadze
-      startNavigation(sampleDest).then(() => {
-        routingEngine.startSimulation();
-        btnSimDrive.classList.add("active");
-      });
-    } else {
-      if (routingEngine.isSimulating) {
-        routingEngine.stopSimulation();
-        btnSimDrive.classList.remove("active");
-      } else {
-        routingEngine.startSimulation();
-        btnSimDrive.classList.add("active");
-      }
-    }
-  });
-
   document.getElementById("btn-fullscreen").addEventListener("click", toggleFullscreen);
   document.getElementById("btn-cancel-route").addEventListener("click", cancelNavigation);
 
@@ -1413,7 +1393,7 @@ function initRemoteSession() {
           payload.accuracy
         );
 
-        if (routingEngine && routingEngine.isNavigating && !routingEngine.isSimulating) {
+        if (routingEngine && routingEngine.isNavigating) {
           const signalAhead = routingEngine.updateVehiclePosition(
             { lat: payload.lat, lng: payload.lng },
             currentSpeed,

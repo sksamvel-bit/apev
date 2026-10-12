@@ -22,12 +22,6 @@ class RoutingEngine {
     this.isRerouting = false;
     this.lastClosestIndex = 0;
 
-    // Simulation state
-    this.isSimulating = false;
-    this.simTimer = null;
-    this.simIndex = 0;
-    this.simSpeedFactor = 3.0;
-
     // Callbacks for UI updates
     this.onManeuverUpdate = null;
     this.onSummaryUpdate = null;
@@ -429,57 +423,7 @@ class RoutingEngine {
     });
   }
 
-  // Demo Drive Simulation along route
-  startSimulation() {
-    if (!this.activeRoute || !this.activeRoute.coordinates || !this.activeRoute.coordinates.length) return;
-
-    this.stopSimulation();
-    this.isSimulating = true;
-    this.simIndex = 0;
-
-    const coords = this.activeRoute.coordinates;
-    const intervalMs = 250;
-
-    this.simTimer = setInterval(() => {
-      if (this.simIndex >= coords.length - 1) {
-        this.stopSimulation();
-        if (this.speech) this.speech.speak("მიხვედით დანიშნულების ადგილზე");
-        if (this.onArrival) this.onArrival();
-        return;
-      }
-
-      const p1 = coords[this.simIndex];
-      const p2 = coords[Math.min(this.simIndex + 1, coords.length - 1)];
-
-      const heading = this.calculateBearing(p1[0], p1[1], p2[0], p2[1]);
-      const currentPos = { lat: p1[0], lng: p1[1] };
-      const simulatedSpeedKmh = Math.floor(45 + Math.sin(this.simIndex / 5) * 12);
-
-      const signalAhead = this.updateVehiclePosition(currentPos, simulatedSpeedKmh, heading);
-
-      if (this.onPositionUpdate) {
-        this.onPositionUpdate({
-          pos: currentPos,
-          heading: heading,
-          speed: simulatedSpeedKmh,
-          signalAhead: signalAhead
-        });
-      }
-
-      this.simIndex++;
-    }, intervalMs);
-  }
-
-  stopSimulation() {
-    this.isSimulating = false;
-    if (this.simTimer) {
-      clearInterval(this.simTimer);
-      this.simTimer = null;
-    }
-  }
-
   clearRoute() {
-    this.stopSimulation();
     this.isNavigating = false;
     this.offRouteStrikes = 0;
     this.isRerouting = false;
