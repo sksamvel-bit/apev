@@ -56,10 +56,9 @@ class RoutingEngine {
     return null;
   }
 
-  async calculateRoute(startLatLng, endLatLng, autoStart = false) {
-    try {
-      // Clear previous route first
-      this.clearRoute();
+  async calculateRoute(startLatLng, endLatLng, autoStart = false, opts = {}) {
+    // Clear previous route only AFTER a new one was fetched successfully,
+    // so network failure preserves active navigation.
 
     const start = this.parseCoord(startLatLng);
     const end = this.parseCoord(endLatLng);
@@ -67,7 +66,7 @@ class RoutingEngine {
       throw new Error("არასწორი კოორდინატები");
     }
 
-    const query = `${start.lng},${start.lat};${end.lng},${end.lat}?overview=full&geometries=geojson&steps=true&alternatives=true`;
+    const query = `${start.lng},${start.lat};${end.lng},${end.lat}?overview=full&geometries=geojson&steps=true&alternatives=false`;
 
     const routingServers = [
       "https://router.project-osrm.org/route/v1/driving/",
@@ -78,8 +77,10 @@ class RoutingEngine {
     let lastError = null;
 
     for (const server of routingServers) {
+      const ctrl = new AbortController();
+      const timer = setTimeout(() => ctrl.abort(), 9000); // 9 s timeout
       try {
-        const response = await fetch(server + query);
+        const response = await fetch(server + query, { signal: ctrl.signal });
         if (!response.ok) {
           throw new Error(`Routing server (${new URL(server).hostname}) returned HTTP ${response.status}`);
         }
@@ -91,6 +92,8 @@ class RoutingEngine {
       } catch (err) {
         lastError = err;
         console.warn(`[Routing] Server ${server} failed, trying fallback:`, err.message);
+      } finally {
+        clearTimeout(timer);
       }
     }
 
@@ -98,80 +101,81 @@ class RoutingEngine {
       throw lastError || new Error("მარშრუტი ვერ მოიძებნა");
     }
 
-      const route = data.routes[0];
-      const geojsonCoords = route.geometry.coordinates; // [lon, lat]
-      const latlngs = geojsonCoords.map(c => [c[1], c[0]]);
+    this.clearRoute(); // success -> now replace the old route
 
-      // Render realistic traffic colored segments
-      const trafficDelayMin = this.trafficEngine
-        ? this.trafficEngine.renderRouteCongestion(latlngs, route.duration)
-        : 0;
+    const route = data.routes[0];
+    const geojsonCoords = route.geometry.coordinates; // [lon, lat]
+    const latlngs = geojsonCoords.map(c => [c[1], c[0]]);
 
-      const distKm = route.distance / 1000;
-      const batteryImpact = this.batteryEngine
-        ? this.batteryEngine.calculateTripEnergy(distKm)
-        : null;
+    // Render realistic traffic colored segments
+    const trafficDelayMin = this.trafficEngine
+      ? this.trafficEngine.renderRouteCongestion(latlngs, route.duration)
+      : 0;
 
-      this.activeRoute = {
-        distanceMeters: route.distance,
-        durationSeconds: route.duration,
-        coordinates: latlngs,
-        rawSteps: route.legs && route.legs[0] ? route.legs[0].steps : [],
-        trafficDelayMin: trafficDelayMin,
-        batteryImpact: batteryImpact,
-        destination: end,
-        destName: endLatLng.name || end.name || "დანიშნულების ადგილი"
-      };
+    const distKm = route.distance / 1000;
+    const batteryImpact = this.batteryEngine
+      ? this.batteryEngine.calculateTripEnergy(distKm)
+      : null;
 
-      this.lastClosestIndex = 0;
-      this.offRouteStrikes = 0;
+    this.activeRoute = {
+      distanceMeters: route.distance,
+      durationSeconds: route.duration,
+      coordinates: latlngs,
+      rawSteps: route.legs && route.legs[0] ? route.legs[0].steps : [],
+      trafficDelayMin: trafficDelayMin,
+      batteryImpact: batteryImpact,
+      destination: end,
+      destName: endLatLng.name || end.name || "დანიშნულების ადგილი"
+    };
 
-      // Passed path (subtle slate gray behind vehicle)
-      this.routeLinePassed = L.polyline([], {
-        color: "#64748b",
-        weight: 6,
-        opacity: 0.5,
-        lineCap: "round",
-        lineJoin: "round"
-      }).addTo(this.map);
+    this.lastClosestIndex = 0;
+    this.offRouteStrikes = 0;
+    this.arrivalFired = false;
 
-      // Upcoming glowing guide path
-      this.routeLine = L.polyline(latlngs, {
-        color: "#00d2ff",
-        weight: 6,
-        opacity: 0.9,
-        lineCap: "round",
-        lineJoin: "round"
-      }).addTo(this.map);
+    // Passed path (subtle slate gray behind vehicle)
+    this.routeLinePassed = L.polyline([], {
+      color: "#64748b",
+      weight: 6,
+      opacity: 0.5,
+      lineCap: "round",
+      lineJoin: "round"
+    }).addTo(this.map);
 
-      // Fit bounds nicely with padding for HUD card
+    // Upcoming glowing guide path
+    this.routeLine = L.polyline(latlngs, {
+      color: "#00d2ff",
+      weight: 6,
+      opacity: 0.9,
+      lineCap: "round",
+      lineJoin: "round"
+    }).addTo(this.map);
+
+    // Fit bounds nicely with padding for HUD card
+    if (opts.fit !== false) { // reroute passes fit:false so driving zoom is kept
       this.map.fitBounds(this.routeLine.getBounds(), {
         paddingTopLeft: [420, 40],
         paddingBottomRight: [40, 40]
       });
-
-      // Parse Turn-by-Turn Steps
-      if (route.legs && route.legs[0] && route.legs[0].steps) {
-        this.parseSteps(route.legs[0].steps, latlngs);
-      }
-
-      // Initial Summary update
-      this.updateRouteSummary({ lat: start.lat, lng: start.lng });
-
-      // Fetch additional traffic signals along route bounds
-      if (this.trafficSignalsEngine) {
-        this.trafficSignalsEngine.fetchSignalsForBounds(this.routeLine.getBounds());
-      }
-
-      if (autoStart) {
-        this.startNavigation();
-      }
-
-      return this.activeRoute;
-    } catch (err) {
-      console.error("Routing error:", err);
-      throw err;
     }
+
+    // Parse Turn-by-Turn Steps
+    if (route.legs && route.legs[0] && route.legs[0].steps) {
+      this.parseSteps(route.legs[0].steps, latlngs);
+    }
+
+    // Initial Summary update
+    this.updateRouteSummary({ lat: start.lat, lng: start.lng });
+
+    // Fetch additional traffic signals along route bounds
+    if (this.trafficSignalsEngine) {
+      this.trafficSignalsEngine.fetchSignalsForBounds(this.routeLine.getBounds());
+    }
+
+    if (autoStart) {
+      this.startNavigation(!!opts.silent);
+    }
+
+    return this.activeRoute;
   }
 
   parseSteps(rawSteps, allLatlngs) {
@@ -220,15 +224,72 @@ class RoutingEngine {
       });
     });
 
+    // Cumulative distance along the route polyline + position of every maneuver ON the route
+    const cum = [0];
+    for (let k = 1; k < allLatlngs.length; k++) {
+      cum.push(cum[k - 1] + this.haversineMeters(allLatlngs[k - 1][0], allLatlngs[k - 1][1], allLatlngs[k][0], allLatlngs[k][1]));
+    }
+    this.cumDist = cum;
+    this.stepRouteDist = [];
+    let from = 0;
+    this.steps.forEach((s, k) => {
+      if (k === 0) { this.stepRouteDist.push(0); return; }
+      if (k === this.steps.length - 1) { this.stepRouteDist.push(cum[cum.length - 1]); return; }
+      let best = from, bd = Infinity;
+      for (let j = from; j < allLatlngs.length; j++) {
+        const d = this.haversineMeters(s.location[0], s.location[1], allLatlngs[j][0], allLatlngs[j][1]);
+        if (d < bd) { bd = d; best = j; }
+      }
+      from = best;
+      this.stepRouteDist.push(cum[best]);
+    });
+
     this.currentStepIndex = 0;
     this.isNavigating = false;
+    this.announced = new Set();
   }
 
-  startNavigation() {
+  // Distance travelled along the route (projection onto the current segment)
+  progressMeters(pos) {
+    const coords = this.activeRoute.coordinates;
+    const cum = this.cumDist;
+    const i = Math.max(0, Math.min(this.lastClosestIndex, coords.length - 2));
+    const a = coords[i], b = coords[i + 1];
+    const cos = Math.cos(pos.lat * Math.PI / 180);
+    const abx = (b[1] - a[1]) * cos, aby = b[0] - a[0];
+    const apx = (pos.lng - a[1]) * cos, apy = pos.lat - a[0];
+    const l2 = abx * abx + aby * aby;
+    let t = l2 ? (apx * abx + apy * aby) / l2 : 0;
+    t = Math.max(0, Math.min(1, t));
+    return cum[i] + t * (cum[i + 1] - cum[i]);
+  }
+
+  // Voice prompts BEFORE the maneuver (500 / 200 m / now; 800 / 300 / 80 m above 70 km/h)
+  announceApproach(step, idx, dist, speedKmh) {
+    if (!this.speech || idx === 0 || !step) return;
+    const tiers = speedKmh > 70 ? [800, 300, 80] : [500, 200, 50];
+    let crossed = -1;
+    tiers.forEach((t, k) => {
+      if (dist <= t && !this.announced.has(k)) { this.announced.add(k); crossed = k; }
+    });
+    if (crossed < 0) return; // if several tiers crossed at once, only the closest is spoken
+    const street = step.streetName && step.streetName !== "გზა" ? ` ${step.streetName}-ზე` : "";
+    let text;
+    if (crossed === tiers.length - 1) {
+      text = `${step.instruction}${street}`;
+    } else {
+      const rounded = Math.max(10, Math.round(dist / 10) * 10);
+      text = `${rounded} მეტრში, ${step.instruction}${street}`;
+    }
+    this.speech.speak(text);
+  }
+
+  startNavigation(silent = false) {
     this.isNavigating = true;
+    this.announced = new Set();
     if (this.steps.length > 0) {
       this.updateManeuverHUD(this.steps[this.currentStepIndex], this.steps[this.currentStepIndex].distanceMeters);
-      if (this.speech) {
+      if (this.speech && !silent) {
         let voiceText = "მარშრუტი დაწყებულია. ";
         const firstStep = this.steps[this.currentStepIndex];
         if (firstStep) {
@@ -245,13 +306,13 @@ class RoutingEngine {
   updateVehiclePosition(currentLatLng, speedKmh = 0, headingDeg = 0) {
     if (!this.isNavigating || !this.activeRoute || this.steps.length === 0) return null;
 
-    // 1. Dynamic Polyline Trimming & Off-Route Detection (TMap / Tesla OEM Standard)
+    // 1. Dynamic Polyline Trimming & Off-Route Detection
     const coords = this.activeRoute.coordinates;
     if (coords && coords.length > 1) {
       let minDeviation = Infinity;
       let bestSegIndex = this.lastClosestIndex;
 
-      // Local search window around last known position for high-performance 60 FPS
+      // Local search window around last known position for high performance
       const searchStart = Math.max(0, this.lastClosestIndex - 2);
       const searchEnd = Math.min(coords.length - 1, this.lastClosestIndex + 30);
 
@@ -263,7 +324,7 @@ class RoutingEngine {
         }
       }
 
-      // If deviation is high in local window, do a global scan in case vehicle jumped/shortcutted
+      // If deviation is high in local window, do a global scan in case vehicle jumped
       if (minDeviation > 45) {
         for (let i = 0; i < coords.length - 1; i++) {
           const d = this.distanceToSegmentMeters(currentLatLng, coords[i], coords[i + 1]);
@@ -297,32 +358,27 @@ class RoutingEngine {
       }
     }
 
-    const currentStep = this.steps[this.currentStepIndex];
-    if (!currentStep) return null;
-
-    // Distance to current maneuver
-    const distToManeuver = this.haversineMeters(
-      currentLatLng.lat, currentLatLng.lng,
-      currentStep.location[0], currentStep.location[1]
-    );
-
-    // If within 30 meters of maneuver point, advance to next step
-    if (distToManeuver < 30 && this.currentStepIndex < this.steps.length - 1) {
-      this.currentStepIndex++;
-      const nextStep = this.steps[this.currentStepIndex];
-      this.updateManeuverHUD(nextStep, nextStep.distanceMeters);
-
-      // Voice prompt
-      let voiceText = `${nextStep.instruction}`;
-      if (nextStep.streetName && nextStep.streetName !== "გზა") {
-        voiceText += ` ${nextStep.streetName}-ზე`;
-      }
-      if (this.speech) {
-        this.speech.speak(voiceText);
-      }
-    } else {
-      this.updateManeuverHUD(currentStep, Math.round(distToManeuver));
+    // Step logic driven by progress ALONG the route (immune to skipped GPS fixes)
+    const progress = this.progressMeters(currentLatLng);
+    let idx = this.currentStepIndex;
+    while (idx < this.steps.length - 1 && this.stepRouteDist[idx] < progress - 20) idx++;
+    if (idx !== this.currentStepIndex) {
+      this.currentStepIndex = idx;
+      this.announced = new Set();
     }
+    const step = this.steps[idx];
+    if (!step) return null;
+    const distToManeuver = Math.max(0, Math.round(this.stepRouteDist[idx] - progress));
+
+    // Arrival (fires once)
+    const totalLen = this.cumDist[this.cumDist.length - 1];
+    if (!this.arrivalFired && idx >= this.steps.length - 1 && totalLen - progress < 40) {
+      this.arrivalFired = true;
+      if (this.onArrival) this.onArrival();
+    }
+
+    this.updateManeuverHUD(step, distToManeuver);
+    this.announceApproach(step, idx, distToManeuver, speedKmh);
 
     // Check upcoming traffic signal
     let upcomingSignal = null;
@@ -340,6 +396,8 @@ class RoutingEngine {
 
   async triggerAutoReroute(currentLatLng) {
     if (this.isRerouting || !this.activeRoute || !this.activeRoute.destination) return;
+    if (Date.now() - (this.lastRerouteAt || 0) < 10000) return; // 10 s back-off
+    this.lastRerouteAt = Date.now();
     this.isRerouting = true;
     this.offRouteStrikes = 0;
 
@@ -355,9 +413,10 @@ class RoutingEngine {
 
     try {
       dest.name = destName;
-      await this.calculateRoute(currentLatLng, dest, true);
+      await this.calculateRoute(currentLatLng, dest, true, { fit: false, silent: true });
     } catch (err) {
-      console.warn("Auto-reroute failed:", err);
+      console.warn("Auto-reroute failed (old route kept):", err);
+      if (window.showToast) window.showToast("გადათვლა ვერ მოხერხდა — ძველი მარშრუტი რჩება", "error", 3000);
     } finally {
       this.isRerouting = false;
     }
@@ -388,31 +447,9 @@ class RoutingEngine {
     return Math.hypot(px - projX, py - projY);
   }
 
+  // Fake lanes removed: no real lane data -> show nothing
   getLaneGuidance(icon) {
-    if (icon === "turn-left") {
-      return [
-        { arrow: "↰", recommended: true },
-        { arrow: "↑", recommended: false },
-        { arrow: "↑", recommended: false }
-      ];
-    } else if (icon === "turn-right") {
-      return [
-        { arrow: "↑", recommended: false },
-        { arrow: "↑", recommended: false },
-        { arrow: "↱", recommended: true }
-      ];
-    } else if (icon === "u-turn") {
-      return [
-        { arrow: "↺", recommended: true },
-        { arrow: "↑", recommended: false }
-      ];
-    } else {
-      return [
-        { arrow: "↑", recommended: true },
-        { arrow: "↑", recommended: true },
-        { arrow: "↑", recommended: false }
-      ];
-    }
+    return [];
   }
 
   updateManeuverHUD(step, distMeters) {
@@ -431,34 +468,37 @@ class RoutingEngine {
     }
   }
 
+  // Remaining distance ALONG the route (not straight line)
+  remainingRouteMeters(currentLatLng) {
+    const coords = this.activeRoute.coordinates;
+    const i = Math.min(this.lastClosestIndex, coords.length - 2);
+    if (i < 0) return this.activeRoute.distanceMeters;
+    let rem = this.haversineMeters(currentLatLng.lat, currentLatLng.lng, coords[i + 1][0], coords[i + 1][1]);
+    for (let k = i + 1; k < coords.length - 1; k++) {
+      rem += this.haversineMeters(coords[k][0], coords[k][1], coords[k + 1][0], coords[k + 1][1]);
+    }
+    return rem;
+  }
+
   updateRouteSummary(currentLatLng) {
     if (!this.activeRoute || !this.activeRoute.coordinates || !this.onSummaryUpdate) return;
 
-    const dest = this.activeRoute.coordinates[this.activeRoute.coordinates.length - 1];
-    const remainingMeters = this.haversineMeters(
-      currentLatLng.lat, currentLatLng.lng,
-      dest[0], dest[1]
-    );
-
+    const total = this.activeRoute.distanceMeters || 1;
+    const remainingMeters = Math.min(total, this.remainingRouteMeters(currentLatLng));
     const remainingKm = remainingMeters / 1000;
-    const avgSpeed = 40; // km/h
-    const remainingMinutes = Math.max(1, Math.round((remainingKm) / (avgSpeed / 60)) + (this.activeRoute.trafficDelayMin || 0));
+    // Time: OSRM duration scaled by remaining fraction (same basis as the preview card)
+    const remainingMinutes = Math.max(1, Math.round((this.activeRoute.durationSeconds * (remainingMeters / total)) / 60));
 
     const now = new Date();
     now.setMinutes(now.getMinutes() + remainingMinutes);
-    const etaHours = String(now.getHours()).padStart(2, '0');
-    const etaMinutes = String(now.getMinutes()).padStart(2, '0');
-    const etaStr = `${etaHours}:${etaMinutes}`;
+    const etaStr = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
 
-    const batteryImpact = this.batteryEngine
-      ? this.batteryEngine.calculateTripEnergy(remainingKm)
-      : null;
-
+    // Arrival SoC = start SoC - energy for WHOLE trip: constant, does not creep up while driving
     this.onSummaryUpdate({
       distanceKm: remainingKm.toFixed(1),
       durationMin: remainingMinutes,
       etaStr: etaStr,
-      batteryImpact: batteryImpact
+      batteryImpact: this.activeRoute.batteryImpact
     });
   }
 

@@ -25,11 +25,9 @@ class YandexEngine {
     this.incidentsLayer = L.layerGroup();
     this.showIncidents = false;
 
-    // Default heuristic traffic score based on peak hours
-    const hour = new Date().getHours();
-    const initialScore = (hour >= 8 && hour <= 10) || (hour >= 18 && hour <= 20) ? 7 : (hour >= 11 && hour <= 17 ? 4 : 2);
+    // AUDIT FIX: no heuristic/fake score. UI shows "--" until Yandex reports a real level.
     if (this.onTrafficScoreUpdate) {
-      this.onTrafficScoreUpdate(initialScore);
+      this.onTrafficScoreUpdate(null);
     }
   }
 
@@ -104,12 +102,9 @@ class YandexEngine {
 
     // 3. Listen for Traffic Score (1-10 Score)
     const updateScore = () => {
-      const state = this.trafficProvider.state;
+      const state = this.trafficProvider ? this.trafficProvider.state : null;
       let score = state ? state.get("level") : null;
-      if (score === null || score === undefined) {
-        const hour = new Date().getHours();
-        score = (hour >= 8 && hour <= 10) || (hour >= 18 && hour <= 20) ? 7 : (hour >= 11 && hour <= 17 ? 4 : 2);
-      }
+      if (score === undefined) score = null;
       if (this.onTrafficScoreUpdate) {
         this.onTrafficScoreUpdate(score);
       }

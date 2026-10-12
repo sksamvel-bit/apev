@@ -77,65 +77,14 @@ class TrafficEngine {
    * - Moderate Delay (Yellow / Orange)
    * - Heavy Congestion (Red / Deep Red)
    */
+  /**
+   * AUDIT FIX: previously generated PSEUDO-RANDOM (sin-based) congestion colours and
+   * fake delay minutes. Removed. Without a real data source we show no congestion
+   * colouring and add 0 delay. (Real data: TomTom flow tiles / Yandex layer only.)
+   */
   renderRouteCongestion(latlngs, totalDurationSec) {
     this.clearRouteTraffic();
-    if (!latlngs || latlngs.length < 2) return 0;
-
-    const n = latlngs.length;
-    const segmentCount = Math.min(12, Math.max(3, Math.floor(n / 10)));
-    const chunkSize = Math.ceil(n / segmentCount);
-
-    let totalDelayMinutes = 0;
-
-    for (let i = 0; i < segmentCount; i++) {
-      const startIdx = i * chunkSize;
-      const endIdx = Math.min(n - 1, (i + 1) * chunkSize);
-      if (startIdx >= endIdx) break;
-
-      const chunkPoints = latlngs.slice(startIdx, endIdx + 1);
-
-      // Deterministic pseudo-realistic congestion factor based on route distribution
-      // Middle of urban routes typically has peak delays
-      const positionRatio = i / segmentCount;
-      let congestionLevel = "free"; // free, moderate, heavy
-
-      // Simulate realistic rush hour conditions for central portions
-      const rand = Math.sin((i + 1) * 3.7) * 0.5 + 0.5;
-      if (positionRatio > 0.25 && positionRatio < 0.75 && rand > 0.65) {
-        congestionLevel = "heavy";
-        totalDelayMinutes += 2.5;
-      } else if (rand > 0.45) {
-        congestionLevel = "moderate";
-        totalDelayMinutes += 1.0;
-      }
-
-      let color = "#00d2ff"; // normal neon blue
-      let weight = 8;
-      let opacity = 0.85;
-
-      if (congestionLevel === "heavy") {
-        color = "#ef4444"; // Red for heavy jam
-        weight = 9;
-      } else if (congestionLevel === "moderate") {
-        color = "#f59e0b"; // Amber for slowing traffic
-        weight = 8;
-      }
-
-      const poly = L.polyline(chunkPoints, {
-        color: color,
-        weight: weight,
-        opacity: opacity,
-        lineCap: "round",
-        lineJoin: "round"
-      });
-
-      if (this.isEnabled) {
-        poly.addTo(this.map);
-      }
-      this.routeTrafficLayers.push(poly);
-    }
-
-    return Math.round(totalDelayMinutes);
+    return 0;
   }
 }
 

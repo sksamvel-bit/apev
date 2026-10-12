@@ -5,76 +5,8 @@
  */
 
 // Curated accurate Fast DC & AC chargers across Georgia (Tbilisi & highways)
-const CURATED_CHARGERS = [
-  // Tbilisi Central & Vake-Saburtalo
-  {
-    name: "Wissol Fast Charger - ჭავჭავაძე",
-    lat: 41.7115, lon: 44.7592,
-    power: "150 kW", type: "CCS2 / Type 2",
-    operator: "Wissol EV", count: 2
-  },
-  {
-    name: "City Mall Saburtalo - EV Charging Hub",
-    lat: 41.7252, lon: 44.7562,
-    power: "120 kW / 22 kW", type: "CCS2, CHAdeMO, Type 2",
-    operator: "e-Space", count: 4
-  },
-  {
-    name: "Tegeta Motors - ცენტრალური დამტენი",
-    lat: 41.7335, lon: 44.7820,
-    power: "160 kW Ultra-Fast", type: "CCS2 Dual",
-    operator: "Tegeta EV", count: 2
-  },
-  {
-    name: "Galleria Tbilisi Parking EV",
-    lat: 41.6934, lon: 44.8012,
-    power: "50 kW / 22 kW", type: "CCS2 / Type 2",
-    operator: "e-Space", count: 2
-  },
-  {
-    name: "East Point Tbilisi - EV Hub",
-    lat: 41.6885, lon: 44.8872,
-    power: "150 kW DC Fast", type: "CCS2 / Type 2",
-    operator: "Wissol / e-Space", count: 4
-  },
-  {
-    name: "Tbilisi Mall - აღმაშენებლის ხეივანი",
-    lat: 41.7995, lon: 44.7675,
-    power: "120 kW Fast Charger", type: "CCS2 / Type 2",
-    operator: "e-Space", count: 2
-  },
-  {
-    name: "Holiday Inn / 26 მაისის მოედანი",
-    lat: 41.7195, lon: 44.7818,
-    power: "50 kW", type: "CCS2 / CHAdeMO",
-    operator: "e-Space", count: 2
-  },
-  // Highway Corridors (East-West Highway)
-  {
-    name: "Wissol Smart - გორი (Highway)",
-    lat: 42.0125, lon: 44.1180,
-    power: "150 kW Ultra-Fast", type: "CCS2 Dual",
-    operator: "Wissol EV", count: 2
-  },
-  {
-    name: "Socar Fast Charger - ხაშური",
-    lat: 41.9960, lon: 43.6010,
-    power: "120 kW", type: "CCS2",
-    operator: "Socar EV", count: 2
-  },
-  {
-    name: "Kutaisi Mall EV Hub",
-    lat: 42.2610, lon: 42.6850,
-    power: "120 kW", type: "CCS2 / Type 2",
-    operator: "e-Space", count: 2
-  },
-  {
-    name: "Batumi Grand Mall EV Station",
-    lat: 41.6320, lon: 41.6150,
-    power: "150 kW Ultra-Fast", type: "CCS2 / Type 2",
-    operator: "Wissol EV", count: 4
-  }
-];
+// AUDIT FIX: 11 hand-typed, unverified chargers removed (6/11 had no match in the live database).
+const CURATED_CHARGERS = [];
 
 class ChargersEngine {
   constructor(map, onRouteToCharger) {
@@ -155,19 +87,27 @@ class ChargersEngine {
       zIndexOffset: 500
     });
 
+    const e = window.escapeHtml || (v => String(v == null ? "" : v).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c])));
+    const safeName = e(name);
+    const safePower = e(power);
+    const safeType = e(type);
+    const safeOperator = e(operator);
+    const safePrice = price ? e(price) : null;
+    const safeHours = hours ? e(hours) : null;
+
     const safeBtnId = `route-to-charger-btn-${key.replace(/[.,]/g, '_')}`;
     const popupEl = document.createElement("div");
     popupEl.style.minWidth = "240px";
     popupEl.innerHTML = `
       <div style="font-weight:700; color:#10b981; font-size:1.05rem; display:flex; align-items:center; gap:6px;">
-        ⚡ ${name}
+        ⚡ ${safeName}
       </div>
       <div style="margin: 8px 0; font-size:0.85rem; color:#cbd5e1; display:flex; flex-direction:column; gap:4px;">
-        <div><strong>სიმძლავრე:</strong> <span style="color:#34d399; font-weight:700;">${power}</span></div>
-        <div><strong>კონექტორი:</strong> ${type}</div>
-        <div><strong>ოპერატორი:</strong> <span style="text-transform:capitalize; color:#38bdf8;">${operator}</span></div>
-        ${price ? `<div><strong>ტარიფი:</strong> <span style="color:#fbbf24; font-weight:700;">${price}</span></div>` : ''}
-        ${hours ? `<div><strong>სამუშაო საათები:</strong> ${hours}</div>` : ''}
+        <div><strong>სიმძლავრე:</strong> <span style="color:#34d399; font-weight:700;">${safePower}</span></div>
+        <div><strong>კონექტორი:</strong> ${safeType}</div>
+        <div><strong>ოპერატორი:</strong> <span style="text-transform:capitalize; color:#38bdf8;">${safeOperator}</span></div>
+        ${safePrice ? `<div><strong>ტარიფი:</strong> <span style="color:#fbbf24; font-weight:700;">${safePrice}</span></div>` : ''}
+        ${safeHours ? `<div><strong>სამუშაო საათები:</strong> ${safeHours}</div>` : ''}
       </div>
       <button class="popup-dest-btn" style="background: linear-gradient(135deg, #059669, #10b981);" id="${safeBtnId}">
         ⚡ აქ დამუხტვა (Route)

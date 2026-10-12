@@ -553,10 +553,11 @@
           const el = document.createElement('div');
           el.className = 'result-item';
           const mainName = item.name || item.display_name.split(',')[0];
+          const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
           el.innerHTML = `
             <div class="result-info">
-              <div class="result-name">📍 ${mainName}</div>
-              <div class="result-sub">${item.display_name}</div>
+              <div class="result-name">📍 ${esc(mainName)}</div>
+              <div class="result-sub">${esc(item.display_name)}</div>
             </div>
             <button class="btn-send-res">გაგზავნა</button>
           `;

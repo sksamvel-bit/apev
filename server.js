@@ -8,6 +8,24 @@ const https = require('https');
 const PORT = process.env.PORT || 3000;
 const PUBLIC_DIR = __dirname;
 
+// AUDIT FIX: never let one bad request kill the process
+process.on('uncaughtException', e => console.error('[uncaught]', e && e.message));
+process.on('unhandledRejection', e => console.error('[unhandled]', e && e.message));
+
+// AUDIT FIX: serve ONLY these files (no server.js, *.md, cache json)
+const STATIC_WHITELIST = new Set([
+  'index.html','remote.html','style.css','leaflet.css','leaflet.js','qrcode.min.js',
+  'app.js','routing.js','yandex.js','traffic.js','traffic-signals.js','chargers.js',
+  'battery.js','weather.js','speech.js','media-player.js'
+]);
+const ALLOWED_EVENT_TYPES = new Set(['destination','gps','media']);
+const CODE_RE = /^[A-Z0-9]{12,32}$/;
+const MAX_BODY = 8 * 1024;
+function isLocal(req) {
+  const a = req.socket.remoteAddress || '';
+  return a === '127.0.0.1' || a === '::1' || a === '::ffff:127.0.0.1';
+}
+
 const MIME_TYPES = {
   '.html': 'text/html; charset=utf-8',
   '.css': 'text/css; charset=utf-8',
@@ -150,7 +168,7 @@ async function getLiveGeorgiaChargers(forceRefresh = false) {
         power: maxKw ? maxKw + ' kW' : 'Standard',
         type: connectorTypes.join(', ') || 'CCS2 / Type 2',
         price: priceGEL ? priceGEL + ' ₾/kWh' : 'სტანდარტული ტარიფი',
-        hours: f.openingHours ? f.openingHours.stringValue : '24/7'
+        hours: f.openingHours && f.openingHours.stringValue ? f.openingHours.stringValue : null // AUDIT FIX: no fake 24/7
       };
     }).filter(Boolean);
 
@@ -219,13 +237,18 @@ function resolveYouTubeQuery(query) {
 }
 
 const server = http.createServer((req, res) => {
-  const urlObj = new URL(req.url, `http://${req.headers.host || 'localhost'}`);
-  const pathname = decodeURI(urlObj.pathname);
-
-  // CORS headers for all responses
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+  let urlObj, pathname;
+  try {
+    urlObj = new URL(req.url, `http://${req.headers.host || 'localhost'}`);
+    pathname = decodeURIComponent(urlObj.pathname); // AUDIT FIX: malformed URI used to crash the server
+  } catch (e) {
+    res.writeHead(400, { 'Content-Type': 'text/plain' });
+    res.end('400 Bad Request');
+    return;
+  }
+  // AUDIT FIX: no wildcard CORS (same-origin only); basic hardening headers
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+  res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
 
   if (req.method === 'OPTIONS') {
     res.writeHead(204);
@@ -285,6 +308,7 @@ const server = http.createServer((req, res) => {
 
   // API Endpoint: /api/chargers/sync (Manual/Force trigger EV Chargers synchronization)
   if (pathname === '/api/chargers/sync') {
+    if (!isLocal(req)) { res.writeHead(403); res.end('Forbidden'); return; } // AUDIT FIX: local only
     getLiveGeorgiaChargers(true).then(stations => {
       res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
       res.end(JSON.stringify({
@@ -322,9 +346,9 @@ const server = http.createServer((req, res) => {
   // API Endpoint: /api/session/listen (SSE endpoint for Tesla car screen)
   if (pathname === '/api/session/listen') {
     const code = (urlObj.searchParams.get('code') || '').toUpperCase().trim();
-    if (!code) {
+    if (!CODE_RE.test(code)) {
       res.writeHead(400, { 'Content-Type': 'application/json' });
-      res.end(JSON.stringify({ error: 'Missing code' }));
+      res.end(JSON.stringify({ error: 'Invalid or missing session code' }));
       return;
     }
 
@@ -360,7 +384,7 @@ const server = http.createServer((req, res) => {
   // API Endpoint: /api/session/status (Check if a car screen is listening)
   if (pathname === '/api/session/status') {
     const code = (urlObj.searchParams.get('code') || '').toUpperCase().trim();
-    const hasListeners = sessions.has(code) && sessions.get(code).size > 0;
+    const hasListeners = CODE_RE.test(code) && sessions.has(code) && sessions.get(code).size > 0;
     res.writeHead(200, { 'Content-Type': 'application/json' });
     res.end(JSON.stringify({ code: code, active: hasListeners }));
     return;
@@ -369,17 +393,27 @@ const server = http.createServer((req, res) => {
   // API Endpoint: /api/session/send (Phone sends destination or GPS to car screen)
   if (pathname === '/api/session/send' && req.method === 'POST') {
     let bodyStr = '';
-    req.on('data', chunk => { bodyStr += chunk; });
+    let tooBig = false;
+    req.on('data', chunk => {
+      bodyStr += chunk;
+      if (bodyStr.length > MAX_BODY && !tooBig) {
+        tooBig = true;
+        res.writeHead(413);
+        res.end();
+        req.destroy();
+      }
+    });
     req.on('end', () => {
+      if (tooBig) return;
       try {
         const payload = JSON.parse(bodyStr || '{}');
         const code = (payload.code || '').toUpperCase().trim();
-        const type = payload.type; // 'destination' or 'gps'
+        const type = payload.type; // 'destination', 'gps', 'media'
         const data = payload.data;
 
-        if (!code || !type || !data) {
+        if (!CODE_RE.test(code) || !ALLOWED_EVENT_TYPES.has(type) || typeof data !== 'object' || data === null) {
           res.writeHead(400, { 'Content-Type': 'application/json' });
-          res.end(JSON.stringify({ error: 'Invalid payload: code, type, and data are required' }));
+          res.end(JSON.stringify({ error: 'Invalid payload: valid code, allowed type, and data object required' }));
           return;
         }
 
@@ -408,7 +442,14 @@ const server = http.createServer((req, res) => {
   let reqPath = pathname;
   if (reqPath === '/' || reqPath === '') reqPath = '/index.html';
 
-  const filePath = path.join(PUBLIC_DIR, reqPath);
+  // AUDIT FIX: whitelist by bare file name; any directory traversal is rejected
+  const name = reqPath.slice(1);
+  if (!STATIC_WHITELIST.has(name)) {
+    res.writeHead(404, { 'Content-Type': 'text/plain; charset=utf-8' });
+    res.end('404 Not Found');
+    return;
+  }
+  const filePath = path.join(PUBLIC_DIR, name);
   const ext = path.extname(filePath).toLowerCase();
 
   fs.stat(filePath, (err, stats) => {
@@ -450,7 +491,8 @@ const server = http.createServer((req, res) => {
   });
 });
 
-server.listen(PORT, '0.0.0.0', () => {
+const HOST = process.env.HOST || '0.0.0.0'; // set HOST=127.0.0.1 to keep it private
+server.listen(PORT, HOST, () => {
   const localIps = getLocalIpAddresses();
   console.log('====================================================');
   console.log('⚡ Tesla Model 3 Navigation Web Server is Running! ⚡');

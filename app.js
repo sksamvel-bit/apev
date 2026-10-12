@@ -449,8 +449,9 @@ function initSubsystems() {
 function updateBatteryUI(stats) {
   const socEl = document.getElementById("top-battery-soc");
   const rangeEl = document.getElementById("top-battery-range");
-  if (socEl) socEl.textContent = `${stats.currentSoC}%`;
-  if (rangeEl) rangeEl.textContent = `${stats.remainingRangeKm} კმ`;
+  // AUDIT FIX: SoC is manually entered (not read from the car) -> label as such
+  if (socEl) socEl.textContent = `${stats.currentSoC}% ✎`;
+  if (rangeEl) rangeEl.textContent = `≈${stats.remainingRangeKm} კმ`;
 }
 
 // Update Top Bar Yandex Traffic Score UI
@@ -459,9 +460,15 @@ function updateTrafficScoreUI(score) {
   const text = document.getElementById("traffic-score-text");
   if (!badge || !text) return;
 
-  badge.textContent = score;
-  badge.className = "traffic-score-badge " + (score <= 3 ? "low" : score <= 6 ? "med" : "high");
-  text.textContent = `საცობი: ${score} ბალი`;
+  if (score === null || score === undefined) {
+    badge.textContent = "--";
+    badge.className = "traffic-score-badge";
+    text.textContent = "საცობი: მონაცემი არ არის";
+  } else {
+    badge.textContent = score;
+    badge.className = "traffic-score-badge " + (score <= 3 ? "low" : score <= 6 ? "med" : "high");
+    text.textContent = `საცობი: ${score} ბალი`;
+  }
 }
 
 // Geolocation GPS & Live Weather Fetch
@@ -555,6 +562,7 @@ function updateVehicleMarker(lat, lng, headingDeg, speedKmh, accuracyMeters = nu
   currentPos = { lat, lng };
   currentHeading = headingDeg;
   currentSpeedKmh = speedKmh;
+  window.hasRealFix = true;
 
   if (carMarker) {
     carMarker.setLatLng([lat, lng]);
@@ -702,7 +710,11 @@ async function prepareRoutePreview(destLatLng, destTitle = "დანიშნ�
       })
     }).addTo(map);
 
-    showToast("მარშრუტი ითვლება... ⏳", "info", 1500);
+    if (!window.hasRealFix) {
+      showToast("⚠️ GPS პოზიცია არ არის — მარშრუტი ნაგულისხმევი წერტილიდან ითვლება", "error", 4500);
+    } else {
+      showToast("მარშრუტი ითვლება... ⏳", "info", 1500);
+    }
 
     // Calculate route with autoStart = false (Draws polyline and zooms bounds without opening Turn-by-Turn HUD)
     const route = await routingEngine.calculateRoute(currentPos, destLatLng, false);
@@ -764,6 +776,7 @@ function confirmStartNavigation() {
 
   routingEngine.startNavigation();
   setFollowCarMode(true);
+  if (map) map.setZoom(Math.max(map.getZoom(), 17)); // AUDIT FIX: navigation zoom after fitBounds
   saveActiveRouteState(dest, title);
   showToast(`🚀 ნავიგაცია დაწყებულია: ${title}`, "success", 2500);
   pendingDestination = null;
@@ -829,13 +842,21 @@ function restoreActiveRouteState() {
     const state = JSON.parse(raw);
     // Auto-resume if saved within last 12 hours
     if (state && state.dest && (Date.now() - state.timestamp < 12 * 3600 * 1000)) {
-      setTimeout(async () => {
-        showToast(`🔄 მარშრუტი ავტომატურად აღდგა: ${state.destName} (Tesla Auto-Resume)`, "success", 4500);
-        await startNavigation(state.dest, state.destName, false);
-        if (state.stepIndex && routingEngine && routingEngine.setStepIndex) {
-          routingEngine.setStepIndex(state.stepIndex);
+      // AUDIT FIX: wait for a REAL GPS fix (otherwise the route starts from the default Freedom Square position)
+      const started = Date.now();
+      const tryResume = async () => {
+        if (window.hasRealFix) {
+          showToast(`🔄 მარშრუტი აღდგა: ${state.destName}`, "success", 4500);
+          await startNavigation(state.dest, state.destName, false); // step is recomputed from progress
+          return;
         }
-      }, 700);
+        if (Date.now() - started > 10000) {
+          showToast("მარშრუტის აღდგენა გაუქმდა: GPS პოზიცია ვერ მოიძებნა", "error", 5000);
+          return;
+        }
+        setTimeout(tryResume, 500);
+      };
+      setTimeout(tryResume, 700);
     }
   } catch (err) {
     console.warn("Error restoring active route:", err);
@@ -856,7 +877,6 @@ function cancelNavigation() {
   document.getElementById("hud-battery-row").style.display = "none";
   const laneEl = document.getElementById("hud-lane-guidance");
   if (laneEl) laneEl.style.display = "none";
-  document.getElementById("btn-sim-drive").classList.remove("active");
 }
 
 // Search & Favorites (Home & Work)
@@ -930,14 +950,14 @@ function renderFavoritesDropdown() {
           <span class="fav-icon">🏠</span>
           <div class="fav-text">
             <div class="fav-title">სახლი</div>
-            <div class="fav-sub" title="${homeAddr || 'პარამეტრებიდან მითითება'}">${homeAddr || 'დააყენეთ...'}</div>
+            <div class="fav-sub" title="${escapeHtml(homeAddr) || 'პარამეტრებიდან მითითება'}">${escapeHtml(homeAddr) || 'დააყენეთ...'}</div>
           </div>
         </button>
         <button type="button" class="fav-btn" id="fav-go-work">
           <span class="fav-icon">🏢</span>
           <div class="fav-text">
             <div class="fav-title">სამსახური</div>
-            <div class="fav-sub" title="${workAddr || 'პარამეტრებიდან მითითება'}">${workAddr || 'დააყენეთ...'}</div>
+            <div class="fav-sub" title="${escapeHtml(workAddr) || 'პარამეტრებიდან მითითება'}">${escapeHtml(workAddr) || 'დააყენეთ...'}</div>
           </div>
         </button>
       </div>
@@ -1006,8 +1026,8 @@ function renderSearchResults(items) {
         <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/>
       </svg>
       <div class="search-item-info">
-        <div class="search-item-title">${title}</div>
-        <div class="search-item-subtitle">${item.display_name}</div>
+        <div class="search-item-title">${escapeHtml(title)}</div>
+        <div class="search-item-subtitle">${escapeHtml(item.display_name)}</div>
       </div>
     `;
 
@@ -1024,6 +1044,11 @@ function renderSearchResults(items) {
   container.classList.add("show");
 }
 
+function escapeHtml(v) {
+  return String(v == null ? "" : v).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+}
+window.escapeHtml = escapeHtml;
+
 // Toast Notification System (Non-blocking Tesla notifications)
 function showToast(message, type = "info", duration = 3500) {
   let container = document.getElementById("tesla-toast-container");
@@ -1036,7 +1061,11 @@ function showToast(message, type = "info", duration = 3500) {
 
   const toast = document.createElement("div");
   toast.className = `tesla-toast ${type}`;
-  toast.innerHTML = `<span>${type === 'error' ? '⚠️' : type === 'success' ? '✅' : 'ℹ️'}</span> <span>${message}</span>`;
+  const iconSpan = document.createElement("span");
+  iconSpan.textContent = type === 'error' ? '⚠️' : type === 'success' ? '✅' : 'ℹ️';
+  const msgSpan = document.createElement("span");
+  msgSpan.textContent = message; // AUDIT FIX: textContent, never innerHTML (XSS)
+  toast.append(iconSpan, document.createTextNode(" "), msgSpan);
   container.appendChild(toast);
 
   setTimeout(() => {
@@ -1337,7 +1366,9 @@ function getOrGenerateSessionCode() {
   if (!currentSessionCode) {
     let saved = sessionStorage.getItem("tesla_remote_code");
     if (!saved) {
-      saved = Math.random().toString(36).substring(2, 6).toUpperCase();
+      const rnd = new Uint8Array(8);
+      (window.crypto || window.msCrypto).getRandomValues(rnd);
+      saved = Array.from(rnd, b => b.toString(16).padStart(2, "0")).join("").toUpperCase(); // 64-bit crypto random
       sessionStorage.setItem("tesla_remote_code", saved);
     }
     currentSessionCode = saved;
@@ -1400,7 +1431,8 @@ function initRemoteSession() {
 
         showToast(`📍 დანიშნულება მიღებულია ტელეფონიდან: ${payload.name}`, "success", 4000);
         const latlng = { lat: parseFloat(payload.lat), lng: parseFloat(payload.lng) };
-        prepareRoutePreview(latlng, payload.name, payload.name);
+        if (!isFinite(latlng.lat) || !isFinite(latlng.lng) || Math.abs(latlng.lat) > 90 || Math.abs(latlng.lng) > 180) return;
+        prepareRoutePreview(latlng, String(payload.name || "").slice(0, 120), String(payload.name || "").slice(0, 120));
       } catch (err) {
         console.error("Malformed remote destination:", err);
       }
@@ -1421,12 +1453,13 @@ function initRemoteSession() {
     remoteEventSource.addEventListener("gps", (e) => {
       try {
         const payload = JSON.parse(e.data);
+        if (!isFinite(payload.lat) || !isFinite(payload.lng) || Math.abs(payload.lat) > 90 || Math.abs(payload.lng) > 180) return;
         const statusDot = document.getElementById("gps-status-dot");
         if (statusDot) statusDot.classList.add("active");
 
         const statusPill = document.getElementById("remote-status-pill");
         if (statusPill) {
-          statusPill.innerHTML = `🟢 ტელეფონი დაკავშირებულია (±${Math.round(payload.accuracy || 0)} მ)`;
+          statusPill.textContent = `🟢 ტელეფონი დაკავშირებულია (±${Math.round(payload.accuracy || 0)} მ)`;
           statusPill.style.color = "#10b981";
         }
 

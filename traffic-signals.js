@@ -4,41 +4,8 @@
  */
 
 // Curated accurate traffic signal coordinates for main intersections (Tbilisi & key roads)
-const CURATED_SIGNALS = [
-  // Chavchavadze Ave
-  { lat: 41.7118, lon: 44.7570, name: "ჭავჭავაძე / თამარაშვილი" },
-  { lat: 41.7099, lon: 44.7645, name: "ჭავჭავაძე / ყიფშიძე" },
-  { lat: 41.7087, lon: 44.7708, name: "ჭავჭავაძე / აბაშიძე" },
-  { lat: 41.7082, lon: 44.7750, name: "ჭავჭავაძე / ჭაბუა ამირეჯიბი" },
-  { lat: 41.7080, lon: 44.7788, name: "ჭავჭავაძე / ვარაზისხევი" },
-  // Melikishvili & Rustaveli
-  { lat: 41.7077, lon: 44.7816, name: "მელიქიშვილი / კოსტავა (ფილარმონია)" },
-  { lat: 41.7061, lon: 44.7885, name: "რუსთაველი (მეტრო რუსთაველი)" },
-  { lat: 41.7018, lon: 44.7932, name: "რუსთაველი / რესპუბლიკის მოედანი" },
-  { lat: 41.6974, lon: 44.7988, name: "რუსთაველი / თავისუფლების მოედანი" },
-  // Pekini & Saburtalo
-  { lat: 41.7225, lon: 44.7682, name: "პეკინი / ვაჟა-ფშაველა" },
-  { lat: 41.7212, lon: 44.7735, name: "პეკინი / ყაზბეგი" },
-  { lat: 41.7197, lon: 44.7789, name: "პეკინი / გამსახურდია" },
-  { lat: 41.7188, lon: 44.7831, name: "26 მაისის მოედანი (სპორტის სასახლე)" },
-  { lat: 41.7248, lon: 44.7554, name: "ვაჟა-ფშაველა / თამარაშვილი" },
-  { lat: 41.7289, lon: 44.7432, name: "ვაჟა-ფშაველა / ქავთარაძე" },
-  // Heroes Square & Right/Left Embankment
-  { lat: 41.7139, lon: 44.7839, name: "გმირთა მოედანი" },
-  { lat: 41.7182, lon: 44.7941, name: "თამარ მეფის ხიდი" },
-  { lat: 41.7231, lon: 44.7938, name: "სააკაძის მოედანი" },
-  { lat: 41.7208, lon: 44.7997, name: "აღმაშენებლის გამზირი / წერეთელი" },
-  { lat: 41.7275, lon: 44.7865, name: "წერეთლის გამზირი" },
-  // Dry Bridge & Old Town
-  { lat: 41.6995, lon: 44.8035, name: "მშრალი ხიდი / სანაპირო" },
-  { lat: 41.6931, lon: 44.8082, name: "ბარათაშვილის ხიდი" },
-  { lat: 41.6908, lon: 44.8115, name: "ავლაბარი / მეტეხი" },
-  { lat: 41.6881, lon: 44.8152, name: "ორთაჭალა / გორგასალი" },
-  // Didube / Gldani / Kakheti Highway
-  { lat: 41.7485, lon: 44.7802, name: "დიდუბე / წერეთლის ბოლო" },
-  { lat: 41.7820, lon: 44.8150, name: "გლდანი - ხიზანიშვილის ქუჩა" },
-  { lat: 41.6950, lon: 44.8450, name: "კახეთის გზატკეცილი / ისანი" }
-];
+// AUDIT FIX: hand-typed, unverified coordinates removed; signals come from OSM Overpass only.
+const CURATED_SIGNALS = [];
 
 class TrafficSignalsEngine {
   constructor(map) {
@@ -165,6 +132,15 @@ class TrafficSignalsEngine {
       
       // Look ahead within 350 meters
       if (dist < 350 && dist > 15) {
+        // AUDIT FIX: only signals AHEAD (within +-50 deg of heading)
+        if (headingDeg != null && !isNaN(headingDeg)) {
+          const toRad = x => x * Math.PI / 180;
+          const y = Math.sin(toRad(sig.lon - currentPos.lng)) * Math.cos(toRad(sig.lat));
+          const x = Math.cos(toRad(currentPos.lat)) * Math.sin(toRad(sig.lat)) - Math.sin(toRad(currentPos.lat)) * Math.cos(toRad(sig.lat)) * Math.cos(toRad(sig.lon - currentPos.lng));
+          const brg = (Math.atan2(y, x) * 180 / Math.PI + 360) % 360;
+          let diff = Math.abs(brg - headingDeg) % 360; if (diff > 180) diff = 360 - diff;
+          if (diff > 50) continue;
+        }
         if (dist < minDistance) {
           minDistance = dist;
           nearest = { ...sig, distanceMeters: Math.round(dist) };
