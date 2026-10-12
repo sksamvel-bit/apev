@@ -1,19 +1,19 @@
 {
   "source": "dachar.ge & Revolt Georgia EV Network",
   "count": 650,
-  "timestamp": 1791831601895,
+  "timestamp": 1791833398921,
   "stations": [
     {
       "lat": 41.737416,
       "lng": 44.754535,
-      "name": "თბილი���ი, სხვა, მუხრან მაჭავარიანის ქუჩა 19",
-      "city": "თბილი���ი",
+      "name": "თბილისი, სხვა, მუხრან მაჭავარიანის ქუჩა 19",
+      "city": "თბილისი",
       "address": "სხვა, მუხრან მაჭავარიანის ქუჩა 19",
       "operator": "chargerplus",
       "power": "120 kW",
       "type": "CCS2, GBT",
       "price": "0.85 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.711132,
@@ -25,7 +25,7 @@
       "power": "120 kW",
       "type": "CCS2, GBT",
       "price": "0.85 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.710873,
@@ -37,7 +37,7 @@
       "power": "22 kW",
       "type": "GBT",
       "price": "0.65 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.716572,
@@ -48,7 +48,7 @@
       "power": "120 kW",
       "type": "CCS2, GBT",
       "price": "0.85 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.727365,
@@ -59,7 +59,7 @@
       "power": "120 kW",
       "type": "CCS2, GBT",
       "price": "0.85 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.722276,
@@ -70,7 +70,7 @@
       "power": "120 kW",
       "type": "CCS2, GBT",
       "price": "0.85 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.740894,
@@ -81,7 +81,7 @@
       "power": "120 kW",
       "type": "CCS2, GBT",
       "price": "0.85 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.75129,
@@ -92,7 +92,7 @@
       "power": "120 kW",
       "type": "CCS2, GBT",
       "price": "0.68 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.782216,
@@ -103,7 +103,7 @@
       "power": "120 kW",
       "type": "CCS2, GBT",
       "price": "0.85 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.803659,
@@ -114,7 +114,7 @@
       "power": "120 kW",
       "type": "CCS2, GBT",
       "price": "0.85 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 42.470364,
@@ -125,7 +125,7 @@
       "power": "120 kW",
       "type": "CCS2, GBT",
       "price": "0.85 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 42.026139,
@@ -136,7 +136,7 @@
       "power": "120 kW",
       "type": "CCS2, GBT",
       "price": "0.85 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 42.111297,
@@ -147,19 +147,19 @@
       "power": "120 kW",
       "type": "CCS2, GBT",
       "price": "0.85 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 42.13708,
       "lng": 42.978933,
-      "name": "ა��გვეთა, არგვეთა",
-      "city": "ა��გვეთა",
+      "name": "არგვეთა, არგვეთა",
+      "city": "არგვეთა",
       "address": "არგვეთა",
       "operator": "chargerplus",
       "power": "120 kW",
       "type": "CCS2, GBT",
       "price": "0.85 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 42.252234,
@@ -170,7 +170,7 @@
       "power": "120 kW",
       "type": "CCS2, GBT",
       "price": "0.68 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 42.240638,
@@ -181,7 +181,7 @@
       "power": "120 kW",
       "type": "CCS2, GBT",
       "price": "0.68 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 42.230047,
@@ -192,7 +192,7 @@
       "power": "120 kW",
       "type": "CCS2, GBT",
       "price": "0.68 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 42.163312,
@@ -203,7 +203,7 @@
       "power": "120 kW",
       "type": "CCS2, GBT",
       "price": "0.85 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 42.498111,
@@ -214,7 +214,7 @@
       "power": "120 kW",
       "type": "CCS2, GBT",
       "price": "0.68 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 42.169146,
@@ -225,7 +225,7 @@
       "power": "120 kW",
       "type": "CCS2, GBT",
       "price": "0.85 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.806319,
@@ -236,7 +236,7 @@
       "power": "120 kW",
       "type": "CCS2, GBT",
       "price": "0.85 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.650589,
@@ -247,7 +247,7 @@
       "power": "120 kW",
       "type": "CCS2, GBT",
       "price": "0.85 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.644036,
@@ -258,7 +258,7 @@
       "power": "120 kW",
       "type": "CCS2, GBT",
       "price": "0.85 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.637215,
@@ -269,7 +269,7 @@
       "power": "120 kW",
       "type": "CCS2, GBT",
       "price": "0.85 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.731487,
@@ -280,7 +280,7 @@
       "power": "120 kW",
       "type": "CCS2, GBT",
       "price": "0.85 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.842247,
@@ -291,7 +291,7 @@
       "power": "22 kW",
       "type": "GBT",
       "price": "0.65 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.927294,
@@ -302,7 +302,7 @@
       "power": "22 kW",
       "type": "GBT",
       "price": "0.65 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.927166,
@@ -313,7 +313,7 @@
       "power": "22 kW",
       "type": "GBT",
       "price": "0.65 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.710882,
@@ -324,7 +324,7 @@
       "power": "22 kW",
       "type": "GBT",
       "price": "0.65 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.702534,
@@ -335,7 +335,7 @@
       "power": "7 kW",
       "type": "GBT",
       "price": "0.65 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.699657,
@@ -346,7 +346,7 @@
       "power": "22 kW",
       "type": "GBT",
       "price": "0.65 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.693415,
@@ -357,7 +357,7 @@
       "power": "22 kW",
       "type": "GBT",
       "price": "0.65 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.696522,
@@ -368,7 +368,7 @@
       "power": "22 kW",
       "type": "GBT",
       "price": "0.65 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 42.133809,
@@ -379,7 +379,7 @@
       "power": "22 kW",
       "type": "GBT",
       "price": "0.65 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.839972,
@@ -390,7 +390,7 @@
       "power": "22 kW",
       "type": "GBT",
       "price": "0.65 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.83982,
@@ -401,7 +401,7 @@
       "power": "22 kW",
       "type": "GBT",
       "price": "0.65 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.758051,
@@ -412,7 +412,7 @@
       "power": "7 kW",
       "type": "GBT",
       "price": "0.65 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.758072,
@@ -423,7 +423,7 @@
       "power": "7 kW",
       "type": "GBT",
       "price": "0.65 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.758031,
@@ -434,7 +434,7 @@
       "power": "7 kW",
       "type": "GBT",
       "price": "0.65 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 42.013244,
@@ -445,7 +445,7 @@
       "power": "120 kW",
       "type": "CCS2, GBT",
       "price": "0.85 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.692388,
@@ -456,7 +456,7 @@
       "power": "120 kW",
       "type": "CCS2, GBT",
       "price": "0.85 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.692389,
@@ -467,7 +467,7 @@
       "power": "120 kW",
       "type": "CCS2, GBT",
       "price": "0.85 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 42.163222,
@@ -478,7 +478,7 @@
       "power": "120 kW",
       "type": "CCS2, GBT",
       "price": "0.85 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 42.498147,
@@ -489,7 +489,7 @@
       "power": "120 kW",
       "type": "CCS2, GBT",
       "price": "0.68 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.672441,
@@ -500,7 +500,7 @@
       "power": "120 kW",
       "type": "CCS2, GBT",
       "price": "0.85 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.893828,
@@ -511,7 +511,7 @@
       "power": "120 kW",
       "type": "CCS2, GBT",
       "price": "0.85 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 42.111282,
@@ -522,7 +522,7 @@
       "power": "120 kW",
       "type": "CCS2, GBT",
       "price": "0.85 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 42.111269,
@@ -533,7 +533,7 @@
       "power": "120 kW",
       "type": "CCS2, GBT",
       "price": "0.85 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 42.026148,
@@ -544,7 +544,7 @@
       "power": "120 kW",
       "type": "CCS2, GBT",
       "price": "0.85 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 42.02617,
@@ -555,7 +555,7 @@
       "power": "120 kW",
       "type": "CCS2, GBT",
       "price": "0.85 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.670147,
@@ -566,7 +566,7 @@
       "power": "120 kW",
       "type": "CCS2, GBT",
       "price": "0.85 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 42.13702,
@@ -578,19 +578,19 @@
       "power": "120 kW",
       "type": "CCS2, GBT",
       "price": "0.85 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 42.137112,
       "lng": 42.979027,
-      "name": "არგვეთა, არგვეთა",
-      "city": "არგვეთა",
+      "name": "არგ��ეთა, არგვეთა",
+      "city": "არგ��ეთა",
       "address": "არგვეთა",
       "operator": "chargerplus",
       "power": "120 kW",
       "type": "CCS2, GBT",
       "price": "0.85 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.806296,
@@ -601,7 +601,7 @@
       "power": "120 kW",
       "type": "CCS2, GBT",
       "price": "0.85 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.690291,
@@ -612,7 +612,7 @@
       "power": "120 kW",
       "type": "CCS2, GBT",
       "price": "0.85 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.690246,
@@ -623,7 +623,7 @@
       "power": "120 kW",
       "type": "CCS2, GBT",
       "price": "0.85 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 42.169177,
@@ -634,7 +634,7 @@
       "power": "120 kW",
       "type": "CCS2, GBT",
       "price": "0.85 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 42.264386,
@@ -644,7 +644,7 @@
       "power": "120 kW",
       "type": "CCS2, GBT",
       "price": "0.85 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.635561,
@@ -655,7 +655,7 @@
       "power": "120 kW",
       "type": "CCS2, GBT",
       "price": "0.85 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.811018,
@@ -667,7 +667,7 @@
       "power": "120 kW",
       "type": "CCS2, GBT",
       "price": "0.69 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.811199,
@@ -679,7 +679,7 @@
       "power": "120 kW",
       "type": "CCS2, GBT",
       "price": "0.69 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.811327,
@@ -691,19 +691,19 @@
       "power": "120 kW",
       "type": "CCS2, GBT",
       "price": "0.69 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.748376,
       "lng": 44.769383,
-      "name": "თბი���ისი, მარშალ არჩილ გელოვანის გამზირი 22, აგროჰაბი",
-      "city": "თბი���ისი",
-      "address": "მარშალ არჩილ გელოვანის გამზირი 22, აგროჰაბი",
+      "name": "თბილისი, მარშალ ��რჩილ გელოვანის გამზირი 22, აგროჰაბი",
+      "city": "თბილისი",
+      "address": "მარშალ ��რჩილ გელოვანის გამზირი 22, აგროჰაბი",
       "operator": "datene",
       "power": "120 kW",
       "type": "CCS2, GBT",
       "price": "0.69 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.748343,
@@ -715,7 +715,7 @@
       "power": "120 kW",
       "type": "CCS2, GBT",
       "price": "0.69 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.644449,
@@ -727,7 +727,7 @@
       "power": "120 kW",
       "type": "CCS2, GBT",
       "price": "0.69 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.711413,
@@ -739,7 +739,7 @@
       "power": "120 kW",
       "type": "CCS2, GBT",
       "price": "0.69 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.621593,
@@ -751,19 +751,19 @@
       "power": "120 kW",
       "type": "CCS2, GBT",
       "price": "0.69 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.621522,
       "lng": 41.616387,
-      "name": "ბათუმი, ფრიდონ ხალვა���ის 45ა",
+      "name": "ბათუმი, ფრიდონ ხალვაშის 45ა",
       "city": "ბათუმი",
-      "address": "ფრიდონ ხალვა���ის 45ა",
+      "address": "ფრიდონ ხალვაშის 45ა",
       "operator": "datene",
       "power": "120 kW",
       "type": "CCS2, GBT",
       "price": "0.69 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 42.262274,
@@ -775,7 +775,7 @@
       "power": "120 kW",
       "type": "CCS2, GBT",
       "price": "0.69 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.544844,
@@ -787,7 +787,7 @@
       "power": "22 kW",
       "type": "Type 2",
       "price": "0.69 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.716944,
@@ -799,7 +799,7 @@
       "power": "80 kW",
       "type": "CCS2, GBT",
       "price": "0.69 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.646381,
@@ -811,7 +811,7 @@
       "power": "80 kW",
       "type": "CCS2, GBT",
       "price": "0.69 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.646379,
@@ -823,19 +823,19 @@
       "power": "160 kW",
       "type": "CCS2, GBT",
       "price": "0.69 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.685578,
       "lng": 44.854317,
-      "name": "თბილისი, მოსკოვის გამზირ���, სამგორი მოლი",
+      "name": "თბილისი, მოსკოვის გამზირი, სამგორი მოლი",
       "city": "თბილისი",
-      "address": "მოსკოვის გამზირ���, სამგორი მოლი",
+      "address": "მოსკოვის გამზირი, სამგორი მოლი",
       "operator": "datene",
       "power": "120 kW",
       "type": "CCS2, GBT",
       "price": "0.69 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.685641,
@@ -847,7 +847,7 @@
       "power": "80 kW",
       "type": "CCS2, GBT",
       "price": "0.69 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.685494,
@@ -859,7 +859,7 @@
       "power": "120 kW",
       "type": "CCS2, GBT",
       "price": "0.69 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 42.162528,
@@ -871,7 +871,7 @@
       "power": "22 kW",
       "type": "Type 2",
       "price": "0.58 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 42.164339,
@@ -883,7 +883,7 @@
       "power": "120 kW",
       "type": "CCS2, GBT",
       "price": "0.69 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.929156,
@@ -895,7 +895,7 @@
       "power": "80 kW",
       "type": "CCS2, GBT",
       "price": "0.69 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 42.326268,
@@ -907,7 +907,7 @@
       "power": "22 kW",
       "type": "Type 2",
       "price": "0.69 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.695945,
@@ -919,7 +919,7 @@
       "power": "120 kW",
       "type": "CCS2, GBT",
       "price": "0.69 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.711103,
@@ -931,19 +931,19 @@
       "power": "120 kW",
       "type": "CCS2, GBT",
       "price": "0.69 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.711103,
       "lng": 44.755033,
-      "name": "თბილისი, ილია ჭავჭავაძის გამზირი, პარკინგი -4 სართული",
+      "name": "თბილისი, ილია ჭავჭავაძის გამ��ირი, პარკინგი -4 სართული",
       "city": "თბილისი",
-      "address": "ილია ჭავჭავაძის გამზირი, პარკინგი -4 სართული",
+      "address": "ილია ჭავჭავაძის გამ��ირი, პარკინგი -4 სართული",
       "operator": "datene",
       "power": "120 kW",
       "type": "CCS2, GBT",
       "price": "0.69 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 42.167551,
@@ -955,7 +955,7 @@
       "power": "80 kW",
       "type": "CCS2, GBT",
       "price": "0.69 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 42.149427,
@@ -966,7 +966,7 @@
       "power": "80 kW",
       "type": "CCS, CCS2, Type 1, Type 2",
       "price": "0.78 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.847016,
@@ -977,7 +977,7 @@
       "power": "80 kW",
       "type": "CCS, CCS2, Type 1, Type 2",
       "price": "0.83 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.773051,
@@ -988,7 +988,7 @@
       "power": "80 kW",
       "type": "CCS, CCS2, Type 1, Type 2",
       "price": "0.78 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.77976,
@@ -999,7 +999,7 @@
       "power": "80 kW",
       "type": "CCS, CCS2, Type 1, Type 2",
       "price": "0.78 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 42.466094,
@@ -1010,7 +1010,7 @@
       "power": "80 kW",
       "type": "CCS, CCS2, Type 1, Type 2",
       "price": "0.78 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.754827,
@@ -1021,7 +1021,7 @@
       "power": "22 kW",
       "type": "GBT, Type 1, Type 2",
       "price": "0.75 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.626031,
@@ -1032,7 +1032,7 @@
       "power": "160 kW",
       "type": "CCS2, NACS, Type 2",
       "price": "0.83 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.815205,
@@ -1043,7 +1043,7 @@
       "power": "22 kW",
       "type": "GBT, Type 1, Type 2",
       "price": "0.71 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.724052,
@@ -1054,7 +1054,7 @@
       "power": "22 kW",
       "type": "GBT, Type 1, Type 2",
       "price": "0.7 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.689229,
@@ -1065,7 +1065,7 @@
       "power": "Standard",
       "type": "CCS2, GBT",
       "price": "0.83 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 42.012997,
@@ -1076,7 +1076,7 @@
       "power": "22 kW",
       "type": "GBT, Type 1, Type 2",
       "price": "0.71 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.650909,
@@ -1087,7 +1087,7 @@
       "power": "Standard",
       "type": "GBT, Type 1, Type 2",
       "price": "0.71 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.776871,
@@ -1098,7 +1098,7 @@
       "power": "160 kW",
       "type": "CCS2, NACS, Type 2",
       "price": "0.78 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 42.262671,
@@ -1109,7 +1109,7 @@
       "power": "22 kW",
       "type": "GBT, Type 1, Type 2",
       "price": "0.71 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 42.149773,
@@ -1120,7 +1120,7 @@
       "power": "160 kW",
       "type": "CCS2, GBT",
       "price": "0.83 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 42.150098,
@@ -1131,7 +1131,7 @@
       "power": "160 kW",
       "type": "CCS2, NACS",
       "price": "0.83 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.786883,
@@ -1142,7 +1142,7 @@
       "power": "160 kW",
       "type": "CCS2, NACS",
       "price": "0.78 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.650574,
@@ -1153,7 +1153,7 @@
       "power": "80 kW",
       "type": "CCS2, GBT",
       "price": "0.83 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.712971,
@@ -1164,7 +1164,7 @@
       "power": "160 kW",
       "type": "CCS2, GBT",
       "price": "0.78 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 42.011501,
@@ -1175,7 +1175,7 @@
       "power": "160 kW",
       "type": "CCS2, GBT",
       "price": "0.83 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.77926,
@@ -1186,7 +1186,7 @@
       "power": "160 kW",
       "type": "CCS2, GBT",
       "price": "0.78 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 42.146332,
@@ -1197,7 +1197,7 @@
       "power": "160 kW",
       "type": "CCS2, GBT",
       "price": "0.78 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.684158,
@@ -1208,7 +1208,7 @@
       "power": "22 kW",
       "type": "GBT, Type 1, Type 2",
       "price": "0.7 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 42.262284,
@@ -1219,7 +1219,7 @@
       "power": "160 kW",
       "type": "CCS2, NACS",
       "price": "0.78 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.67348,
@@ -1230,7 +1230,7 @@
       "power": "22 kW",
       "type": "GBT, Type 1, Type 2",
       "price": "0.71 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.847169,
@@ -1241,7 +1241,7 @@
       "power": "22 kW",
       "type": "GBT, Type 1, Type 2",
       "price": "0.75 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.816591,
@@ -1252,7 +1252,7 @@
       "power": "160 kW",
       "type": "CCS2, NACS",
       "price": "0.83 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.817014,
@@ -1263,7 +1263,7 @@
       "power": "120 kW",
       "type": "CCS2, GBT",
       "price": "0.83 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.684096,
@@ -1274,7 +1274,7 @@
       "power": "160 kW",
       "type": "CCS2, NACS, Type 2",
       "price": "0.78 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.847228,
@@ -1285,7 +1285,7 @@
       "power": "240 kW",
       "type": "CCS, CCS2, NACS, Type 2",
       "price": "0.83 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 42.262597,
@@ -1296,7 +1296,7 @@
       "power": "160 kW",
       "type": "CCS2, GBT",
       "price": "0.78 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.861312,
@@ -1307,7 +1307,7 @@
       "power": "160 kW",
       "type": "CCS2, NACS, Type 2",
       "price": "სტანდარტული ტარიფი",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.728244,
@@ -1318,7 +1318,7 @@
       "power": "22 kW",
       "type": "GBT, Type 1, Type 2",
       "price": "0.71 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.78721,
@@ -1329,7 +1329,7 @@
       "power": "150 kW",
       "type": "CCS2",
       "price": "0.55 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.554407,
@@ -1340,7 +1340,7 @@
       "power": "160 kW",
       "type": "CCS2",
       "price": "0.6 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 42.504074,
@@ -1351,7 +1351,7 @@
       "power": "80 kW",
       "type": "CCS2",
       "price": "0.55 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.794192,
@@ -1362,7 +1362,7 @@
       "power": "160 kW",
       "type": "CCS2",
       "price": "0.55 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.775461,
@@ -1373,7 +1373,7 @@
       "power": "320 kW",
       "type": "CCS2",
       "price": "0.55 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.925018,
@@ -1384,7 +1384,7 @@
       "power": "22 kW",
       "type": "Type 2",
       "price": "0.45 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.679754,
@@ -1395,7 +1395,7 @@
       "power": "22 kW",
       "type": "Type 2",
       "price": "0.45 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.679762,
@@ -1406,7 +1406,7 @@
       "power": "22 kW",
       "type": "Type 2",
       "price": "0.45 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.68032,
@@ -1417,7 +1417,7 @@
       "power": "150 kW",
       "type": "CCS2",
       "price": "0.6 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.693981,
@@ -1428,7 +1428,7 @@
       "power": "160 kW",
       "type": "CCS2",
       "price": "0.55 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 42.10133,
@@ -1439,7 +1439,7 @@
       "power": "150 kW",
       "type": "CCS2",
       "price": "0.65 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 42.103303,
@@ -1450,7 +1450,7 @@
       "power": "150 kW",
       "type": "CCS2",
       "price": "0.65 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.673533,
@@ -1461,7 +1461,7 @@
       "power": "160 kW",
       "type": "CCS2",
       "price": "0.6 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.774679,
@@ -1472,7 +1472,7 @@
       "power": "240 kW",
       "type": "CCS2",
       "price": "0.6 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 42.021121,
@@ -1483,7 +1483,7 @@
       "power": "150 kW",
       "type": "CCS2",
       "price": "0.55 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.709274,
@@ -1494,7 +1494,7 @@
       "power": "80 kW",
       "type": "CCS2",
       "price": "0.6 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.6886,
@@ -1505,7 +1505,7 @@
       "power": "150 kW",
       "type": "CCS2",
       "price": "0.6 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.737784,
@@ -1516,7 +1516,7 @@
       "power": "240 kW",
       "type": "CCS2",
       "price": "0.55 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.723693,
@@ -1527,7 +1527,7 @@
       "power": "320 kW",
       "type": "CCS2",
       "price": "0.5 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.788615,
@@ -1538,7 +1538,7 @@
       "power": "7 kW",
       "type": "Type 2",
       "price": "0.45 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.784347,
@@ -1549,7 +1549,7 @@
       "power": "11 kW",
       "type": "J1772, NACS",
       "price": "0.65 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 42.00783,
@@ -1559,7 +1559,7 @@
       "power": "11 kW",
       "type": "J1772, NACS",
       "price": "0.65 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.784981,
@@ -1570,7 +1570,7 @@
       "power": "120 kW",
       "type": "GBT, NACS",
       "price": "0.55 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 42.141514,
@@ -1580,7 +1580,7 @@
       "power": "160 kW",
       "type": "CCS2",
       "price": "0.55 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.730981,
@@ -1591,7 +1591,7 @@
       "power": "160 kW",
       "type": "CCS2",
       "price": "0.6 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.71169,
@@ -1602,7 +1602,7 @@
       "power": "22 kW",
       "type": "Type 2",
       "price": "0.45 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.694163,
@@ -1613,7 +1613,7 @@
       "power": "22 kW",
       "type": "Type 2",
       "price": "0.45 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.694336,
@@ -1624,7 +1624,7 @@
       "power": "22 kW",
       "type": "Type 2",
       "price": "0.45 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.735939,
@@ -1636,7 +1636,7 @@
       "power": "22 kW",
       "type": "Type 2",
       "price": "სტანდარტული ტარიფი",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.748497,
@@ -1648,7 +1648,7 @@
       "power": "22 kW",
       "type": "Type 2",
       "price": "სტანდარტული ტარიფი",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.688658,
@@ -1660,19 +1660,19 @@
       "power": "22 kW",
       "type": "Type 2",
       "price": "სტანდარტული ტარიფი",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.778097,
       "lng": 44.76918,
-      "name": "თბილისი, სუპერმარკეტი \"ლიბრე\", აღმაშენებლის ხეივანი",
+      "name": "თბილისი, სუპერმარკეტი \"ლიბრე\", აღმაშე���ებლის ხეივანი",
       "city": "თბილისი",
-      "address": "სუპერმარკეტი \"ლიბრე\", აღმაშენებლის ხეივანი",
+      "address": "სუპერმარკეტი \"ლიბრე\", აღმაშე���ებლის ხეივანი",
       "operator": "espace",
       "power": "22 kW",
       "type": "Type 2",
       "price": "სტანდარტული ტარიფი",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.80435,
@@ -1684,7 +1684,7 @@
       "power": "22 kW",
       "type": "Type 2",
       "price": "სტანდარტული ტარიფი",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.779757,
@@ -1696,7 +1696,7 @@
       "power": "22 kW",
       "type": "Type 2",
       "price": "სტანდარტული ტარიფი",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 42.261393,
@@ -1708,7 +1708,7 @@
       "power": "22 kW",
       "type": "Type 2",
       "price": "სტანდარტული ტარიფი",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.643299,
@@ -1720,7 +1720,7 @@
       "power": "22 kW",
       "type": "Type 2",
       "price": "სტანდარტული ტარიფი",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.779709,
@@ -1732,19 +1732,19 @@
       "power": "22 kW",
       "type": "Type 2",
       "price": "სტანდარტული ტარიფი",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.925711,
       "lng": 45.452319,
-      "name": "თ���ლავი, ავტოგასამართი სადგური \"სოკარი\"",
-      "city": "თ���ლავი",
+      "name": "თელავი, ავტოგასამართი სადგური \"სოკარი\"",
+      "city": "თელავი",
       "address": "ავტოგასამართი სადგური \"სოკარი\"",
       "operator": "espace",
       "power": "22 kW",
       "type": "Type 2",
       "price": "სტანდარტული ტარიფი",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.67054,
@@ -1756,7 +1756,7 @@
       "power": "22 kW",
       "type": "Type 2",
       "price": "სტანდარტული ტარიფი",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 42.016283,
@@ -1768,7 +1768,7 @@
       "power": "22 kW",
       "type": "Type 2",
       "price": "სტანდარტული ტარიფი",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.580439,
@@ -1780,7 +1780,7 @@
       "power": "22 kW",
       "type": "Type 2",
       "price": "სტანდარტული ტარიფი",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.64905,
@@ -1792,19 +1792,19 @@
       "power": "22 kW",
       "type": "Type 2",
       "price": "სტანდარტული ტარიფი",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 42.016278,
       "lng": 44.026869,
-      "name": "ურბნისი, ურბნისი/გორი, ავტოგასამართი სადგური \"სოკარი\"",
+      "name": "ურბნისი, ურბნისი/გორი, ���ვტოგასამართი სადგური \"სოკარი\"",
       "city": "ურბნისი",
-      "address": "ურბნისი/გორი, ავტოგასამართი სადგური \"სოკარი\"",
+      "address": "ურბნისი/გორი, ���ვტოგასამართი სადგური \"სოკარი\"",
       "operator": "espace",
       "power": "22 kW",
       "type": "Type 2",
       "price": "სტანდარტული ტარიფი",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.805056,
@@ -1816,7 +1816,7 @@
       "power": "22 kW",
       "type": "Type 2",
       "price": "სტანდარტული ტარიფი",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.705571,
@@ -1828,7 +1828,7 @@
       "power": "22 kW",
       "type": "Type 2",
       "price": "სტანდარტული ტარიფი",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.682864,
@@ -1840,7 +1840,7 @@
       "power": "22 kW",
       "type": "Type 2",
       "price": "სტანდარტული ტარიფი",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.633788,
@@ -1852,7 +1852,7 @@
       "power": "22 kW",
       "type": "Type 2",
       "price": "სტანდარტული ტარიფი",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 42.1489,
@@ -1864,7 +1864,7 @@
       "power": "22 kW",
       "type": "Type 2",
       "price": "სტანდარტული ტარიფი",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.736387,
@@ -1876,7 +1876,7 @@
       "power": "22 kW",
       "type": "Type 2",
       "price": "სტანდარტული ტარიფი",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 42.51914,
@@ -1888,7 +1888,7 @@
       "power": "22 kW",
       "type": "Type 2",
       "price": "სტანდარტული ტარიფი",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.692428,
@@ -1900,7 +1900,7 @@
       "power": "22 kW",
       "type": "Type 2",
       "price": "სტანდარტული ტარიფი",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.681071,
@@ -1912,7 +1912,7 @@
       "power": "22 kW",
       "type": "Type 2",
       "price": "სტანდარტული ტარიფი",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.70822,
@@ -1924,7 +1924,7 @@
       "power": "22 kW",
       "type": "Type 2",
       "price": "სტანდარტული ტარიფი",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.786339,
@@ -1936,7 +1936,7 @@
       "power": "22 kW",
       "type": "Type 2",
       "price": "სტანდარტული ტარიფი",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 42.489948,
@@ -1948,7 +1948,7 @@
       "power": "22 kW",
       "type": "Type 2",
       "price": "სტანდარტული ტარიფი",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.920764,
@@ -1960,7 +1960,7 @@
       "power": "22 kW",
       "type": "Type 2",
       "price": "სტანდარტული ტარიფი",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.83192,
@@ -1972,7 +1972,7 @@
       "power": "22 kW",
       "type": "Type 2",
       "price": "სტანდარტული ტარიფი",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.951921,
@@ -1984,7 +1984,7 @@
       "power": "22 kW",
       "type": "Type 2",
       "price": "სტანდარტული ტარიფი",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 42.2505,
@@ -1996,19 +1996,19 @@
       "power": "22 kW",
       "type": "Type 2",
       "price": "სტანდარტული ტარიფი",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 42.117093,
       "lng": 43.018687,
-      "name": "ზესტაფონი, ავტოგასამართი სადგური \"სოკარი\"",
-      "city": "ზესტაფონი",
+      "name": "ზე���ტაფონი, ავტოგასამართი სადგური \"სოკარი\"",
+      "city": "ზე���ტაფონი",
       "address": "ავტოგასამართი სადგური \"სოკარი\"",
       "operator": "espace",
       "power": "22 kW",
       "type": "Type 2",
       "price": "სტანდარტული ტარიფი",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.692698,
@@ -2020,7 +2020,7 @@
       "power": "22 kW",
       "type": "Type 2",
       "price": "სტანდარტული ტარიფი",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.64999,
@@ -2032,7 +2032,7 @@
       "power": "22 kW",
       "type": "Type 2",
       "price": "სტანდარტული ტარიფი",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.782793,
@@ -2044,7 +2044,7 @@
       "power": "22 kW",
       "type": "Type 2",
       "price": "სტანდარტული ტარიფი",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 42.106692,
@@ -2056,7 +2056,7 @@
       "power": "22 kW",
       "type": "Type 2",
       "price": "სტანდარტული ტარიფი",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 42.148872,
@@ -2068,7 +2068,7 @@
       "power": "50 kW",
       "type": "CCS2, CHAdeMO",
       "price": "0.75 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 42.016185,
@@ -2080,19 +2080,19 @@
       "power": "30 kW",
       "type": "CCS2, CHAdeMO",
       "price": "0.9 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.782273,
       "lng": 44.768516,
-      "name": "თბილისი, \"გრინვეი\", ა���მაშენებლის ხეივანი N164",
+      "name": "თბილისი, \"გრინვეი\", აღმაშენებლის ხეივანი N164",
       "city": "თბილისი",
-      "address": "\"გრინვეი\", ა���მაშენებლის ხეივანი N164",
+      "address": "\"გრინვეი\", აღმაშენებლის ხეივანი N164",
       "operator": "espace",
       "power": "22 kW",
       "type": "Type 2",
       "price": "სტანდარტული ტარიფი",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 42.205421,
@@ -2104,7 +2104,7 @@
       "power": "22 kW",
       "type": "Type 2",
       "price": "სტანდარტული ტარიფი",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.803655,
@@ -2116,7 +2116,7 @@
       "power": "22 kW",
       "type": "Type 2",
       "price": "სტანდარტული ტარიფი",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.670208,
@@ -2128,7 +2128,7 @@
       "power": "22 kW",
       "type": "Type 2",
       "price": "სტანდარტული ტარიფი",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 42.658768,
@@ -2140,19 +2140,19 @@
       "power": "22 kW",
       "type": "Type 2",
       "price": "სტანდარტული ტარიფი",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.992859,
       "lng": 43.58727,
-      "name": "ხ���შური, ავტოგასამართი სადგური \"სოკარი\"",
-      "city": "ხ���შური",
+      "name": "ხაშური, ავტოგასამართი სადგური \"სოკარი\"",
+      "city": "ხაშური",
       "address": "ავტოგასამართი სადგური \"სოკარი\"",
       "operator": "espace",
       "power": "22 kW",
       "type": "Type 2",
       "price": "სტანდარტული ტარიფი",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.72014,
@@ -2164,7 +2164,7 @@
       "power": "22 kW",
       "type": "Type 2",
       "price": "სტანდარტული ტარიფი",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.751465,
@@ -2176,19 +2176,19 @@
       "power": "22 kW",
       "type": "Type 2",
       "price": "სტანდარტული ტარიფი",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.78648,
       "lng": 44.779286,
-      "name": "თბი���ისი, ბიზნეს ცენტრი ბელიაშვილზე (II)",
-      "city": "თბი���ისი",
+      "name": "თბილისი, ბიზნეს ცენტრი ბელიაშვილზე (II)",
+      "city": "თბილისი",
       "address": "ბიზნეს ცენტრი ბელიაშვილზე (II)",
       "operator": "espace",
       "power": "22 kW",
       "type": "Type 2",
       "price": "სტანდარტული ტარიფი",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.706591,
@@ -2200,19 +2200,19 @@
       "power": "22 kW",
       "type": "Type 2",
       "price": "სტანდარტული ტარიფი",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.769878,
       "lng": 44.782393,
-      "name": "თბილისი, \"გრინვეი\", ქსნის ქუჩის მიმდებარედ",
-      "city": "თბილისი",
+      "name": "თბ���ლისი, \"გრინვეი\", ქსნის ქუჩის მიმდებარედ",
+      "city": "თბ���ლისი",
       "address": "\"გრინვეი\", ქსნის ქუჩის მიმდებარედ",
       "operator": "espace",
       "power": "22 kW",
       "type": "Type 2",
       "price": "სტანდარტული ტარიფი",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.786369,
@@ -2224,7 +2224,7 @@
       "power": "22 kW",
       "type": "Type 2",
       "price": "სტანდარტული ტარიფი",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 42.016094,
@@ -2236,7 +2236,7 @@
       "power": "100 kW",
       "type": "CCS2, CHAdeMO",
       "price": "0.9 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 42.147759,
@@ -2248,7 +2248,7 @@
       "power": "100 kW",
       "type": "CCS2, CHAdeMO",
       "price": "0.9 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.801476,
@@ -2260,7 +2260,7 @@
       "power": "100 kW",
       "type": "CCS2, CHAdeMO",
       "price": "0.9 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.861764,
@@ -2272,7 +2272,7 @@
       "power": "100 kW",
       "type": "CCS2, CHAdeMO",
       "price": "0.9 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.861682,
@@ -2284,7 +2284,7 @@
       "power": "100 kW",
       "type": "CCS2, CHAdeMO",
       "price": "0.9 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.794005,
@@ -2296,7 +2296,7 @@
       "power": "100 kW",
       "type": "CCS2, CHAdeMO",
       "price": "0.9 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.635388,
@@ -2308,7 +2308,7 @@
       "power": "100 kW",
       "type": "CCS2, CHAdeMO",
       "price": "0.9 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.554163,
@@ -2320,7 +2320,7 @@
       "power": "120 kW",
       "type": "CCS2, GBT",
       "price": "0.75 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 42.494711,
@@ -2332,7 +2332,7 @@
       "power": "120 kW",
       "type": "CCS2, GBT",
       "price": "0.9 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 42.241547,
@@ -2344,7 +2344,7 @@
       "power": "120 kW",
       "type": "CCS2, GBT",
       "price": "0.9 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 42.333548,
@@ -2356,19 +2356,19 @@
       "power": "120 kW",
       "type": "CCS2, GBT",
       "price": "0.9 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.692677,
       "lng": 44.967317,
-      "name": "თბილისი, Sinexcel სწ���აფი დამტენი, აგს \"ვისოლი\", ლილო",
+      "name": "თბილისი, Sinexcel სწრაფი დამტენი, აგს \"ვისოლი\", ლილო",
       "city": "თბილისი",
-      "address": "Sinexcel სწ���აფი დამტენი, აგს \"ვისოლი\", ლილო",
+      "address": "Sinexcel სწრაფი დამტენი, აგს \"ვისოლი\", ლილო",
       "operator": "espace",
       "power": "120 kW",
       "type": "CCS2, GBT",
       "price": "0.9 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.925236,
@@ -2380,7 +2380,7 @@
       "power": "120 kW",
       "type": "CCS2, GBT",
       "price": "0.9 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.635065,
@@ -2392,7 +2392,7 @@
       "power": "160 kW",
       "type": "GBT",
       "price": "0.9 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 42.147787,
@@ -2404,7 +2404,7 @@
       "power": "160 kW",
       "type": "GBT",
       "price": "0.9 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 42.147815,
@@ -2416,7 +2416,7 @@
       "power": "360 kW",
       "type": "CCS2",
       "price": "0.9 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 42.147835,
@@ -2428,7 +2428,7 @@
       "power": "360 kW",
       "type": "CCS2",
       "price": "0.9 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 42.147856,
@@ -2440,7 +2440,7 @@
       "power": "360 kW",
       "type": "CCS2",
       "price": "0.9 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.635002,
@@ -2452,7 +2452,7 @@
       "power": "360 kW",
       "type": "CCS2",
       "price": "0.9 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.635023,
@@ -2464,7 +2464,7 @@
       "power": "360 kW",
       "type": "CCS2",
       "price": "0.9 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.635044,
@@ -2476,7 +2476,7 @@
       "power": "360 kW",
       "type": "CCS2",
       "price": "0.9 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.686079,
@@ -2488,7 +2488,7 @@
       "power": "160 kW",
       "type": "CCS2, GBT",
       "price": "0.9 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.995183,
@@ -2500,7 +2500,7 @@
       "power": "160 kW",
       "type": "CCS2, GBT",
       "price": "0.9 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.564817,
@@ -2512,7 +2512,7 @@
       "power": "160 kW",
       "type": "CCS2, GBT",
       "price": "0.9 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 42.464485,
@@ -2524,7 +2524,7 @@
       "power": "22 kW",
       "type": "Type 2",
       "price": "1.25 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 42.464542,
@@ -2536,7 +2536,7 @@
       "power": "22 kW",
       "type": "Type 2",
       "price": "1.25 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.717474,
@@ -2548,7 +2548,7 @@
       "power": "11 kW",
       "type": "Type 2",
       "price": "სტანდარტული ტარიფი",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.69303,
@@ -2560,7 +2560,7 @@
       "power": "22 kW",
       "type": "Type 2",
       "price": "სტანდარტული ტარიფი",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.711069,
@@ -2572,7 +2572,7 @@
       "power": "22 kW",
       "type": "Type 2",
       "price": "სტანდარტული ტარიფი",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.711164,
@@ -2584,7 +2584,7 @@
       "power": "22 kW",
       "type": "Type 2",
       "price": "სტანდარტული ტარიფი",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.71127,
@@ -2596,7 +2596,7 @@
       "power": "22 kW",
       "type": "Type 2",
       "price": "სტანდარტული ტარიფი",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.711058,
@@ -2608,7 +2608,7 @@
       "power": "22 kW",
       "type": "Type 2",
       "price": "სტანდარტული ტარიფი",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.711735,
@@ -2620,7 +2620,7 @@
       "power": "22 kW",
       "type": "Type 2",
       "price": "სტანდარტული ტარიფი",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.70092,
@@ -2632,7 +2632,7 @@
       "power": "22 kW",
       "type": "Type 2",
       "price": "სტანდარტული ტარიფი",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.766946,
@@ -2644,19 +2644,19 @@
       "power": "22 kW",
       "type": "Type 2",
       "price": "სტანდარტული ტარიფი",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.837067,
       "lng": 43.387647,
-      "name": "ბორჯომ��, სასტუმრო \"Crowne Plaza\" ბორჯომი",
-      "city": "ბორჯომ��",
+      "name": "ბორჯომი, სასტუმრო \"Crowne Plaza\" ბორჯომი",
+      "city": "ბორჯომი",
       "address": "სასტუმრო \"Crowne Plaza\" ბორჯომი",
       "operator": "espace",
       "power": "22 kW",
       "type": "Type 2",
       "price": "სტანდარტული ტარიფი",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.949439,
@@ -2668,7 +2668,7 @@
       "power": "22 kW",
       "type": "Type 2",
       "price": "სტანდარტული ტარიფი",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.94926,
@@ -2680,7 +2680,7 @@
       "power": "22 kW",
       "type": "Type 2",
       "price": "სტანდარტული ტარიფი",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.701187,
@@ -2692,7 +2692,7 @@
       "power": "22 kW",
       "type": "Type 2",
       "price": "სტანდარტული ტარიფი",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.70121,
@@ -2704,7 +2704,7 @@
       "power": "22 kW",
       "type": "Type 2",
       "price": "სტანდარტული ტარიფი",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.700863,
@@ -2716,7 +2716,7 @@
       "power": "22 kW",
       "type": "Type 2",
       "price": "სტანდარტული ტარიფი",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.688212,
@@ -2728,7 +2728,7 @@
       "power": "50 kW",
       "type": "CCS2, CHAdeMO",
       "price": "სტანდარტული ტარიფი",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.688218,
@@ -2740,7 +2740,7 @@
       "power": "22 kW",
       "type": "Type 2",
       "price": "სტანდარტული ტარიფი",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.740462,
@@ -2752,19 +2752,19 @@
       "power": "22 kW",
       "type": "Type 2",
       "price": "სტანდარტული ტარიფი",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 42.163983,
       "lng": 42.347441,
-      "name": "სამტ���ედია, სამტრედიის მუნიციპალიტეტის მერია",
-      "city": "სამტ���ედია",
+      "name": "სამტრედია, სამტრედიის მუნიციპალიტეტის მერია",
+      "city": "სამტრედია",
       "address": "სამტრედიის მუნიციპალიტეტის მერია",
       "operator": "espace",
       "power": "22 kW",
       "type": "Type 2",
       "price": "0.5 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.564661,
@@ -2776,7 +2776,7 @@
       "power": "22 kW",
       "type": "Type 2",
       "price": "სტანდარტული ტარიფი",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.654361,
@@ -2788,7 +2788,7 @@
       "power": "22 kW",
       "type": "Type 2",
       "price": "0.6 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.654396,
@@ -2800,7 +2800,7 @@
       "power": "22 kW",
       "type": "Type 2",
       "price": "0.6 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.656624,
@@ -2812,7 +2812,7 @@
       "power": "22 kW",
       "type": "Type 2",
       "price": "0.6 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.656679,
@@ -2824,7 +2824,7 @@
       "power": "22 kW",
       "type": "Type 2",
       "price": "0.6 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.800414,
@@ -2836,7 +2836,7 @@
       "power": "90 kW",
       "type": "CCS2, GBT, Type 2",
       "price": "0.6 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.636735,
@@ -2848,7 +2848,7 @@
       "power": "22 kW",
       "type": "Type 2",
       "price": "0.65 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.636741,
@@ -2860,19 +2860,19 @@
       "power": "22 kW",
       "type": "Type 2",
       "price": "0.65 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.769893,
       "lng": 44.76818,
-      "name": "თბილისი, ტოტალ 100 / ეკოგაზი, აღმაშენებლის ხეივანი",
+      "name": "თბილისი, ტოტალ 100 / ეკოგაზი, აღმაშ��ნებლის ხეივანი",
       "city": "თბილისი",
-      "address": "ტოტალ 100 / ეკოგაზი, აღმაშენებლის ხეივანი",
+      "address": "ტოტალ 100 / ეკოგაზი, აღმაშ��ნებლის ხეივანი",
       "operator": "espace",
       "power": "120 kW",
       "type": "CCS2, GBT",
       "price": "0.6 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.687331,
@@ -2884,7 +2884,7 @@
       "power": "120 kW",
       "type": "CCS2, GBT",
       "price": "0.6 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 42.251075,
@@ -2896,7 +2896,7 @@
       "power": "120 kW",
       "type": "CCS2, GBT",
       "price": "0.72 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.672986,
@@ -2908,31 +2908,31 @@
       "power": "120 kW",
       "type": "CCS2, GBT",
       "price": "0.6 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.732657,
       "lng": 44.739424,
-      "name": "თბილისი, ეკო გაზი, ��მაშუკელის ქუჩა",
+      "name": "თბილისი, ეკო გაზი, ამაშუკელის ქუჩა",
       "city": "თბილისი",
-      "address": "ეკო გაზი, ��მაშუკელის ქუჩა",
+      "address": "ეკო გაზი, ამაშუკელის ქუჩა",
       "operator": "espace",
       "power": "120 kW",
       "type": "CCS2, GBT",
       "price": "0.65 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.940018,
       "lng": 41.775696,
-      "name": "ბათუმი, ბლექ სი არე���ა, მარჯვენა დამტენი",
+      "name": "ბათუმი, ბლექ სი ა���ენა, მარჯვენა დამტენი",
       "city": "ბათუმი",
-      "address": "ბლექ სი არე���ა, მარჯვენა დამტენი",
+      "address": "ბლექ სი ა���ენა, მარჯვენა დამტენი",
       "operator": "espace",
       "power": "120 kW",
       "type": "CCS2, GBT",
       "price": "0.75 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.940261,
@@ -2944,7 +2944,7 @@
       "power": "120 kW",
       "type": "CCS2, GBT",
       "price": "0.75 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.788947,
@@ -2956,7 +2956,7 @@
       "power": "120 kW",
       "type": "CCS2, GBT",
       "price": "0.6 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.628085,
@@ -2968,7 +2968,7 @@
       "power": "120 kW",
       "type": "CCS2, GBT",
       "price": "0.72 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.568509,
@@ -2980,7 +2980,7 @@
       "power": "120 kW",
       "type": "CCS2, GBT",
       "price": "0.7 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.568564,
@@ -2992,7 +2992,7 @@
       "power": "22 kW",
       "type": "Type 2",
       "price": "0.6 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.380962,
@@ -3004,7 +3004,7 @@
       "power": "22 kW",
       "type": "Type 2",
       "price": "0.7 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.768906,
@@ -3016,7 +3016,7 @@
       "power": "120 kW",
       "type": "CCS1",
       "price": "0.65 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.768969,
@@ -3028,7 +3028,7 @@
       "power": "300 kW",
       "type": "CCS2, CHAdeMO",
       "price": "0.65 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.683565,
@@ -3040,7 +3040,7 @@
       "power": "22 kW",
       "type": "Type 2",
       "price": "0.45 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.780471,
@@ -3052,7 +3052,7 @@
       "power": "120 kW",
       "type": "CCS2, GBT",
       "price": "0.75 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 42.016309,
@@ -3064,7 +3064,7 @@
       "power": "160 kW",
       "type": "CCS2, GBT",
       "price": "0.75 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.726366,
@@ -3076,19 +3076,19 @@
       "power": "120 kW",
       "type": "CCS2, GBT",
       "price": "0.6 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.769918,
       "lng": 44.778964,
-      "name": "თბილისი, Teison სწრაფი დამტენი, ელექტრ�� სადგური \"სოკარი\", ა. ბელიაშვილის ქუჩა, მარჯვენა დამტენი",
+      "name": "თბილისი, Teison სწრაფი დამტენი, ელექტრო სადგური \"სოკარი\", ა. ბელიაშვილის ქუჩა, მარჯვენა დამტენი",
       "city": "თბილისი",
-      "address": "Teison სწრაფი დამტენი, ელექტრ�� სადგური \"სოკარი\", ა. ბელიაშვილის ქუჩა, მარჯვენა დამტენი",
+      "address": "Teison სწრაფი დამტენი, ელექტრო სადგური \"სოკარი\", ა. ბელიაშვილის ქუჩა, მარჯვენა დამტენი",
       "operator": "espace",
       "power": "120 kW",
       "type": "CCS2, GBT",
       "price": "0.75 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.769821,
@@ -3100,7 +3100,7 @@
       "power": "120 kW",
       "type": "CCS2, GBT",
       "price": "0.75 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 42.173389,
@@ -3112,7 +3112,7 @@
       "power": "160 kW",
       "type": "CCS2, GBT",
       "price": "0.75 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 42.173456,
@@ -3124,7 +3124,7 @@
       "power": "160 kW",
       "type": "CCS2, GBT",
       "price": "0.75 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 42.173518,
@@ -3136,7 +3136,7 @@
       "power": "160 kW",
       "type": "CCS2, GBT",
       "price": "0.75 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 42.149499,
@@ -3148,7 +3148,7 @@
       "power": "22 kW",
       "type": "Type 2",
       "price": "0.6 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 42.149457,
@@ -3160,7 +3160,7 @@
       "power": "22 kW",
       "type": "Type 2",
       "price": "0.6 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.769697,
@@ -3172,7 +3172,7 @@
       "power": "22 kW",
       "type": "Type 2",
       "price": "0.6 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.76968,
@@ -3184,19 +3184,19 @@
       "power": "22 kW",
       "type": "Type 2",
       "price": "0.6 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.677775,
       "lng": 44.880617,
-      "name": "გორ���, გ. ლორთქიფანიძის ქ. #21, სამგორი",
-      "city": "გორ���",
+      "name": "გორი, გ. ლორთქიფანიძის ქ. #21, სამგორი",
+      "city": "გორი",
       "address": "გ. ლორთქიფანიძის ქ. #21, სამგორი",
       "operator": "espace",
       "power": "120 kW",
       "type": "CCS2, GBT",
       "price": "0.6 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.63681,
@@ -3208,7 +3208,7 @@
       "power": "120 kW",
       "type": "CCS2, GBT",
       "price": "0.7 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 42.016181,
@@ -3220,7 +3220,7 @@
       "power": "160 kW",
       "type": "CCS2, GBT",
       "price": "0.75 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 42.016197,
@@ -3232,7 +3232,7 @@
       "power": "160 kW",
       "type": "CCS2, GBT",
       "price": "0.75 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.649988,
@@ -3244,7 +3244,7 @@
       "power": "200 kW",
       "type": "CCS2, GBT",
       "price": "0.75 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 42.182619,
@@ -3256,7 +3256,7 @@
       "power": "240 kW",
       "type": "CCS2, GBT",
       "price": "0.7 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.904779,
@@ -3268,7 +3268,7 @@
       "power": "120 kW",
       "type": "CCS2, GBT",
       "price": "0.75 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.904774,
@@ -3280,7 +3280,7 @@
       "power": "120 kW",
       "type": "CCS2, GBT",
       "price": "0.75 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.785274,
@@ -3292,19 +3292,19 @@
       "power": "180 kW",
       "type": "CCS2, GBT",
       "price": "0.6 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.786922,
       "lng": 44.802073,
-      "name": "თბ��ლისი, სწრაფი დამტენი, \"გამა გაზი\" , შეშელიძის ქუჩა N32, მარცხენა",
-      "city": "თბ��ლისი",
+      "name": "თბილისი, სწრაფი დამტენი, \"გამა გაზი\" , შეშელიძის ქუჩა N32, მარცხენა",
+      "city": "თბილისი",
       "address": "სწრაფი დამტენი, \"გამა გაზი\" , შეშელიძის ქუჩა N32, მარცხენა",
       "operator": "espace",
       "power": "120 kW",
       "type": "CCS2, GBT",
       "price": "0.6 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.786811,
@@ -3316,7 +3316,7 @@
       "power": "120 kW",
       "type": "CCS2, GBT",
       "price": "0.6 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.732238,
@@ -3328,7 +3328,7 @@
       "power": "180 kW",
       "type": "CCS2, GBT",
       "price": "0.6 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.747043,
@@ -3340,7 +3340,7 @@
       "power": "180 kW",
       "type": "CCS2, GBT",
       "price": "0.6 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.672186,
@@ -3352,7 +3352,7 @@
       "power": "80 kW",
       "type": "CCS1, CHAdeMO",
       "price": "0.6 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.672245,
@@ -3364,7 +3364,7 @@
       "power": "120 kW",
       "type": "CCS2, GBT",
       "price": "0.6 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.787019,
@@ -3376,7 +3376,7 @@
       "power": "120 kW",
       "type": "CCS2, GBT",
       "price": "0.6 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.787136,
@@ -3388,7 +3388,7 @@
       "power": "120 kW",
       "type": "CCS2, GBT",
       "price": "0.6 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.672303,
@@ -3400,7 +3400,7 @@
       "power": "22 kW",
       "type": "Type 2",
       "price": "სტანდარტული ტარიფი",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.672291,
@@ -3412,7 +3412,7 @@
       "power": "22 kW",
       "type": "Type 2",
       "price": "სტანდარტული ტარიფი",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.690574,
@@ -3423,7 +3423,7 @@
       "power": "47 kW",
       "type": "CCS2, GBT",
       "price": "0.76 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.713955,
@@ -3434,7 +3434,7 @@
       "power": "47 kW",
       "type": "CCS2, GBT",
       "price": "0.76 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.686292,
@@ -3445,7 +3445,7 @@
       "power": "47 kW",
       "type": "CCS2, GBT",
       "price": "0.76 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.766184,
@@ -3456,7 +3456,7 @@
       "power": "47 kW",
       "type": "CCS2, GBT",
       "price": "0.76 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.727894,
@@ -3467,7 +3467,7 @@
       "power": "200 kW",
       "type": "CCS2, GBT",
       "price": "0.95 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.707772,
@@ -3478,7 +3478,7 @@
       "power": "47 kW",
       "type": "CCS2, GBT",
       "price": "0.76 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.727399,
@@ -3489,7 +3489,7 @@
       "power": "47 kW",
       "type": "CCS2, GBT",
       "price": "0.76 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.725099,
@@ -3500,7 +3500,7 @@
       "power": "47 kW",
       "type": "CCS2, GBT",
       "price": "0.76 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.703269,
@@ -3511,7 +3511,7 @@
       "power": "47 kW",
       "type": "CCS2, GBT",
       "price": "0.76 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.693486,
@@ -3522,7 +3522,7 @@
       "power": "40 kW",
       "type": "GBT",
       "price": "0.76 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.693238,
@@ -3533,7 +3533,7 @@
       "power": "47 kW",
       "type": "CCS2, GBT",
       "price": "0.76 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.707071,
@@ -3544,7 +3544,7 @@
       "power": "47 kW",
       "type": "CCS2, GBT",
       "price": "0.76 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.708031,
@@ -3555,7 +3555,7 @@
       "power": "47 kW",
       "type": "CCS2, GBT",
       "price": "0.76 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.673262,
@@ -3566,7 +3566,7 @@
       "power": "47 kW",
       "type": "CCS2, GBT",
       "price": "0.76 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.717712,
@@ -3577,7 +3577,7 @@
       "power": "47 kW",
       "type": "CCS2, GBT",
       "price": "0.76 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.765834,
@@ -3588,7 +3588,7 @@
       "power": "47 kW",
       "type": "CCS2, GBT",
       "price": "0.76 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.730557,
@@ -3599,7 +3599,7 @@
       "power": "47 kW",
       "type": "CCS2, GBT",
       "price": "0.76 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.704503,
@@ -3610,7 +3610,7 @@
       "power": "47 kW",
       "type": "CCS2, GBT",
       "price": "0.76 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.727213,
@@ -3621,7 +3621,7 @@
       "power": "47 kW",
       "type": "CCS2, GBT",
       "price": "0.76 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.755051,
@@ -3632,7 +3632,7 @@
       "power": "47 kW",
       "type": "CCS2, GBT",
       "price": "0.76 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.746514,
@@ -3643,7 +3643,7 @@
       "power": "47 kW",
       "type": "CCS2, GBT",
       "price": "0.76 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.729817,
@@ -3654,7 +3654,7 @@
       "power": "47 kW",
       "type": "CCS2, GBT",
       "price": "0.76 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.748602,
@@ -3665,7 +3665,7 @@
       "power": "47 kW",
       "type": "CCS2, GBT",
       "price": "0.76 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.79202,
@@ -3676,18 +3676,18 @@
       "power": "47 kW",
       "type": "CCS2, GBT",
       "price": "0.76 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.701121,
       "lng": 44.881325,
-      "name": "თბი���ისი",
-      "city": "თბი���ისი",
+      "name": "თბილისი",
+      "city": "თბილისი",
       "operator": "evpower",
       "power": "47 kW",
       "type": "CCS2, GBT",
       "price": "0.76 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.708874,
@@ -3698,7 +3698,7 @@
       "power": "47 kW",
       "type": "CCS2, GBT",
       "price": "0.76 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.730069,
@@ -3709,7 +3709,7 @@
       "power": "47 kW",
       "type": "CCS2, GBT",
       "price": "0.76 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.807071,
@@ -3720,7 +3720,7 @@
       "power": "47 kW",
       "type": "CCS2, GBT",
       "price": "0.76 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.732007,
@@ -3731,7 +3731,7 @@
       "power": "47 kW",
       "type": "CCS2, GBT",
       "price": "0.76 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.709501,
@@ -3742,7 +3742,7 @@
       "power": "47 kW",
       "type": "CCS2, GBT",
       "price": "0.76 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.687778,
@@ -3753,7 +3753,7 @@
       "power": "47 kW",
       "type": "CCS2, GBT",
       "price": "0.76 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.715768,
@@ -3764,7 +3764,7 @@
       "power": "47 kW",
       "type": "CCS2, GBT",
       "price": "0.76 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.785393,
@@ -3775,7 +3775,7 @@
       "power": "47 kW",
       "type": "CCS2, GBT",
       "price": "0.76 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.688226,
@@ -3786,7 +3786,7 @@
       "power": "120 kW",
       "type": "CCS2, GBT",
       "price": "0.77 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.689952,
@@ -3797,7 +3797,7 @@
       "power": "47 kW",
       "type": "CCS2, GBT",
       "price": "0.76 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.724253,
@@ -3808,7 +3808,7 @@
       "power": "47 kW",
       "type": "CCS2, GBT",
       "price": "0.76 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.708266,
@@ -3819,7 +3819,7 @@
       "power": "47 kW",
       "type": "CCS2, GBT",
       "price": "0.76 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.724453,
@@ -3830,7 +3830,7 @@
       "power": "47 kW",
       "type": "CCS2, GBT",
       "price": "0.76 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.688528,
@@ -3841,7 +3841,7 @@
       "power": "47 kW",
       "type": "CCS2, GBT",
       "price": "0.76 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.699088,
@@ -3852,7 +3852,7 @@
       "power": "47 kW",
       "type": "CCS2, GBT",
       "price": "0.76 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.71024,
@@ -3863,7 +3863,7 @@
       "power": "47 kW",
       "type": "CCS2, GBT",
       "price": "0.76 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.676259,
@@ -3874,18 +3874,18 @@
       "power": "200 kW",
       "type": "CCS2, GBT",
       "price": "0.95 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 42.20336,
       "lng": 42.846522,
-      "name": "თბ���ლისი",
-      "city": "თბ���ლისი",
+      "name": "თბილისი",
+      "city": "თბილისი",
       "operator": "evpower",
       "power": "200 kW",
       "type": "CCS2, GBT",
       "price": "0.95 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.708263,
@@ -3896,7 +3896,7 @@
       "power": "47 kW",
       "type": "CCS2, GBT",
       "price": "0.76 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.77823,
@@ -3907,7 +3907,7 @@
       "power": "47 kW",
       "type": "CCS2, GBT",
       "price": "0.76 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.707235,
@@ -3918,7 +3918,7 @@
       "power": "47 kW",
       "type": "CCS2, GBT",
       "price": "0.76 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.705944,
@@ -3929,7 +3929,7 @@
       "power": "47 kW",
       "type": "CCS2, GBT",
       "price": "0.76 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.788519,
@@ -3940,7 +3940,7 @@
       "power": "47 kW",
       "type": "CCS2, GBT",
       "price": "0.76 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.706775,
@@ -3951,7 +3951,7 @@
       "power": "47 kW",
       "type": "CCS2, GBT",
       "price": "0.76 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.739545,
@@ -3962,7 +3962,7 @@
       "power": "47 kW",
       "type": "CCS2, GBT",
       "price": "0.76 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.708766,
@@ -3973,7 +3973,7 @@
       "power": "47 kW",
       "type": "CCS2, GBT",
       "price": "0.76 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 42.173399,
@@ -3984,7 +3984,7 @@
       "power": "200 kW",
       "type": "CCS2, GBT",
       "price": "0.95 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.728497,
@@ -3995,7 +3995,7 @@
       "power": "200 kW",
       "type": "CCS2, GBT",
       "price": "0.95 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.707575,
@@ -4006,7 +4006,7 @@
       "power": "47 kW",
       "type": "CCS2, GBT",
       "price": "0.76 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.728672,
@@ -4017,7 +4017,7 @@
       "power": "40 kW",
       "type": "CCS2, GBT",
       "price": "0.76 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.72427,
@@ -4028,7 +4028,7 @@
       "power": "47 kW",
       "type": "CCS2, GBT",
       "price": "0.76 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.794068,
@@ -4039,7 +4039,7 @@
       "power": "47 kW",
       "type": "CCS2, GBT",
       "price": "0.76 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.726528,
@@ -4050,7 +4050,7 @@
       "power": "47 kW",
       "type": "CCS2, GBT",
       "price": "0.76 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.723887,
@@ -4061,7 +4061,7 @@
       "power": "47 kW",
       "type": "CCS2, GBT",
       "price": "0.76 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.76241,
@@ -4072,7 +4072,7 @@
       "power": "47 kW",
       "type": "CCS2, GBT",
       "price": "0.76 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.721561,
@@ -4083,7 +4083,7 @@
       "power": "47 kW",
       "type": "CCS2, GBT",
       "price": "0.76 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.70886,
@@ -4095,7 +4095,7 @@
       "power": "120 kW",
       "type": "CCS2, GBT, Type 2",
       "price": "0.68 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.637963,
@@ -4106,7 +4106,7 @@
       "power": "60 kW",
       "type": "CCS2, GBT, Type 1",
       "price": "0.68 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.562879,
@@ -4117,7 +4117,7 @@
       "power": "80 kW",
       "type": "CCS2, GBT, Type 2",
       "price": "0.68 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.703732,
@@ -4128,7 +4128,7 @@
       "power": "120 kW",
       "type": "CCS2, GBT, Type 2",
       "price": "0.68 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.801634,
@@ -4139,7 +4139,7 @@
       "power": "120 kW",
       "type": "CCS2, GBT, Type 2",
       "price": "0.68 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.994174,
@@ -4150,7 +4150,7 @@
       "power": "120 kW",
       "type": "CCS2, GBT, Type 2",
       "price": "0.68 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.638085,
@@ -4162,7 +4162,7 @@
       "power": "22 kW",
       "type": "Type 2",
       "price": "სტანდარტული ტარიფი",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.72451,
@@ -4174,7 +4174,7 @@
       "power": "50 kW",
       "type": "CCS2",
       "price": "სტანდარტული ტარიფი",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.801634,
@@ -4186,7 +4186,7 @@
       "power": "50 kW",
       "type": "CCS2",
       "price": "სტანდარტული ტარიფი",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.990218,
@@ -4198,7 +4198,7 @@
       "power": "22 kW",
       "type": "Type 2",
       "price": "სტანდარტული ტარიფი",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.990218,
@@ -4210,7 +4210,7 @@
       "power": "22 kW",
       "type": "Type 2",
       "price": "სტანდარტული ტარიფი",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.737187,
@@ -4222,7 +4222,7 @@
       "power": "7 kW",
       "type": "Type 2",
       "price": "სტანდარტული ტარიფი",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.703693,
@@ -4234,7 +4234,7 @@
       "power": "7 kW",
       "type": "Type 2",
       "price": "სტანდარტული ტარიფი",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.703693,
@@ -4246,7 +4246,7 @@
       "power": "50 kW",
       "type": "CCS2",
       "price": "სტანდარტული ტარიფი",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.562711,
@@ -4258,7 +4258,7 @@
       "power": "7 kW",
       "type": "Type 2",
       "price": "სტანდარტული ტარიფი",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.562711,
@@ -4270,7 +4270,7 @@
       "power": "50 kW",
       "type": "CCS2",
       "price": "სტანდარტული ტარიფი",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.722082,
@@ -4282,7 +4282,7 @@
       "power": "22 kW",
       "type": "Type 2",
       "price": "სტანდარტული ტარიფი",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 42.650818,
@@ -4294,7 +4294,7 @@
       "power": "22 kW",
       "type": "Type 2",
       "price": "სტანდარტული ტარიფი",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.927471,
@@ -4306,7 +4306,7 @@
       "power": "22 kW",
       "type": "Type 2",
       "price": "სტანდარტული ტარიფი",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.711184,
@@ -4318,7 +4318,7 @@
       "power": "7 kW",
       "type": "Type 2",
       "price": "სტანდარტული ტარიფი",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 42.503802,
@@ -4330,7 +4330,7 @@
       "power": "7 kW",
       "type": "Type 2",
       "price": "სტანდარტული ტარიფი",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.73191,
@@ -4341,7 +4341,7 @@
       "power": "22 kW",
       "type": "Type 2",
       "price": "0.65 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.733112,
@@ -4352,7 +4352,7 @@
       "power": "22 kW",
       "type": "Type 2",
       "price": "0.65 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.709661,
@@ -4363,7 +4363,7 @@
       "power": "22 kW",
       "type": "Type 2",
       "price": "0.65 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.709275,
@@ -4374,7 +4374,7 @@
       "power": "22 kW",
       "type": "Type 2",
       "price": "0.65 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.724862,
@@ -4385,7 +4385,7 @@
       "power": "22 kW",
       "type": "Type 2",
       "price": "0.65 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.689463,
@@ -4396,7 +4396,7 @@
       "power": "22 kW",
       "type": "Type 2",
       "price": "0.65 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.692719,
@@ -4407,7 +4407,7 @@
       "power": "22 kW",
       "type": "Type 2",
       "price": "0.5 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.785382,
@@ -4418,7 +4418,7 @@
       "power": "22 kW",
       "type": "Type 2",
       "price": "0.65 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.688974,
@@ -4429,7 +4429,7 @@
       "power": "22 kW",
       "type": "Type 2",
       "price": "0.65 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.692165,
@@ -4440,7 +4440,7 @@
       "power": "22 kW",
       "type": "Type 2",
       "price": "0.65 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.724714,
@@ -4451,7 +4451,7 @@
       "power": "22 kW",
       "type": "Type 2",
       "price": "0.65 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.80334,
@@ -4462,7 +4462,7 @@
       "power": "22 kW",
       "type": "Type 2",
       "price": "0.65 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.653955,
@@ -4473,7 +4473,7 @@
       "power": "60 kW",
       "type": "CCS2, GBT",
       "price": "0.8 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.703166,
@@ -4484,7 +4484,7 @@
       "power": "60 kW",
       "type": "CCS2, GBT",
       "price": "0.8 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.645203,
@@ -4495,7 +4495,7 @@
       "power": "22 kW",
       "type": "Type 2",
       "price": "0.65 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.798688,
@@ -4506,7 +4506,7 @@
       "power": "60 kW",
       "type": "CCS2, GBT",
       "price": "0.8 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.722043,
@@ -4517,7 +4517,7 @@
       "power": "30 kW",
       "type": "CCS2, GBT",
       "price": "0.8 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.750191,
@@ -4528,7 +4528,7 @@
       "power": "120 kW",
       "type": "CCS2, GBT",
       "price": "0.8 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.689361,
@@ -4539,7 +4539,7 @@
       "power": "22 kW",
       "type": "Type 2",
       "price": "0.5 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.677515,
@@ -4550,7 +4550,7 @@
       "power": "60 kW",
       "type": "CCS2, GBT",
       "price": "0.8 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.794751,
@@ -4561,7 +4561,7 @@
       "power": "120 kW",
       "type": "CCS2, GBT",
       "price": "0.8 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.716245,
@@ -4572,7 +4572,7 @@
       "power": "30 kW",
       "type": "CCS2, GBT",
       "price": "0.8 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.724294,
@@ -4583,7 +4583,7 @@
       "power": "30 kW",
       "type": "CCS2, GBT",
       "price": "0.8 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.720565,
@@ -4594,7 +4594,7 @@
       "power": "30 kW",
       "type": "CCS2, GBT",
       "price": "0.8 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.724606,
@@ -4605,7 +4605,7 @@
       "power": "120 kW",
       "type": "CCS2, GBT",
       "price": "0.8 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.70314,
@@ -4616,7 +4616,7 @@
       "power": "22 kW",
       "type": "Type 2",
       "price": "0.65 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.713945,
@@ -4627,7 +4627,7 @@
       "power": "30 kW",
       "type": "CCS2, GBT",
       "price": "0.8 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.690091,
@@ -4638,7 +4638,7 @@
       "power": "30 kW",
       "type": "CCS2, GBT",
       "price": "0.8 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.697924,
@@ -4649,7 +4649,7 @@
       "power": "30 kW",
       "type": "CCS2, GBT",
       "price": "0.8 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.705901,
@@ -4660,7 +4660,7 @@
       "power": "120 kW",
       "type": "CCS2, GBT",
       "price": "0.8 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.710528,
@@ -4671,7 +4671,7 @@
       "power": "30 kW",
       "type": "CCS2, GBT",
       "price": "0.8 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.698538,
@@ -4682,7 +4682,7 @@
       "power": "30 kW",
       "type": "CCS2, GBT",
       "price": "0.55 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.702384,
@@ -4693,7 +4693,7 @@
       "power": "30 kW",
       "type": "CCS2, GBT",
       "price": "0.8 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.707361,
@@ -4704,7 +4704,7 @@
       "power": "22 kW",
       "type": "Type 2",
       "price": "0.65 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.669181,
@@ -4715,7 +4715,7 @@
       "power": "30 kW",
       "type": "CCS2, GBT",
       "price": "0.8 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.727434,
@@ -4726,7 +4726,7 @@
       "power": "30 kW",
       "type": "CCS2, GBT",
       "price": "0.8 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.727011,
@@ -4737,7 +4737,7 @@
       "power": "30 kW",
       "type": "CCS2, GBT",
       "price": "0.8 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.724713,
@@ -4748,7 +4748,7 @@
       "power": "30 kW",
       "type": "CCS2, GBT",
       "price": "0.8 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.729869,
@@ -4759,7 +4759,7 @@
       "power": "30 kW",
       "type": "CCS2, GBT",
       "price": "0.8 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.725852,
@@ -4770,7 +4770,7 @@
       "power": "30 kW",
       "type": "CCS2, GBT",
       "price": "0.8 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.709069,
@@ -4781,7 +4781,7 @@
       "power": "22 kW",
       "type": "Type 2",
       "price": "0.65 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.727115,
@@ -4792,7 +4792,7 @@
       "power": "30 kW",
       "type": "CCS2, GBT",
       "price": "0.8 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.685613,
@@ -4803,7 +4803,7 @@
       "power": "30 kW",
       "type": "CCS2, GBT",
       "price": "0.8 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.690193,
@@ -4814,7 +4814,7 @@
       "power": "30 kW",
       "type": "CCS2, GBT",
       "price": "0.8 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.695667,
@@ -4825,7 +4825,7 @@
       "power": "30 kW",
       "type": "CCS2, GBT",
       "price": "0.8 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.744957,
@@ -4836,7 +4836,7 @@
       "power": "30 kW",
       "type": "CCS2, GBT",
       "price": "0.8 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.73677,
@@ -4847,7 +4847,7 @@
       "power": "30 kW",
       "type": "CCS2, GBT",
       "price": "0.8 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.730713,
@@ -4858,7 +4858,7 @@
       "power": "30 kW",
       "type": "CCS2, GBT",
       "price": "0.8 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.738888,
@@ -4869,7 +4869,7 @@
       "power": "120 kW",
       "type": "CCS2, GBT",
       "price": "0.8 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.725815,
@@ -4880,7 +4880,7 @@
       "power": "30 kW",
       "type": "CCS2, GBT",
       "price": "0.8 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.728128,
@@ -4891,7 +4891,7 @@
       "power": "30 kW",
       "type": "CCS2, GBT",
       "price": "0.55 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.707901,
@@ -4902,7 +4902,7 @@
       "power": "30 kW",
       "type": "CCS2, GBT",
       "price": "0.8 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.708562,
@@ -4913,7 +4913,7 @@
       "power": "30 kW",
       "type": "CCS2, GBT",
       "price": "0.8 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.70711,
@@ -4924,7 +4924,7 @@
       "power": "30 kW",
       "type": "CCS2, GBT",
       "price": "0.8 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.706005,
@@ -4935,7 +4935,7 @@
       "power": "30 kW",
       "type": "CCS2, GBT",
       "price": "0.8 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.709202,
@@ -4946,7 +4946,7 @@
       "power": "30 kW",
       "type": "CCS2, GBT",
       "price": "0.8 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.69722,
@@ -4957,7 +4957,7 @@
       "power": "30 kW",
       "type": "CCS2, GBT",
       "price": "0.8 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.787436,
@@ -4968,7 +4968,7 @@
       "power": "30 kW",
       "type": "CCS2, GBT",
       "price": "0.8 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.741061,
@@ -4979,7 +4979,7 @@
       "power": "30 kW",
       "type": "CCS2, GBT",
       "price": "0.8 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.708081,
@@ -4990,7 +4990,7 @@
       "power": "30 kW",
       "type": "CCS2, GBT",
       "price": "0.8 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.690027,
@@ -5001,7 +5001,7 @@
       "power": "30 kW",
       "type": "CCS2, GBT",
       "price": "0.8 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.776552,
@@ -5012,7 +5012,7 @@
       "power": "30 kW",
       "type": "CCS2, GBT",
       "price": "0.8 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.731222,
@@ -5023,7 +5023,7 @@
       "power": "30 kW",
       "type": "CCS2, GBT",
       "price": "0.8 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.704961,
@@ -5034,7 +5034,7 @@
       "power": "30 kW",
       "type": "CCS2, GBT",
       "price": "0.8 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.710154,
@@ -5045,7 +5045,7 @@
       "power": "120 kW",
       "type": "CCS2, GBT",
       "price": "0.8 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.709228,
@@ -5056,7 +5056,7 @@
       "power": "30 kW",
       "type": "CCS2, GBT",
       "price": "0.8 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.706944,
@@ -5067,7 +5067,7 @@
       "power": "30 kW",
       "type": "CCS2, GBT",
       "price": "0.8 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.706266,
@@ -5078,7 +5078,7 @@
       "power": "30 kW",
       "type": "CCS2, GBT",
       "price": "0.8 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.70325,
@@ -5089,7 +5089,7 @@
       "power": "30 kW",
       "type": "CCS2, GBT",
       "price": "0.55 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.703534,
@@ -5100,7 +5100,7 @@
       "power": "60 kW",
       "type": "CCS2, GBT",
       "price": "0.8 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.695443,
@@ -5111,7 +5111,7 @@
       "power": "60 kW",
       "type": "CCS2, GBT",
       "price": "0.8 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.689709,
@@ -5122,7 +5122,7 @@
       "power": "30 kW",
       "type": "CCS2, GBT",
       "price": "0.8 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.721529,
@@ -5133,7 +5133,7 @@
       "power": "60 kW",
       "type": "CCS2, GBT",
       "price": "0.8 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.727461,
@@ -5144,7 +5144,7 @@
       "power": "30 kW",
       "type": "CCS2, GBT",
       "price": "0.8 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.729267,
@@ -5155,7 +5155,7 @@
       "power": "30 kW",
       "type": "CCS2, GBT",
       "price": "0.8 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.727573,
@@ -5166,7 +5166,7 @@
       "power": "60 kW",
       "type": "CCS2, GBT",
       "price": "0.8 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.72496,
@@ -5177,7 +5177,7 @@
       "power": "30 kW",
       "type": "CCS2, GBT",
       "price": "0.8 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.729055,
@@ -5188,7 +5188,7 @@
       "power": "30 kW",
       "type": "CCS2, GBT",
       "price": "0.8 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.716952,
@@ -5199,7 +5199,7 @@
       "power": "30 kW",
       "type": "CCS2, GBT",
       "price": "0.8 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.743152,
@@ -5210,7 +5210,7 @@
       "power": "30 kW",
       "type": "CCS2, GBT",
       "price": "0.8 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.672395,
@@ -5221,7 +5221,7 @@
       "power": "30 kW",
       "type": "CCS2, GBT",
       "price": "0.8 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.693714,
@@ -5232,7 +5232,7 @@
       "power": "30 kW",
       "type": "CCS2, GBT",
       "price": "0.8 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.708696,
@@ -5243,7 +5243,7 @@
       "power": "30 kW",
       "type": "CCS2, GBT",
       "price": "0.8 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.769002,
@@ -5254,7 +5254,7 @@
       "power": "60 kW",
       "type": "CCS2, GBT",
       "price": "0.8 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.743524,
@@ -5265,7 +5265,7 @@
       "power": "30 kW",
       "type": "CCS2, GBT",
       "price": "0.55 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.731113,
@@ -5276,7 +5276,7 @@
       "power": "30 kW",
       "type": "CCS2, GBT",
       "price": "0.8 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.729498,
@@ -5287,7 +5287,7 @@
       "power": "30 kW",
       "type": "CCS2, GBT",
       "price": "0.55 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.707763,
@@ -5298,7 +5298,7 @@
       "power": "30 kW",
       "type": "CCS2, GBT",
       "price": "0.8 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.707473,
@@ -5309,7 +5309,7 @@
       "power": "30 kW",
       "type": "CCS2, GBT",
       "price": "0.55 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.708685,
@@ -5320,7 +5320,7 @@
       "power": "30 kW",
       "type": "CCS2, GBT",
       "price": "0.8 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.706347,
@@ -5331,7 +5331,7 @@
       "power": "30 kW",
       "type": "CCS2, GBT",
       "price": "0.8 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.708308,
@@ -5342,7 +5342,7 @@
       "power": "30 kW",
       "type": "CCS2, GBT",
       "price": "0.8 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.708491,
@@ -5353,7 +5353,7 @@
       "power": "60 kW",
       "type": "CCS2, GBT",
       "price": "0.8 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.7096,
@@ -5364,7 +5364,7 @@
       "power": "30 kW",
       "type": "CCS2, GBT",
       "price": "0.8 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.710409,
@@ -5375,7 +5375,7 @@
       "power": "30 kW",
       "type": "CCS2, GBT",
       "price": "0.8 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.775786,
@@ -5386,7 +5386,7 @@
       "power": "120 kW",
       "type": "CCS2, GBT",
       "price": "0.8 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.738316,
@@ -5397,7 +5397,7 @@
       "power": "30 kW",
       "type": "CCS2, GBT",
       "price": "0.8 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.733483,
@@ -5408,7 +5408,7 @@
       "power": "60 kW",
       "type": "CCS2, GBT",
       "price": "0.8 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.708059,
@@ -5419,7 +5419,7 @@
       "power": "30 kW",
       "type": "CCS2, GBT",
       "price": "0.8 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.787844,
@@ -5430,7 +5430,7 @@
       "power": "120 kW",
       "type": "CCS2, GBT",
       "price": "0.8 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.798642,
@@ -5441,7 +5441,7 @@
       "power": "120 kW",
       "type": "CCS2, GBT",
       "price": "0.8 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.723463,
@@ -5452,7 +5452,7 @@
       "power": "30 kW",
       "type": "CCS2, GBT",
       "price": "0.8 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.733345,
@@ -5463,7 +5463,7 @@
       "power": "30 kW",
       "type": "CCS2, GBT",
       "price": "0.8 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.727582,
@@ -5474,7 +5474,7 @@
       "power": "30 kW",
       "type": "CCS2, GBT",
       "price": "0.55 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.698488,
@@ -5485,7 +5485,7 @@
       "power": "30 kW",
       "type": "CCS2, GBT",
       "price": "0.8 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.691449,
@@ -5496,7 +5496,7 @@
       "power": "30 kW",
       "type": "CCS2, GBT",
       "price": "0.8 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.710403,
@@ -5507,7 +5507,7 @@
       "power": "30 kW",
       "type": "CCS2, GBT",
       "price": "0.8 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.673217,
@@ -5518,7 +5518,7 @@
       "power": "22 kW",
       "type": "Type 2",
       "price": "0.65 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.740318,
@@ -5529,7 +5529,7 @@
       "power": "60 kW",
       "type": "CCS2, GBT",
       "price": "0.8 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.672936,
@@ -5540,7 +5540,7 @@
       "power": "60 kW",
       "type": "CCS2, GBT",
       "price": "0.8 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.649082,
@@ -5551,7 +5551,7 @@
       "power": "22 kW",
       "type": "Type 2",
       "price": "0.65 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 42.146786,
@@ -5562,7 +5562,7 @@
       "power": "120 kW",
       "type": "CCS2, GBT",
       "price": "0.8 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.707604,
@@ -5573,7 +5573,7 @@
       "power": "30 kW",
       "type": "CCS2, GBT",
       "price": "0.8 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 42.121812,
@@ -5584,7 +5584,7 @@
       "power": "120 kW",
       "type": "CCS2, GBT",
       "price": "0.8 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 42.017495,
@@ -5595,7 +5595,7 @@
       "power": "120 kW",
       "type": "CCS2, GBT",
       "price": "0.8 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 42.017552,
@@ -5606,7 +5606,7 @@
       "power": "120 kW",
       "type": "CCS2, GBT",
       "price": "0.8 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.790738,
@@ -5617,7 +5617,7 @@
       "power": "22 kW",
       "type": "Type 2",
       "price": "0.65 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.723823,
@@ -5628,7 +5628,7 @@
       "power": "30 kW",
       "type": "CCS2, GBT",
       "price": "0.8 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.725382,
@@ -5639,7 +5639,7 @@
       "power": "30 kW",
       "type": "CCS2, GBT",
       "price": "0.8 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.796687,
@@ -5650,7 +5650,7 @@
       "power": "22 kW",
       "type": "Type 2",
       "price": "0.65 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.717388,
@@ -5661,7 +5661,7 @@
       "power": "60 kW",
       "type": "CCS2, GBT",
       "price": "0.8 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.785337,
@@ -5672,7 +5672,7 @@
       "power": "30 kW",
       "type": "CCS2, GBT",
       "price": "0.8 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.788513,
@@ -5683,7 +5683,7 @@
       "power": "60 kW",
       "type": "CCS2, GBT",
       "price": "0.8 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.781938,
@@ -5694,7 +5694,7 @@
       "power": "60 kW",
       "type": "CCS2, GBT",
       "price": "0.8 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.673238,
@@ -5705,7 +5705,7 @@
       "power": "30 kW",
       "type": "CCS2, GBT",
       "price": "0.8 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.757688,
@@ -5716,7 +5716,7 @@
       "power": "60 kW",
       "type": "CCS2, GBT",
       "price": "0.8 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.722888,
@@ -5727,7 +5727,7 @@
       "power": "120 kW",
       "type": "CCS2, GBT",
       "price": "0.8 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.721213,
@@ -5738,7 +5738,7 @@
       "power": "30 kW",
       "type": "CCS2, GBT",
       "price": "0.8 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.739288,
@@ -5749,7 +5749,7 @@
       "power": "22 kW",
       "type": "Type 2",
       "price": "0.65 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.750138,
@@ -5760,7 +5760,7 @@
       "power": "60 kW",
       "type": "CHAdeMO",
       "price": "0.8 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.659972,
@@ -5771,7 +5771,7 @@
       "power": "60 kW",
       "type": "CCS2, GBT",
       "price": "0.8 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.740372,
@@ -5782,7 +5782,7 @@
       "power": "60 kW",
       "type": "CCS2, GBT",
       "price": "0.8 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.762862,
@@ -5793,7 +5793,7 @@
       "power": "30 kW",
       "type": "CCS2, GBT",
       "price": "0.8 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.711738,
@@ -5804,7 +5804,7 @@
       "power": "30 kW",
       "type": "CCS2, GBT",
       "price": "0.8 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.743538,
@@ -5815,7 +5815,7 @@
       "power": "30 kW",
       "type": "CCS2, GBT",
       "price": "0.8 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.725688,
@@ -5826,7 +5826,7 @@
       "power": "30 kW",
       "type": "CCS2, GBT",
       "price": "0.8 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.990313,
@@ -5837,7 +5837,7 @@
       "power": "60 kW",
       "type": "CCS2, GBT",
       "price": "0.8 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.701513,
@@ -5848,7 +5848,7 @@
       "power": "60 kW",
       "type": "CCS2, GBT",
       "price": "0.8 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.989813,
@@ -5858,7 +5858,7 @@
       "power": "60 kW",
       "type": "CCS2, GBT",
       "price": "0.8 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.700038,
@@ -5869,7 +5869,7 @@
       "power": "120 kW",
       "type": "CCS2, GBT",
       "price": "0.8 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.79304,
@@ -5880,7 +5880,7 @@
       "power": "22 kW",
       "type": "Type 2",
       "price": "0.65 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.765211,
@@ -5891,7 +5891,7 @@
       "power": "22 kW",
       "type": "Type 2",
       "price": "0.65 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.794868,
@@ -5902,7 +5902,7 @@
       "power": "22 kW",
       "type": "Type 2",
       "price": "0.5 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.794302,
@@ -5913,7 +5913,7 @@
       "power": "22 kW",
       "type": "Type 2",
       "price": "0.65 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.714379,
@@ -5924,7 +5924,7 @@
       "power": "22 kW",
       "type": "Type 2",
       "price": "0.65 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.713536,
@@ -5935,7 +5935,7 @@
       "power": "22 kW",
       "type": "Type 2",
       "price": "0.5 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.702135,
@@ -5946,7 +5946,7 @@
       "power": "60 kW",
       "type": "CCS2, GBT",
       "price": "0.8 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.70923,
@@ -5957,7 +5957,7 @@
       "power": "22 kW",
       "type": "Type 2",
       "price": "0.65 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.709093,
@@ -5968,7 +5968,7 @@
       "power": "22 kW",
       "type": "Type 2",
       "price": "0.65 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.692666,
@@ -5979,7 +5979,7 @@
       "power": "22 kW",
       "type": "Type 2",
       "price": "0.65 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.709324,
@@ -5990,7 +5990,7 @@
       "power": "22 kW",
       "type": "Type 2",
       "price": "0.65 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.701924,
@@ -6001,7 +6001,7 @@
       "power": "22 kW",
       "type": "Type 2",
       "price": "0.65 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.725472,
@@ -6012,7 +6012,7 @@
       "power": "22 kW",
       "type": "Type 2",
       "price": "0.65 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.720154,
@@ -6023,7 +6023,7 @@
       "power": "22 kW",
       "type": "Type 2",
       "price": "0.65 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.729449,
@@ -6034,7 +6034,7 @@
       "power": "22 kW",
       "type": "Type 2",
       "price": "0.65 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.741076,
@@ -6045,7 +6045,7 @@
       "power": "22 kW",
       "type": "Type 2",
       "price": "0.65 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.740688,
@@ -6056,7 +6056,7 @@
       "power": "22 kW",
       "type": "Type 2",
       "price": "0.65 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.740363,
@@ -6067,7 +6067,7 @@
       "power": "22 kW",
       "type": "Type 2",
       "price": "0.65 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.739801,
@@ -6078,7 +6078,7 @@
       "power": "22 kW",
       "type": "Type 2",
       "price": "0.65 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.739404,
@@ -6089,7 +6089,7 @@
       "power": "22 kW",
       "type": "Type 2",
       "price": "0.65 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.740022,
@@ -6100,7 +6100,7 @@
       "power": "22 kW",
       "type": "Type 2",
       "price": "0.65 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.739135,
@@ -6111,7 +6111,7 @@
       "power": "22 kW",
       "type": "Type 2",
       "price": "0.65 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.706809,
@@ -6122,7 +6122,7 @@
       "power": "60 kW",
       "type": "CCS2, GBT",
       "price": "0.8 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.788461,
@@ -6133,7 +6133,7 @@
       "power": "22 kW",
       "type": "Type 2",
       "price": "0.65 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.801795,
@@ -6144,7 +6144,7 @@
       "power": "22 kW",
       "type": "Type 2",
       "price": "0.5 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.79798,
@@ -6155,7 +6155,7 @@
       "power": "30 kW",
       "type": "CCS2, GBT",
       "price": "0.55 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.790367,
@@ -6166,7 +6166,7 @@
       "power": "22 kW",
       "type": "Type 2",
       "price": "0.65 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.781369,
@@ -6177,7 +6177,7 @@
       "power": "22 kW",
       "type": "Type 2",
       "price": "0.65 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.721564,
@@ -6188,7 +6188,7 @@
       "power": "22 kW",
       "type": "Type 2",
       "price": "0.65 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.762352,
@@ -6199,7 +6199,7 @@
       "power": "22 kW",
       "type": "Type 2",
       "price": "0.5 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.745349,
@@ -6210,7 +6210,7 @@
       "power": "22 kW",
       "type": "Type 2",
       "price": "0.65 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.762593,
@@ -6221,7 +6221,7 @@
       "power": "22 kW",
       "type": "Type 2",
       "price": "0.65 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.796383,
@@ -6232,7 +6232,7 @@
       "power": "22 kW",
       "type": "Type 2",
       "price": "0.65 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.796365,
@@ -6243,7 +6243,7 @@
       "power": "22 kW",
       "type": "Type 2",
       "price": "0.65 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.722599,
@@ -6254,7 +6254,7 @@
       "power": "22 kW",
       "type": "Type 2",
       "price": "0.65 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.729128,
@@ -6265,7 +6265,7 @@
       "power": "22 kW",
       "type": "Type 2",
       "price": "0.65 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.71424,
@@ -6276,7 +6276,7 @@
       "power": "22 kW",
       "type": "Type 2",
       "price": "0.65 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.705969,
@@ -6287,7 +6287,7 @@
       "power": "22 kW",
       "type": "Type 2",
       "price": "0.65 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.710294,
@@ -6298,7 +6298,7 @@
       "power": "22 kW",
       "type": "Type 2",
       "price": "0.65 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.694649,
@@ -6309,7 +6309,7 @@
       "power": "22 kW",
       "type": "Type 2",
       "price": "0.65 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.701322,
@@ -6320,7 +6320,7 @@
       "power": "22 kW",
       "type": "Type 2",
       "price": "0.65 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.703751,
@@ -6331,7 +6331,7 @@
       "power": "22 kW",
       "type": "Type 2",
       "price": "0.65 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.711884,
@@ -6342,7 +6342,7 @@
       "power": "22 kW",
       "type": "Type 2",
       "price": "0.65 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.710295,
@@ -6353,7 +6353,7 @@
       "power": "22 kW",
       "type": "Type 2",
       "price": "0.65 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.720247,
@@ -6364,7 +6364,7 @@
       "power": "22 kW",
       "type": "Type 2",
       "price": "0.65 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.721326,
@@ -6375,7 +6375,7 @@
       "power": "30 kW",
       "type": "CCS2, GBT",
       "price": "0.8 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.689652,
@@ -6387,7 +6387,7 @@
       "power": "60 kW",
       "type": "CCS2, GBT",
       "price": "0.8 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.711757,
@@ -6399,7 +6399,7 @@
       "power": "60 kW",
       "type": "CCS2, GBT",
       "price": "0.8 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.69152,
@@ -6411,7 +6411,7 @@
       "power": "180 kW",
       "type": "CCS2, GBT",
       "price": "სტანდარტული ტარიფი",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.927104,
@@ -6423,7 +6423,7 @@
       "power": "180 kW",
       "type": "CCS2, GBT",
       "price": "სტანდარტული ტარიფი",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 42.519292,
@@ -6435,7 +6435,7 @@
       "power": "60 kW",
       "type": "CCS2, GBT",
       "price": "0.8 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.72452,
@@ -6447,7 +6447,7 @@
       "power": "60 kW",
       "type": "CCS2, GBT",
       "price": "0.8 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 42.053456,
@@ -6459,7 +6459,7 @@
       "power": "240 kW",
       "type": "CCS2, GBT",
       "price": "1.2 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.628185,
@@ -6471,7 +6471,7 @@
       "power": "180 kW",
       "type": "CCS2, GBT",
       "price": "სტანდარტული ტარიფი",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 42.561862,
@@ -6483,7 +6483,7 @@
       "power": "120 kW",
       "type": "CCS2, GBT",
       "price": "0.7 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 42.463935,
@@ -6495,7 +6495,7 @@
       "power": "120 kW",
       "type": "CCS2, GBT",
       "price": "0.7 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.750636,
@@ -6506,7 +6506,7 @@
       "power": "160 kW",
       "type": "CCS2, GBT",
       "price": "0.7 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 42.164333,
@@ -6518,7 +6518,7 @@
       "power": "160 kW",
       "type": "CCS2, GBT",
       "price": "0.7 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 42.102545,
@@ -6529,7 +6529,7 @@
       "power": "160 kW",
       "type": "CCS2, GBT",
       "price": "0.7 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.76005,
@@ -6540,7 +6540,7 @@
       "power": "7 kW",
       "type": "GBT",
       "price": "0.7 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.760044,
@@ -6551,7 +6551,7 @@
       "power": "11 kW",
       "type": "Type 2",
       "price": "0.7 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.759002,
@@ -6562,7 +6562,7 @@
       "power": "11 kW",
       "type": "Type 2",
       "price": "0.7 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 42.583999,
@@ -6574,7 +6574,7 @@
       "power": "40 kW",
       "type": "GBT",
       "price": "0.7 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.758994,
@@ -6585,7 +6585,7 @@
       "power": "7 kW",
       "type": "GBT",
       "price": "0.7 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.772978,
@@ -6596,7 +6596,7 @@
       "power": "120 kW",
       "type": "CCS2, GBT",
       "price": "0.7 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.464417,
@@ -6607,7 +6607,7 @@
       "power": "40 kW",
       "type": "GBT",
       "price": "სტანდარტული ტარიფი",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.586835,
@@ -6619,7 +6619,7 @@
       "power": "120 kW",
       "type": "CCS2, GBT",
       "price": "0.7 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.611546,
@@ -6630,7 +6630,7 @@
       "power": "120 kW",
       "type": "CCS2, GBT",
       "price": "0.7 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 42.017952,
@@ -6642,7 +6642,7 @@
       "power": "120 kW",
       "type": "CCS2, GBT",
       "price": "0.7 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.639814,
@@ -6654,7 +6654,7 @@
       "power": "22 kW",
       "type": "Type 2",
       "price": "სტანდარტული ტარიფი",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.637269,
@@ -6666,7 +6666,7 @@
       "power": "22 kW",
       "type": "Type 2",
       "price": "სტანდარტული ტარიფი",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.780672,
@@ -6678,7 +6678,7 @@
       "power": "22 kW",
       "type": "Type 2",
       "price": "0.6 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.752092,
@@ -6690,7 +6690,7 @@
       "power": "Standard",
       "type": "Type 2",
       "price": "სტანდარტული ტარიფი",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.620712,
@@ -6702,7 +6702,7 @@
       "power": "120 kW",
       "type": "CCS2, Type 2",
       "price": "სტანდარტული ტარიფი",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.664489,
@@ -6714,7 +6714,7 @@
       "power": "22 kW",
       "type": "Type 2",
       "price": "სტანდარტული ტარიფი",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.840912,
@@ -6726,7 +6726,7 @@
       "power": "22 kW",
       "type": "Type 2",
       "price": "სტანდარტული ტარიფი",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.677999,
@@ -6738,7 +6738,7 @@
       "power": "120 kW",
       "type": "CCS2",
       "price": "სტანდარტული ტარიფი",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 42.467235,
@@ -6750,7 +6750,7 @@
       "power": "22 kW",
       "type": "Type 2",
       "price": "სტანდარტული ტარიფი",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.7151,
@@ -6762,7 +6762,7 @@
       "power": "120 kW",
       "type": "CCS2, CHAdeMO, Type 2",
       "price": "0.6 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.634321,
@@ -6774,7 +6774,7 @@
       "power": "22 kW",
       "type": "Type 2",
       "price": "სტანდარტული ტარიფი",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.593846,
@@ -6786,7 +6786,7 @@
       "power": "22 kW",
       "type": "Type 2",
       "price": "სტანდარტული ტარიფი",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 42.22757,
@@ -6798,7 +6798,7 @@
       "power": "120 kW",
       "type": "CCS2",
       "price": "სტანდარტული ტარიფი",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.654674,
@@ -6810,7 +6810,7 @@
       "power": "22 kW",
       "type": "Type 2",
       "price": "სტანდარტული ტარიფი",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 42.050026,
@@ -6822,7 +6822,7 @@
       "power": "22 kW",
       "type": "Type 2",
       "price": "სტანდარტული ტარიფი",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.749962,
@@ -6834,7 +6834,7 @@
       "power": "22 kW",
       "type": "Type 2",
       "price": "0.6 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.750741,
@@ -6846,7 +6846,7 @@
       "power": "22 kW",
       "type": "Type 2",
       "price": "0.6 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.728,
@@ -6858,7 +6858,7 @@
       "power": "22 kW",
       "type": "Type 2",
       "price": "სტანდარტული ტარიფი",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 42.643667,
@@ -6870,7 +6870,7 @@
       "power": "22 kW",
       "type": "Type 2",
       "price": "სტანდარტული ტარიფი",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 42.46999,
@@ -6882,7 +6882,7 @@
       "power": "Standard",
       "type": "Type 2",
       "price": "სტანდარტული ტარიფი",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.7151,
@@ -6894,7 +6894,7 @@
       "power": "123 kW",
       "type": "CCS2, Type 2",
       "price": "სტანდარტული ტარიფი",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 43.043469,
@@ -6906,7 +6906,7 @@
       "power": "22 kW",
       "type": "Type 2",
       "price": "სტანდარტული ტარიფი",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 42.170886,
@@ -6918,7 +6918,7 @@
       "power": "120 kW",
       "type": "CCS2, CHAdeMO",
       "price": "სტანდარტული ტარიფი",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.70403,
@@ -6930,7 +6930,7 @@
       "power": "22 kW",
       "type": "Type 2",
       "price": "სტანდარტული ტარიფი",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.705803,
@@ -6942,7 +6942,7 @@
       "power": "22 kW",
       "type": "Type 2",
       "price": "სტანდარტული ტარიფი",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.938807,
@@ -6953,7 +6953,7 @@
       "power": "22 kW",
       "type": "Type 2",
       "price": "სტანდარტული ტარიფი",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.68364,
@@ -6965,7 +6965,7 @@
       "power": "120 kW",
       "type": "CCS2, CHAdeMO",
       "price": "სტანდარტული ტარიფი",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 42.658917,
@@ -6977,7 +6977,7 @@
       "power": "22 kW",
       "type": "Type 2",
       "price": "სტანდარტული ტარიფი",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.926484,
@@ -6989,7 +6989,7 @@
       "power": "120 kW",
       "type": "CCS2, CHAdeMO",
       "price": "სტანდარტული ტარიფი",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.894363,
@@ -7001,7 +7001,7 @@
       "power": "22 kW",
       "type": "Type 2",
       "price": "სტანდარტული ტარიფი",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.7151,
@@ -7013,7 +7013,7 @@
       "power": "120 kW",
       "type": "CCS2, CHAdeMO, Type 2",
       "price": "0.6 ₾/kWh",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.81306,
@@ -7025,7 +7025,7 @@
       "power": "22 kW",
       "type": "Type 2",
       "price": "სტანდარტული ტარიფი",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.698687,
@@ -7037,7 +7037,7 @@
       "power": "22 kW",
       "type": "Type 1",
       "price": "სტანდარტული ტარიფი",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.762877,
@@ -7049,7 +7049,7 @@
       "power": "22 kW",
       "type": "Type 2",
       "price": "სტანდარტული ტარიფი",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.770457,
@@ -7061,7 +7061,7 @@
       "power": "22 kW",
       "type": "Type 2",
       "price": "სტანდარტული ტარიფი",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.740877,
@@ -7073,7 +7073,7 @@
       "power": "22 kW",
       "type": "Type 2",
       "price": "სტანდარტული ტარიფი",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.743937,
@@ -7085,7 +7085,7 @@
       "power": "22 kW",
       "type": "Type 2",
       "price": "სტანდარტული ტარიფი",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.726857,
@@ -7097,7 +7097,7 @@
       "power": "22 kW",
       "type": "Type 2",
       "price": "სტანდარტული ტარიფი",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.706177,
@@ -7109,7 +7109,7 @@
       "power": "22 kW",
       "type": "Type 2",
       "price": "სტანდარტული ტარიფი",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.709637,
@@ -7121,7 +7121,7 @@
       "power": "22 kW",
       "type": "Type 2",
       "price": "სტანდარტული ტარიფი",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.699867,
@@ -7133,7 +7133,7 @@
       "power": "22 kW",
       "type": "Type 2",
       "price": "სტანდარტული ტარიფი",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.703727,
@@ -7145,7 +7145,7 @@
       "power": "22 kW",
       "type": "Type 2",
       "price": "სტანდარტული ტარიფი",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.70327,
@@ -7157,7 +7157,7 @@
       "power": "22 kW",
       "type": "Type 2",
       "price": "სტანდარტული ტარიფი",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.706997,
@@ -7169,7 +7169,7 @@
       "power": "22 kW",
       "type": "Type 2",
       "price": "სტანდარტული ტარიფი",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.700217,
@@ -7181,7 +7181,7 @@
       "power": "22 kW",
       "type": "Type 2",
       "price": "სტანდარტული ტარიფი",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.818117,
@@ -7193,7 +7193,7 @@
       "power": "22 kW",
       "type": "Type 2",
       "price": "სტანდარტული ტარიფი",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.69347,
@@ -7205,7 +7205,7 @@
       "power": "22 kW",
       "type": "Type 2",
       "price": "სტანდარტული ტარიფი",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.689317,
@@ -7217,7 +7217,7 @@
       "power": "22 kW",
       "type": "Type 2",
       "price": "სტანდარტული ტარიფი",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.685487,
@@ -7229,7 +7229,7 @@
       "power": "22 kW",
       "type": "Type 2",
       "price": "სტანდარტული ტარიფი",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.709897,
@@ -7241,7 +7241,7 @@
       "power": "22 kW",
       "type": "Type 2",
       "price": "სტანდარტული ტარიფი",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.734254,
@@ -7253,7 +7253,7 @@
       "power": "22 kW",
       "type": "Type 2",
       "price": "სტანდარტული ტარიფი",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.708877,
@@ -7265,7 +7265,7 @@
       "power": "22 kW",
       "type": "Type 2",
       "price": "სტანდარტული ტარიფი",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.705037,
@@ -7277,7 +7277,7 @@
       "power": "22 kW",
       "type": "Type 2",
       "price": "სტანდარტული ტარიფი",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.71677,
@@ -7289,7 +7289,7 @@
       "power": "22 kW",
       "type": "Type 2",
       "price": "სტანდარტული ტარიფი",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.776217,
@@ -7301,7 +7301,7 @@
       "power": "22 kW",
       "type": "Type 1",
       "price": "სტანდარტული ტარიფი",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.668927,
@@ -7313,7 +7313,7 @@
       "power": "22 kW",
       "type": "Type 2",
       "price": "სტანდარტული ტარიფი",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.680757,
@@ -7325,7 +7325,7 @@
       "power": "22 kW",
       "type": "Type 2",
       "price": "სტანდარტული ტარიფი",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.670417,
@@ -7337,7 +7337,7 @@
       "power": "22 kW",
       "type": "Type 2",
       "price": "სტანდარტული ტარიფი",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.687717,
@@ -7349,7 +7349,7 @@
       "power": "22 kW",
       "type": "Type 2",
       "price": "სტანდარტული ტარიფი",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.724997,
@@ -7361,7 +7361,7 @@
       "power": "22 kW",
       "type": "Type 2",
       "price": "სტანდარტული ტარიფი",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.731527,
@@ -7373,7 +7373,7 @@
       "power": "22 kW",
       "type": "Type 2",
       "price": "სტანდარტული ტარიფი",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.723257,
@@ -7385,7 +7385,7 @@
       "power": "22 kW",
       "type": "Type 2",
       "price": "სტანდარტული ტარიფი",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.731197,
@@ -7397,7 +7397,7 @@
       "power": "22 kW",
       "type": "Type 2",
       "price": "სტანდარტული ტარიფი",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.719657,
@@ -7409,7 +7409,7 @@
       "power": "22 kW",
       "type": "Type 2",
       "price": "სტანდარტული ტარიფი",
-      "hours": "24/7"
+      "hours": null
     },
     {
       "lat": 41.715817,
@@ -7421,7 +7421,7 @@
       "power": "22 kW",
       "type": "Type 2",
       "price": "სტანდარტული ტარიფი",
-      "hours": "24/7"
+      "hours": null
     }
   ]
 }

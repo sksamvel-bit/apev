@@ -23,6 +23,10 @@ let chargersEngine = null;
 let mediaEngine = null;
 let yandexEngine = null;
 
+// Driving lockout switch (false keeps YouTube & search unrestricted while driving by user command)
+const DRIVING_LOCKOUT = false;
+window.DRIVING_LOCKOUT = DRIVING_LOCKOUT;
+
 let currentPos = { lat: 41.7166, lng: 44.7833 }; // Default Tbilisi Freedom Square
 window.currentPos = currentPos;
 let currentHeading = 0;
@@ -561,9 +565,24 @@ function updateVehicleMarker(lat, lng, headingDeg, speedKmh, accuracyMeters = nu
   lastGpsPos = { lat, lng };
   lastGpsTime = now;
   currentPos = { lat, lng };
+  window.currentPos = currentPos;
   currentHeading = headingDeg;
   currentSpeedKmh = speedKmh;
+  window.currentSpeedKmhForLock = speedKmh;
   window.hasRealFix = true;
+
+  if (DRIVING_LOCKOUT) {
+    const driving = speedKmh > 5;
+    const si = document.getElementById("search-input");
+    if (si && si.disabled !== driving) {
+      si.disabled = driving;
+      si.placeholder = driving ? "🚫 ძებნა მოძრაობისას გამორთულია" : "მოძებნეთ მისამართი ან ობიექტი...";
+    }
+    if (driving && mediaEngine && mediaEngine.isOpen) {
+      mediaEngine.close();
+      showToast("მედია გამორთულია მოძრაობისას", "info", 2500);
+    }
+  }
 
   if (carMarker) {
     carMarker.setLatLng([lat, lng]);

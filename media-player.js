@@ -130,6 +130,10 @@ class MediaPlayerEngine {
   }
 
   open() {
+    if (window.DRIVING_LOCKOUT && window.currentSpeedKmhForLock > 5) {
+      if (window.showToast) window.showToast("მედია მოძრაობისას დაბლოკილია", "error");
+      return;
+    }
     this.isOpen = true;
     this.container.classList.add("active");
     if (!this.iframe.src || this.iframe.src === "about:blank") {

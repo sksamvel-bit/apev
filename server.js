@@ -21,9 +21,14 @@ const STATIC_WHITELIST = new Set([
 const ALLOWED_EVENT_TYPES = new Set(['destination','gps','media']);
 const CODE_RE = /^[A-Z0-9]{12,32}$/;
 const MAX_BODY = 8 * 1024;
+// Behind a reverse proxy (Render) the TCP peer is the proxy, so "localhost only" can't work.
+// /api/chargers/sync: localhost (without proxy header) OR ?token=<ADMIN_TOKEN env>.
 function isLocal(req) {
   const a = req.socket.remoteAddress || '';
-  return a === '127.0.0.1' || a === '::1' || a === '::ffff:127.0.0.1';
+  if (a === '127.0.0.1' || a === '::1' || a === '::ffff:127.0.0.1') return !req.headers['x-forwarded-for'];
+  const tok = process.env.ADMIN_TOKEN;
+  if (!tok) return false;
+  try { return new URL(req.url, 'http://x').searchParams.get('token') === tok; } catch (e) { return false; }
 }
 
 const MIME_TYPES = {
@@ -258,13 +263,13 @@ const server = http.createServer((req, res) => {
 
   // API Endpoint: /api/info (Network info and IP)
   if (pathname === '/api/info') {
-    const localIps = getLocalIpAddresses();
+    const hostHeader = String(req.headers.host || '');
+    const lanHost = /^(localhost|127\.|10\.|192\.168\.|172\.(1[6-9]|2\d|3[01])\.)/.test(hostHeader);
     res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
-    res.end(JSON.stringify({
-      port: PORT,
-      localIps: localIps,
-      host: req.headers.host
-    }));
+    // expose internal IPs only when accessed over a private network
+    res.end(JSON.stringify(lanHost
+      ? { port: PORT, localIps: getLocalIpAddresses(), host: hostHeader }
+      : { host: hostHeader }));
     return;
   }
 
@@ -414,6 +419,14 @@ const server = http.createServer((req, res) => {
         if (!CODE_RE.test(code) || !ALLOWED_EVENT_TYPES.has(type) || typeof data !== 'object' || data === null) {
           res.writeHead(400, { 'Content-Type': 'application/json' });
           res.end(JSON.stringify({ error: 'Invalid payload: valid code, allowed type, and data object required' }));
+          return;
+        }
+
+        // coordinates must be sane for gps / destination events
+        if ((type === 'gps' || type === 'destination') &&
+            !(Math.abs(Number(data.lat)) <= 90 && Math.abs(Number(data.lng)) <= 180)) {
+          res.writeHead(400, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ error: 'Invalid coordinates' }));
           return;
         }
 

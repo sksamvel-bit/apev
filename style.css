@@ -1344,6 +1344,37 @@ button svg * {
   }
 }
 
+/* Tesla Model 3 & Y Large Screen (15-inch 1920x1200 Display): Ergonomic automotive-grade touch targets */
+@media (min-width: 1024px) and (min-height: 700px) {
+  .dock-controls {
+    right: 14px;
+    padding: 5px 3px;
+    gap: 3px;
+    border-radius: 16px;
+    max-height: calc(100vh - 110px);
+  }
+  .dock-btn {
+    width: 42px;
+    height: 42px;
+    min-width: 42px;
+    min-height: 42px;
+    border-radius: 10px;
+  }
+  .dock-btn svg {
+    width: 20px;
+    height: 20px;
+  }
+  .weather-chip, .battery-chip {
+    padding: 5px 12px;
+    min-height: 36px;
+    font-size: 0.88rem;
+  }
+  .search-input-wrapper {
+    min-height: 40px;
+    padding: 3px 12px;
+  }
+}
+
 /* ==========================================================================
    NEW ENHANCEMENTS: Weather, Battery, Media Player, EV Chargers & Map Styles
    ========================================================================== */
