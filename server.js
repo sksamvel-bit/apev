@@ -40,16 +40,31 @@ function sendSSE(res, event, data) {
   res.write(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`);
 }
 
-// In-Memory Live EV Chargers Cache (aggregating dachar.ge / Georgia Firestore API)
+// In-Memory Live EV Chargers Cache & Persistent Disk Storage (dachar.ge / Revolt / Georgia EV aggregator)
+const CHARGERS_CACHE_FILE = path.join(PUBLIC_DIR, 'chargers-cache.json');
 let cachedLiveChargers = null;
 let lastChargersFetch = 0;
-const CHARGERS_CACHE_TTL = 15 * 60 * 1000; // 15 minutes cache
+const CHARGERS_CACHE_TTL = 30 * 60 * 1000; // 30 minutes cache
+
+// Load disk cache on boot if available
+try {
+  if (fs.existsSync(CHARGERS_CACHE_FILE)) {
+    const diskData = JSON.parse(fs.readFileSync(CHARGERS_CACHE_FILE, 'utf8'));
+    if (diskData && Array.isArray(diskData.stations) && diskData.stations.length > 0) {
+      cachedLiveChargers = diskData.stations;
+      lastChargersFetch = diskData.timestamp || Date.now();
+      console.log(`[EV] Loaded ${cachedLiveChargers.length} charging stations from disk cache (chargers-cache.json)`);
+    }
+  }
+} catch (e) {
+  console.warn('[EV] Disk cache read notice:', e.message);
+}
 
 function fetchFirestorePage(pageToken) {
   const tokenParam = pageToken ? '&pageToken=' + encodeURIComponent(pageToken) : '';
   const url = 'https://firestore.googleapis.com/v1/projects/dacharge-16dd6/databases/(default)/documents/stations?pageSize=300' + tokenParam;
   return new Promise((resolve, reject) => {
-    const req = https.get(url, { headers: { 'User-Agent': 'TeslaNav/2.0' }, timeout: 9000 }, res => {
+    const req = https.get(url, { headers: { 'User-Agent': 'TeslaNav/3.0' }, timeout: 12000 }, res => {
       if (res.statusCode !== 200) {
         return reject(new Error('Firestore status ' + res.statusCode));
       }
@@ -71,18 +86,27 @@ function fetchFirestorePage(pageToken) {
   });
 }
 
-async function getLiveGeorgiaChargers() {
+async function getLiveGeorgiaChargers(forceRefresh = false) {
   const now = Date.now();
-  if (cachedLiveChargers && (now - lastChargersFetch < CHARGERS_CACHE_TTL)) {
+  if (!forceRefresh && cachedLiveChargers && (now - lastChargersFetch < CHARGERS_CACHE_TTL)) {
     return cachedLiveChargers;
   }
 
   try {
-    const page1 = await fetchFirestorePage();
-    const docs = [...(page1.documents || [])];
-    if (page1.nextPageToken) {
-      const page2 = await fetchFirestorePage(page1.nextPageToken);
-      if (page2.documents) docs.push(...page2.documents);
+    let p1 = await fetchFirestorePage();
+    let docs = [...(p1.documents || [])];
+    let next = p1.nextPageToken;
+
+    // Paginate through all records across Georgia
+    while (next) {
+      try {
+        let pn = await fetchFirestorePage(next);
+        if (pn.documents) docs.push(...pn.documents);
+        next = pn.nextPageToken;
+      } catch (err) {
+        console.warn('[EV] Page fetch warn:', err.message);
+        break;
+      }
     }
 
     const stations = docs.map(d => {
@@ -133,13 +157,65 @@ async function getLiveGeorgiaChargers() {
     if (stations.length > 0) {
       cachedLiveChargers = stations;
       lastChargersFetch = now;
-      console.log(`[EV] Successfully cached ${stations.length} live EV charging stations from dachar.ge database`);
+      console.log(`[EV] Successfully synced ${stations.length} live EV charging stations across Georgia!`);
+
+      // Persist to disk for high-speed instant load & offline resilience
+      fs.writeFile(CHARGERS_CACHE_FILE, JSON.stringify({
+        source: 'dachar.ge & Revolt Georgia EV Network',
+        count: stations.length,
+        timestamp: now,
+        stations: stations
+      }, null, 2), (err) => {
+        if (err) console.warn('[EV] Cache file write notice:', err.message);
+      });
     }
     return cachedLiveChargers || [];
   } catch (err) {
-    console.warn('[EV] Failed to refresh live chargers from dachar.ge:', err.message);
+    console.warn('[EV] Failed to refresh live chargers:', err.message);
     return cachedLiveChargers || [];
   }
+}
+
+// Background automatic EV chargers synchronization (every 30 mins)
+setInterval(() => {
+  getLiveGeorgiaChargers(true).catch(e => console.warn('[EV Auto-Sync] Error:', e.message));
+}, CHARGERS_CACHE_TTL);
+
+// Initial background sync after 3 seconds
+setTimeout(() => {
+  getLiveGeorgiaChargers(false).catch(() => {});
+}, 3000);
+
+// Resolve YouTube search query to Video ID
+function resolveYouTubeQuery(query) {
+  return new Promise((resolve) => {
+    const url = 'https://www.youtube.com/results?search_query=' + encodeURIComponent(query);
+    const req = https.get(url, {
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+        'Accept-Language': 'ka-GE,ka;q=0.9,en-US;q=0.8,en;q=0.7'
+      },
+      timeout: 6000
+    }, resp => {
+      let body = '';
+      resp.on('data', chunk => body += chunk);
+      resp.on('end', () => {
+        const idMatch = body.match(/"videoId":"([a-zA-Z0-9_-]{11})"/);
+        const titleMatch = body.match(/"title":{"runs":\[{"text":"(.*?)"/);
+        if (idMatch && idMatch[1]) {
+          resolve({
+            success: true,
+            videoId: idMatch[1],
+            title: titleMatch ? titleMatch[1] : query
+          });
+        } else {
+          resolve({ success: false, fallbackQuery: query });
+        }
+      });
+    });
+    req.on('error', err => resolve({ success: false, fallbackQuery: query, error: err.message }));
+    req.on('timeout', () => { req.destroy(); resolve({ success: false, fallbackQuery: query, error: 'timeout' }); });
+  });
 }
 
 const server = http.createServer((req, res) => {
@@ -203,6 +279,42 @@ const server = http.createServer((req, res) => {
     }).catch(err => {
       res.writeHead(500, { 'Content-Type': 'application/json' });
       res.end(JSON.stringify({ error: err.message, stations: [] }));
+    });
+    return;
+  }
+
+  // API Endpoint: /api/chargers/sync (Manual/Force trigger EV Chargers synchronization)
+  if (pathname === '/api/chargers/sync') {
+    getLiveGeorgiaChargers(true).then(stations => {
+      res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
+      res.end(JSON.stringify({
+        success: true,
+        count: stations.length,
+        timestamp: lastChargersFetch,
+        message: `Synced ${stations.length} stations across Georgia`
+      }));
+    }).catch(err => {
+      res.writeHead(500, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ success: false, error: err.message }));
+    });
+    return;
+  }
+
+  // API Endpoint: /api/youtube/search (Resolve song or artist name to YouTube Video ID)
+  if (pathname === '/api/youtube/search') {
+    const q = (urlObj.searchParams.get('q') || '').trim();
+    if (!q) {
+      res.writeHead(400, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: 'Missing query parameter q' }));
+      return;
+    }
+
+    resolveYouTubeQuery(q).then(result => {
+      res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
+      res.end(JSON.stringify(result));
+    }).catch(err => {
+      res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
+      res.end(JSON.stringify({ success: false, fallbackQuery: q, error: err.message }));
     });
     return;
   }

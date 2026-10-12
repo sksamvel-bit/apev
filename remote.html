@@ -268,6 +268,24 @@
       opacity: 1;
       transform: translateX(-50%) translateY(0);
     }
+    .media-chip-btn {
+      background: rgba(255, 255, 255, 0.08);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      border-radius: 20px;
+      color: #cbd5e1;
+      padding: 7px 12px;
+      font-size: 0.8rem;
+      font-weight: 600;
+      white-space: nowrap;
+      cursor: pointer;
+      transition: all 0.15s;
+      flex-shrink: 0;
+    }
+    .media-chip-btn:active {
+      background: rgba(239, 68, 68, 0.25);
+      border-color: #ef4444;
+      color: #fff;
+    }
   </style>
 </head>
 <body>
@@ -294,6 +312,27 @@
       <button id="phone-clear-btn" class="clear-btn">✕</button>
     </div>
     <div id="phone-results-list" class="results-list"></div>
+  </div>
+
+  <!-- YOUTUBE & MUSIC CONTROLLER CARD -->
+  <div class="card">
+    <div class="card-title">
+      <span style="color: #ef4444;">▶</span>
+      <span>YouTube მუსიკის მართვა</span>
+    </div>
+    <div class="search-wrapper">
+      <input type="text" id="phone-media-input" class="search-input" placeholder="სიმღერა, შემსრულებელი ან YouTube ლინკი..." autocomplete="off">
+      <button id="phone-media-clear-btn" class="clear-btn">✕</button>
+    </div>
+    <button id="btn-phone-media-play" style="width: 100%; padding: 13px; border-radius: 12px; font-weight: 800; font-size: 0.95rem; background: linear-gradient(135deg, #ef4444, #b91c1c); color: #fff; border: none; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; box-shadow: 0 4px 15px rgba(232, 33, 39, 0.4);">
+      ▶ გაშვება Tesla-ს ეკრანზე
+    </button>
+    <div style="display: flex; gap: 6px; overflow-x: auto; margin-top: 12px; padding-bottom: 2px; scrollbar-width: none;">
+      <button class="media-chip-btn" data-q="Synthwave Night Drive Cyberpunk">🌃 Synthwave</button>
+      <button class="media-chip-btn" data-q="Lofi Hip Hop Radio Beats to Drive">☕ Lofi Beats</button>
+      <button class="media-chip-btn" data-q="Deep House Club Mix 2024">🎧 Deep House</button>
+      <button class="media-chip-btn" data-q="ქართული საესტრადო მუსიკა">🇬🇪 ქართული</button>
+    </div>
   </div>
 
   <!-- PHONE GPS STREAMING CARD -->
@@ -499,6 +538,52 @@
         showToast('GPS ტრანსლაცია შეჩერდა');
       }
     });
+
+    // YouTube Media Controller
+    const mediaInput = document.getElementById('phone-media-input');
+    const mediaClearBtn = document.getElementById('phone-media-clear-btn');
+    const mediaPlayBtn = document.getElementById('btn-phone-media-play');
+
+    if (mediaInput && mediaClearBtn && mediaPlayBtn) {
+      mediaInput.addEventListener('input', () => {
+        mediaClearBtn.style.display = mediaInput.value ? 'block' : 'none';
+      });
+      mediaClearBtn.addEventListener('click', () => {
+        mediaInput.value = '';
+        mediaClearBtn.style.display = 'none';
+      });
+
+      async function triggerMediaPlay(query) {
+        if (!query) {
+          showToast('⚠️ ჩაწერეთ სიმღერა ან ლინკი');
+          return;
+        }
+        showToast(`🎵 იგზავნება: "${query}"...`);
+        const ok = await sendToCar('media', { action: 'play', query: query });
+        if (ok) {
+          showToast(`🚀 "${query}" გაშვებულია Tesla-ში!`);
+        }
+      }
+
+      mediaPlayBtn.addEventListener('click', () => {
+        triggerMediaPlay(mediaInput.value.trim());
+      });
+
+      mediaInput.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+          triggerMediaPlay(mediaInput.value.trim());
+        }
+      });
+
+      document.querySelectorAll('.media-chip-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const q = btn.getAttribute('data-q');
+          mediaInput.value = q;
+          mediaClearBtn.style.display = 'block';
+          triggerMediaPlay(q);
+        });
+      });
+    }
   </script>
 </body>
 </html>

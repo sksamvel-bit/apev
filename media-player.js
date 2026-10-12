@@ -41,15 +41,17 @@ class MediaPlayerEngine {
     if (customBtn && customInput) {
       customBtn.addEventListener("click", () => {
         const val = customInput.value.trim();
-        const videoId = this.extractYouTubeId(val);
-        if (videoId) {
-          this.loadVideo(videoId);
+        if (val) {
+          this.playQueryOrUrl(val);
         } else {
-          if (window.showToast) {
-            window.showToast("გთხოვთ შეიყვანოთ სწორი YouTube ბმული ან Video ID", "error");
-          } else {
-            alert("გთხოვთ შეიყვანოთ სწორი YouTube ბმული ან Video ID");
-          }
+          if (window.showToast) window.showToast("ჩაწერეთ სიმღერა ან YouTube ლინკი", "info");
+        }
+      });
+
+      customInput.addEventListener("keydown", (e) => {
+        if (e.key === "Enter") {
+          const val = customInput.value.trim();
+          if (val) this.playQueryOrUrl(val);
         }
       });
     }
@@ -67,10 +69,48 @@ class MediaPlayerEngine {
 
   extractYouTubeId(url) {
     if (!url) return null;
-    if (url.length === 11 && !url.includes("/") && !url.includes(".")) return url;
+    if (url.length === 11 && !url.includes("/") && !url.includes(".") && !url.includes(" ")) return url;
     // Support youtube.com/watch?v=..., youtu.be/..., youtube.com/shorts/..., youtube.com/live/...
     const match = url.match(/(?:youtu\.be\/|youtube\.com\/(?:embed\/|v\/|watch\?v=|watch\?.+&v=|shorts\/|live\/))([\w-]{11})/);
     return match ? match[1] : null;
+  }
+
+  async playQueryOrUrl(input) {
+    if (!input) return;
+    const trimmed = input.trim();
+    const videoId = this.extractYouTubeId(trimmed);
+
+    if (videoId) {
+      this.loadVideo(videoId);
+      this.open();
+      if (window.showToast) window.showToast("▶ YouTube ვიდეო ჩაირთო!", "success");
+      return;
+    }
+
+    // Direct Song / Artist text search
+    if (window.showToast) window.showToast(`🔍 იძებნება: "${trimmed}"...`, "info");
+
+    try {
+      const res = await fetch(`/api/youtube/search?q=${encodeURIComponent(trimmed)}`);
+      const data = await res.json();
+      if (data && data.success && data.videoId) {
+        this.loadVideo(data.videoId);
+        this.open();
+        if (window.showToast) {
+          window.showToast(`▶ ${data.title || trimmed}`, "success", 4000);
+        }
+        return;
+      }
+    } catch (err) {
+      console.warn("YouTube search resolver fallback:", err);
+    }
+
+    // Embed search fallback
+    if (this.iframe) {
+      this.iframe.src = `https://www.youtube-nocookie.com/embed?listType=search&list=${encodeURIComponent(trimmed)}&autoplay=1&enablejsapi=1&origin=${window.location.origin}`;
+    }
+    this.open();
+    if (window.showToast) window.showToast(`▶ იკვრება: "${trimmed}"`, "success");
   }
 
   loadVideo(id) {

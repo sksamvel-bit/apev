@@ -1378,6 +1378,18 @@ function initRemoteSession() {
       }
     });
 
+    remoteEventSource.addEventListener("media", (e) => {
+      try {
+        const payload = JSON.parse(e.data);
+        if (mediaEngine && payload.query) {
+          mediaEngine.playQueryOrUrl(payload.query);
+          showToast(`🎵 YouTube გაშვებულია ტელეფონიდან: ${payload.title || payload.query}`, "success", 4000);
+        }
+      } catch (err) {
+        console.error("Malformed remote media payload:", err);
+      }
+    });
+
     remoteEventSource.addEventListener("gps", (e) => {
       try {
         const payload = JSON.parse(e.data);

@@ -87,6 +87,9 @@ class ChargersEngine {
 
     this.loadCuratedChargers();
     this.fetchLiveChargers();
+
+    // Auto-sync live chargers periodically (every 15 mins)
+    setInterval(() => this.fetchLiveChargers(), 15 * 60 * 1000);
   }
 
   loadCuratedChargers() {
