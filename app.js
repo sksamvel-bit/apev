@@ -24,6 +24,7 @@ let mediaEngine = null;
 let yandexEngine = null;
 
 let currentPos = { lat: 41.7166, lng: 44.7833 }; // Default Tbilisi Freedom Square
+window.currentPos = currentPos;
 let currentHeading = 0;
 let currentSpeedKmh = 0;
 let isFollowCar = true;

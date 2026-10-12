@@ -41,23 +41,62 @@ class RoutingEngine {
     }
   }
 
-  async calculateRoute(startLatLng, endLatLng, autoStart = false) {
-    // Clear previous route first
-    this.clearRoute();
+  parseCoord(pt) {
+    if (!pt) return null;
+    if (Array.isArray(pt) && pt.length >= 2) {
+      const lat = Number(pt[0]);
+      const lng = Number(pt[1]);
+      if (!isNaN(lat) && !isNaN(lng) && isFinite(lat) && isFinite(lng)) return { lat, lng };
+    }
+    const lat = Number(pt.lat ?? pt.latitude);
+    const lng = Number(pt.lng ?? pt.longitude ?? pt.lon);
+    if (!isNaN(lat) && !isNaN(lng) && isFinite(lat) && isFinite(lng)) {
+      return { lat, lng };
+    }
+    return null;
+  }
 
-    let url = `https://router.project-osrm.org/route/v1/driving/${startLatLng.lng},${startLatLng.lat};${endLatLng.lng},${endLatLng.lat}?overview=full&geometries=geojson&steps=true&alternatives=true`;
-    if (this.avoidUnpaved) {
-      url += `&exclude=unpaved`;
+  async calculateRoute(startLatLng, endLatLng, autoStart = false) {
+    try {
+      // Clear previous route first
+      this.clearRoute();
+
+    const start = this.parseCoord(startLatLng);
+    const end = this.parseCoord(endLatLng);
+    if (!start || !end) {
+      throw new Error("არასწორი კოორდინატები");
     }
 
-    try {
-      const response = await fetch(url);
-      if (!response.ok) throw new Error("OSRM Routing failed with status: " + response.status);
+    const query = `${start.lng},${start.lat};${end.lng},${end.lat}?overview=full&geometries=geojson&steps=true&alternatives=true`;
 
-      const data = await response.json();
-      if (!data.routes || data.routes.length === 0) {
-        throw new Error("მარშრუტი ვერ მოიძებნა");
+    const routingServers = [
+      "https://router.project-osrm.org/route/v1/driving/",
+      "https://routing.openstreetmap.de/routed-car/route/v1/driving/"
+    ];
+
+    let data = null;
+    let lastError = null;
+
+    for (const server of routingServers) {
+      try {
+        const response = await fetch(server + query);
+        if (!response.ok) {
+          throw new Error(`Routing server (${new URL(server).hostname}) returned HTTP ${response.status}`);
+        }
+        const resJson = await response.json();
+        if (resJson && resJson.routes && resJson.routes.length > 0) {
+          data = resJson;
+          break; // Succeeded!
+        }
+      } catch (err) {
+        lastError = err;
+        console.warn(`[Routing] Server ${server} failed, trying fallback:`, err.message);
       }
+    }
+
+    if (!data || !data.routes || data.routes.length === 0) {
+      throw lastError || new Error("მარშრუტი ვერ მოიძებნა");
+    }
 
       const route = data.routes[0];
       const geojsonCoords = route.geometry.coordinates; // [lon, lat]
@@ -80,8 +119,8 @@ class RoutingEngine {
         rawSteps: route.legs && route.legs[0] ? route.legs[0].steps : [],
         trafficDelayMin: trafficDelayMin,
         batteryImpact: batteryImpact,
-        destination: endLatLng,
-        destName: endLatLng.name || "დანიშნულების ადგილი"
+        destination: end,
+        destName: endLatLng.name || end.name || "დანიშნულების ადგილი"
       };
 
       this.lastClosestIndex = 0;
@@ -117,7 +156,7 @@ class RoutingEngine {
       }
 
       // Initial Summary update
-      this.updateRouteSummary({ lat: startLatLng.lat, lng: startLatLng.lng });
+      this.updateRouteSummary({ lat: start.lat, lng: start.lng });
 
       // Fetch additional traffic signals along route bounds
       if (this.trafficSignalsEngine) {
