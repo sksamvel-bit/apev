@@ -162,14 +162,25 @@ function setMapStyle(styleKey) {
     currentLabelsTileLayer = null;
   }
 
-  // Toggle Yandex Map container
+  // Toggle Yandex Map container and adapt Leaflet zoom animation
   if (styleKey === "yandex") {
+    // Disable Leaflet 250ms CSS scale animation so markers and Yandex background zoom synchronously with 0 latency
+    map.options.zoomAnimation = false;
+    map.options.markerZoomAnimation = false;
+    map._zoomAnimated = false;
+    if (map._mapPane) {
+      L.DomUtil.removeClass(map._mapPane, "leaflet-zoom-anim");
+    }
     if (yandexEngine) {
       const isTrafficActive = trafficEngine ? trafficEngine.isEnabled : true;
       yandexEngine.toggleTraffic(isTrafficActive);
       yandexEngine.enable();
     }
   } else {
+    // Re-enable smooth 60 FPS animated zoom for Google Maps
+    map.options.zoomAnimation = true;
+    map.options.markerZoomAnimation = true;
+    map._zoomAnimated = true;
     if (yandexEngine) yandexEngine.disable();
   }
 
@@ -1099,10 +1110,22 @@ function initEventListeners() {
 
   // Map Zoom Controls (+ and -)
   document.getElementById("btn-zoom-in").addEventListener("click", () => {
-    if (map) map.zoomIn();
+    if (map) {
+      if (currentMapStyle === "yandex") {
+        map.zoomIn(1, { animate: false });
+      } else {
+        map.zoomIn();
+      }
+    }
   });
   document.getElementById("btn-zoom-out").addEventListener("click", () => {
-    if (map) map.zoomOut();
+    if (map) {
+      if (currentMapStyle === "yandex") {
+        map.zoomOut(1, { animate: false });
+      } else {
+        map.zoomOut();
+      }
+    }
   });
 
   const btnTraffic = document.getElementById("btn-toggle-traffic");

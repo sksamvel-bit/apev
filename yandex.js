@@ -139,10 +139,26 @@ class YandexEngine {
       });
     };
 
-    this.map.on("move", syncToYandex);
-    this.map.on("zoom", syncToYandex);
-    this.map.on("viewreset", syncToYandex);
+    // Instantaneous synchronous lockstep for zoom transitions (0 latency, zero drifting icons)
+    const syncImmediate = () => {
+      if (!this.isActive || !this.ymapsMap) return;
+      syncPending = false;
+      const c = this.map.getCenter();
+      const z = this.map.getZoom();
+      this.ymapsMap.setCenter([c.lat, c.lng], z, {
+        duration: 0,
+        checkZoomRange: false
+      });
+    };
 
+    // Dragging / panning uses 60 FPS requestAnimationFrame throttling
+    this.map.on("move", syncToYandex);
+    this.map.on("moveend", syncImmediate);
+
+    // Zooming is synchronized instantaneously with zero delay
+    this.map.on("zoom", syncImmediate);
+    this.map.on("zoomend", syncImmediate);
+    this.map.on("viewreset", syncImmediate);
   }
 
   enable() {

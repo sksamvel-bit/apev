@@ -1916,3 +1916,11 @@ input {
 .dock-btn:active, .popup-dest-btn:active, .fav-btn:active, .preview-go-btn:active {
   transform: scale(0.93) !important;
 }
+
+/* Yandex Map Lockstep Zoom: Disable all CSS transitions on markers and map panes so icons never lag behind */
+.map-style-yandex .leaflet-zoom-anim .leaflet-zoom-animated,
+.map-style-yandex .leaflet-marker-pane,
+.map-style-yandex .leaflet-tile-pane,
+.map-style-yandex .leaflet-map-pane {
+  transition: none !important;
+}
