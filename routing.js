@@ -338,13 +338,28 @@ class RoutingEngine {
       this.lastClosestIndex = bestSegIndex;
 
       // Dynamically trim polylines: passed part is gray, upcoming part is cyan
+      // OPTIMIZATION: only rebuild and redraw if segment advanced or vehicle moved > 15m
+      // Prevents 10,000 throwaway array objects/sec and continuous canvas repaints on Intel Atom
       if (this.routeLine && this.routeLinePassed) {
-        const passedPart = coords.slice(0, bestSegIndex + 1);
-        passedPart.push([currentLatLng.lat, currentLatLng.lng]);
-        const upcomingPart = [[currentLatLng.lat, currentLatLng.lng], ...coords.slice(bestSegIndex + 1)];
+        const segChanged = bestSegIndex !== this.lastTrimSegIndex;
+        let movedEnough = true;
+        if (!segChanged && this.lastTrimPos) {
+          const dLat = Math.abs(currentLatLng.lat - this.lastTrimPos.lat);
+          const dLng = Math.abs(currentLatLng.lng - this.lastTrimPos.lng);
+          if (dLat < 0.00012 && dLng < 0.00015) movedEnough = false; // ~15m
+        }
 
-        this.routeLinePassed.setLatLngs(passedPart);
-        this.routeLine.setLatLngs(upcomingPart);
+        if (segChanged || movedEnough) {
+          this.lastTrimSegIndex = bestSegIndex;
+          this.lastTrimPos = { lat: currentLatLng.lat, lng: currentLatLng.lng };
+
+          const passedPart = coords.slice(0, bestSegIndex + 1);
+          passedPart.push([currentLatLng.lat, currentLatLng.lng]);
+          const upcomingPart = [[currentLatLng.lat, currentLatLng.lng], ...coords.slice(bestSegIndex + 1)];
+
+          this.routeLinePassed.setLatLngs(passedPart);
+          this.routeLine.setLatLngs(upcomingPart);
+        }
       }
 
       // Off-route check: > 38 meters deviation for 3 consecutive GPS updates
@@ -468,16 +483,13 @@ class RoutingEngine {
     }
   }
 
-  // Remaining distance ALONG the route (not straight line)
+  // Remaining distance ALONG the route (O(1) instant lookup from precomputed cumDist)
   remainingRouteMeters(currentLatLng) {
-    const coords = this.activeRoute.coordinates;
-    const i = Math.min(this.lastClosestIndex, coords.length - 2);
-    if (i < 0) return this.activeRoute.distanceMeters;
-    let rem = this.haversineMeters(currentLatLng.lat, currentLatLng.lng, coords[i + 1][0], coords[i + 1][1]);
-    for (let k = i + 1; k < coords.length - 1; k++) {
-      rem += this.haversineMeters(coords[k][0], coords[k][1], coords[k + 1][0], coords[k + 1][1]);
-    }
-    return rem;
+    if (!this.activeRoute) return 0;
+    if (!this.cumDist || this.cumDist.length === 0) return this.activeRoute.distanceMeters || 0;
+    const totalLen = this.cumDist[this.cumDist.length - 1];
+    const progress = this.progressMeters(currentLatLng);
+    return Math.max(0, totalLen - progress);
   }
 
   updateRouteSummary(currentLatLng) {

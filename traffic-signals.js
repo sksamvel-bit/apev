@@ -128,6 +128,11 @@ class TrafficSignalsEngine {
     let minDistance = Infinity;
 
     for (const sig of this.signals) {
+      // Fast coordinate bounding-box rejection (~400m box) before haversine
+      if (Math.abs(sig.lat - currentPos.lat) > 0.0035 || Math.abs(sig.lon - currentPos.lng) > 0.005) {
+        continue;
+      }
+
       const dist = this.haversineMeters(currentPos.lat, currentPos.lng, sig.lat, sig.lon);
       
       // Look ahead within 350 meters

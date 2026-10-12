@@ -602,7 +602,11 @@ function updateVehicleMarker(lat, lng, headingDeg, speedKmh, accuracyMeters = nu
       targetLat = lat + dLat * (180 / Math.PI);
       targetLng = lng + dLng * (180 / Math.PI);
     }
-    map.panTo([targetLat, targetLng], { animate: true, duration: 0.35 });
+    if (currentMapStyle === "yandex") {
+      map.panTo([targetLat, targetLng], { animate: false });
+    } else {
+      map.panTo([targetLat, targetLng], { animate: true, duration: 0.35 });
+    }
   }
 }
 
