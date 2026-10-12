@@ -188,6 +188,11 @@ function setMapStyle(styleKey) {
   } else if (styleKey === "google-sat") {
     // Official Google Maps Satellite Hybrid with Georgian street labels
     currentBaseTileLayer = L.tileLayer("https://mt{s}.google.com/vt/lyrs=y&hl=ka&gl=GE&x={x}&y={y}&z={z}", perfTileOptions).addTo(map);
+  } else if (styleKey === "yandex") {
+    // If Yandex Map is loading, show fallback base road tiles so screen is NEVER black!
+    if (!yandexEngine || !yandexEngine.isLoaded) {
+      currentBaseTileLayer = L.tileLayer("https://mt{s}.google.com/vt/lyrs=m&hl=ka&gl=GE&x={x}&y={y}&z={z}", perfTileOptions).addTo(map);
+    }
   }
   window.currentBaseTileLayer = currentBaseTileLayer;
 
@@ -272,7 +277,18 @@ function initSubsystems() {
     if (trafficEngine) {
       yandexEngine.isTrafficEnabled = trafficEngine.isEnabled;
     }
+    yandexEngine.onReady = () => {
+      if (currentMapStyle === "yandex" && currentBaseTileLayer) {
+        map.removeLayer(currentBaseTileLayer);
+        currentBaseTileLayer = null;
+      }
+    };
     window.yandexEngine = yandexEngine;
+
+    // CRITICAL FIX: If page loaded with Yandex style, immediately enable it!
+    if (currentMapStyle === "yandex") {
+      yandexEngine.enable();
+    }
   } catch (e) { console.warn("yandexEngine init notice:", e); }
 
   try {

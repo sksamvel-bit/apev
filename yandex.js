@@ -58,6 +58,9 @@ class YandexEngine {
         if (this.isActive) {
           this.enable();
         }
+        if (typeof this.onReady === "function") {
+          try { this.onReady(); } catch(e){}
+        }
       });
     };
 
@@ -115,19 +118,30 @@ class YandexEngine {
     this.trafficProvider.state.events.add("change", updateScore);
     setTimeout(updateScore, 2000);
 
-    // Sync Leaflet pan & zoom with Yandex Map
-    this.map.on("move", () => {
-      if (this.isActive && this.ymapsMap) {
-        const c = this.map.getCenter();
-        this.ymapsMap.setCenter([c.lat, c.lng]);
-      }
-    });
+    // High-performance 60 FPS lockstep sync with Leaflet
+    let syncPending = false;
+    const syncToYandex = () => {
+      if (!this.isActive || !this.ymapsMap || syncPending) return;
+      syncPending = true;
 
-    this.map.on("zoomend", () => {
-      if (this.isActive && this.ymapsMap) {
-        this.ymapsMap.setZoom(this.map.getZoom());
-      }
-    });
+      requestAnimationFrame(() => {
+        syncPending = false;
+        if (!this.isActive || !this.ymapsMap) return;
+
+        const c = this.map.getCenter();
+        const z = this.map.getZoom();
+
+        // Pass duration: 0 and checkZoomRange: false to immediately lockstep with Leaflet!
+        this.ymapsMap.setCenter([c.lat, c.lng], z, {
+          duration: 0,
+          checkZoomRange: false
+        });
+      });
+    };
+
+    this.map.on("move", syncToYandex);
+    this.map.on("zoom", syncToYandex);
+    this.map.on("viewreset", syncToYandex);
 
   }
 
@@ -147,8 +161,10 @@ class YandexEngine {
     }
     if (this.ymapsMap) {
       const c = this.map.getCenter();
-      this.ymapsMap.setCenter([c.lat, c.lng]);
-      this.ymapsMap.setZoom(this.map.getZoom());
+      this.ymapsMap.setCenter([c.lat, c.lng], this.map.getZoom(), {
+        duration: 0,
+        checkZoomRange: false
+      });
       if (this.trafficProvider) {
         this.trafficProvider.setMap(this.isTrafficEnabled ? this.ymapsMap : null);
       }
