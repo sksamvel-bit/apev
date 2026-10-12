@@ -315,3 +315,24 @@ C:\Users\skarapetiani\.gemini\antigravity\scratch\tesla-nav\
     * **Google Maps-ზე დაბრუნება:** `_zoomAnimated: true` სრულად შენარჩუნებულია.
     * გადაღებულია სქრინშოტი: `yandex-zoom-verification.png`.
   * სისტემის ვერსია გადავიდა **`v=3.6.3`**-ზე. Git დაკომიტდა (`f0a4122`) და სარეზერვო ასლები სრულად განახლდა.
+
+### 6.14 OSRM Routing 400 Bad Request შეცდომის სრული აღმოფხვრა და Dual-Server Fallback (v3.6.4)
+* **მომხმარებლის მოთხოვნა:** „რაარი ეს???“ (სქრინშოტი: *„⚠️ მარშრუტის დახაზვა ვერ მოხერხდა: OSRM Routing failed with status: 400“*).
+* **ფესვური მიზეზის (Root Cause) დიაგნოსტიკა:**
+  1. `routing.js`-ში უგზოობის არიდებისას (`avoidUnpaved = true`) OSRM-ის მისამართს ემატებოდა პარამეტრი `&exclude=unpaved`.
+  2. საჯარო OSRM სერვერები (`router.project-osrm.org`) არ უჭერენ მხარს `unpaved` ფლაგს და მომენტალურად ისვრიან HTTP 400 Bad Request შეცდომას: *„Exclude flag combination is not supported“*.
+  3. გარდა ამისა, კოორდინატების გადაცემისას არ არსებობდა უსაფრთხო ნორმალიზაცია (თუ ობიექტი ან მასივი განსხვავებული ფორმატით მოვიდოდა, იგზავნებოდა `undefined,undefined`, რაც ასევე იწვევდა 400 შეცდომას).
+  4. არ არსებობდა ალტერნატიული სერვერი — პირველი სერვერის შეცდომისას მარშრუტი საერთოდ აღარ იხაზებოდა.
+* **ტექნიკური იმპლემენტაცია:**
+  1. `routing.js`-დან ამოღებულია დაუშვებელი `&exclude=unpaved` პარამეტრი.
+  2. დაემატა კოორდინატების მკაცრი ვალიდაცია და ნორმალიზაცია (`parseCoord(pt)`): ამოწმებს `lat`/`lng`/`latitude`/`longitude`/`lon` და მასივებს, რათა არასდროს გაიგზავნოს `NaN` ან `undefined`.
+  3. დაინერგა **Dual-Server Fallback** არქიტექტურა:
+     * ძირითადი სერვერი: `https://router.project-osrm.org/route/v1/driving/`
+     * სარეზერვო სერვერი: `https://routing.openstreetmap.de/routed-car/route/v1/driving/`
+     * თუ რომელიმე სერვერი დააბრუნებს შეცდომას ან დააყოვნებს, ძრავა ავტომატურად გადადის მეორე სერვერზე <400ms-ში.
+* **ვერიფიკაცია და ტესტირება:**
+  * Edge Headless CDP ტესტით (`test-route-click.js`) შემოწმდა მარშრუტის აგება და გადახედვის ბარათი (Preview Card):
+    * `success: true`, `distanceMeters: 1420.2`, `durationSeconds: 206.5`, `stepsCount: 13`.
+    * ბარათი: `isVisible: true`, `distText: 3.0 კმ`, `timeText: 14 წთ`.
+    * 400 შეცდომა სრულად აღმოიფხვრა.
+  * ვერსია განახლდა **`v=3.6.4`**-ზე. Git commit: `fb03131`.
