@@ -125,7 +125,7 @@
       </div>
       <div id="hud-battery-row" class="hud-battery-row" style="display:none;">
         <span id="hud-battery-kwh" style="display:none;"></span>
-        <span id="hud-battery-arrival">🔋 76%</span>
+        <span id="hud-battery-arrival">🔋 ~--% (შეფასება)</span>
       </div>
     </div>
   </aside>
@@ -157,7 +157,7 @@
     <!-- Battery Consumption Impact Preview -->
     <div id="preview-battery-row" class="preview-battery-row">
       <span id="preview-battery-kwh">⚡ ~0.0 kWh</span>
-      <span id="preview-battery-arrival">🔋 ჩასვლისას: --%</span>
+      <span id="preview-battery-arrival">🔋 ჩასვლისას: ~--% (შეფასება)</span>
     </div>
 
     <!-- Actions: GO and Cancel -->
@@ -444,8 +444,11 @@
             </div>
 
             <div class="setting-group">
-              <label class="setting-label">🔋 ბატარეის მუხტი (%):</label>
+              <label class="setting-label">🔋 საწყისი ბატარეა (%):</label>
               <input type="number" id="input-initial-soc" class="setting-input" min="1" max="100" placeholder="80">
+              <span style="font-size: 0.75rem; color: var(--text-muted); display: block; margin-top: 4px;">
+                ℹ️ ენერგომოდელი (შეფასება). არ უკავშირდება Tesla CAN-bus BMS ტელემეტრიას.
+              </span>
             </div>
           </div>
 

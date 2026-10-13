@@ -480,7 +480,7 @@ function initSubsystems() {
           bRow.className = `hud-battery-row ${summary.batteryImpact.status}`;
         }
         if (kwhEl) kwhEl.textContent = `⚡ ~${summary.batteryImpact.energyKwh} kWh`;
-        if (arrivalEl) arrivalEl.textContent = `🔋 ჩასვლა: ${summary.batteryImpact.arrivalSoC}%`;
+        if (arrivalEl) arrivalEl.textContent = `🔋 ჩასვლა: ~${summary.batteryImpact.arrivalSoC}% (შეფასება)`;
       }
     }
   };
@@ -916,7 +916,7 @@ async function prepareRoutePreview(destLatLng, destTitle = "დანიშნ�
 
     if (route.batteryImpact) {
       if (kwhEl) kwhEl.textContent = `⚡ ~${route.batteryImpact.energyKwh} kWh`;
-      if (arrivalEl) arrivalEl.textContent = `🔋 ჩასვლისას: ${route.batteryImpact.arrivalSoC}%`;
+      if (arrivalEl) arrivalEl.textContent = `🔋 ჩასვლისას: ~${route.batteryImpact.arrivalSoC}% (შეფასება)`;
     } else {
       if (kwhEl) kwhEl.textContent = `⚡ ელემენტი: მზადაა`;
       if (arrivalEl) arrivalEl.textContent = `🔋 ჩასვლისას: OK`;
@@ -1079,7 +1079,7 @@ function initSearch() {
     debounceTimer = setTimeout(async () => {
       if (query.length < 2) return;
       try {
-        const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&countrycodes=ge&limit=6&addressdetails=1&accept-language=ka,en`;
+        const url = `/api/search?q=${encodeURIComponent(query)}`;
         const res = await fetch(url);
         const data = await res.json();
         renderSearchResults(data);
@@ -1160,7 +1160,7 @@ function renderFavoritesDropdown() {
 async function handleAddressSearchAndNavigate(query, label) {
   try {
     showToast(`იძებნება ${label}...`, "info", 2000);
-    const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&countrycodes=ge&limit=1`;
+    const url = `/api/search?q=${encodeURIComponent(query)}`;
     const res = await fetch(url);
     const data = await res.json();
     if (data && data.length > 0) {

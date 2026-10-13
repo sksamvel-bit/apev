@@ -541,7 +541,7 @@
     async function executeSearch(query) {
       resultsList.innerHTML = '<div style="padding:10px;text-align:center;color:#94a3b8;font-size:0.85rem;">იძებნება...</div>';
       try {
-        const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query)}&format=json&addressdetails=1&countrycodes=ge&limit=5&accept-language=ka,en`;
+        const url = `/api/search?q=${encodeURIComponent(query)}`;
         const res = await fetch(url);
         const data = await res.json();
         resultsList.innerHTML = '';

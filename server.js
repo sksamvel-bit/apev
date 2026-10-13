@@ -28,7 +28,7 @@ const STATIC_WHITELIST = new Set([
 // - Any subsequent PINs are GUEST PINS with STRICT SINGLE-DEVICE LOCK (1 PIN = 1 Device).
 const RAW_PINS = (process.env.ACCESS_PIN || '').split(',').map(s => s.trim()).filter(Boolean);
 const MASTER_PIN = RAW_PINS[0] || '';
-const AUTH_SECRET = process.env.AUTH_SECRET || 'tesla-nav-secret-salt-2026';
+const AUTH_SECRET = process.env.AUTH_SECRET || crypto.randomBytes(32).toString('hex');
 
 // Persistent storage for single-device bindings: pin-bindings.json
 const BINDINGS_FILE = path.join(PUBLIC_DIR, 'pin-bindings.json');
@@ -182,7 +182,7 @@ function attemptPinAuth(inputPin, req) {
 const PUBLIC_AUTH_PATHS = new Set([
   '/healthz', '/api/info', '/remote.html', '/manifest.json',
   '/icon.svg', '/icon-192.png', '/icon-512.png', '/sw.js',
-  '/api/auth/pin', '/api/telemetry/error'
+  '/api/auth/pin', '/api/telemetry/error', '/api/search'
 ]);
 
 function isPublicAuthPath(p) {
@@ -381,6 +381,62 @@ setInterval(() => {
 setTimeout(() => {
   getLiveGeorgiaChargers(false).catch(() => {});
 }, 3000);
+
+// Server-side Geocoding Proxy (OSM Nominatim) with caching & rate limiting
+const searchCache = new Map();
+const SEARCH_CACHE_TTL = 24 * 60 * 60 * 1000;
+let lastNominatimRequestTime = 0;
+
+function searchNominatimProxy(query) {
+  return new Promise((resolve) => {
+    const qClean = (query || '').trim().toLowerCase();
+    if (!qClean || qClean.length < 2) return resolve([]);
+
+    const cached = searchCache.get(qClean);
+    if (cached && (Date.now() - cached.timestamp < SEARCH_CACHE_TTL)) {
+      return resolve(cached.data);
+    }
+
+    const now = Date.now();
+    const waitMs = Math.max(0, 1000 - (now - lastNominatimRequestTime));
+    lastNominatimRequestTime = now + waitMs;
+
+    setTimeout(() => {
+      const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&countrycodes=ge&limit=6&addressdetails=1&accept-language=ka,en`;
+      const req = https.get(url, {
+        headers: {
+          'User-Agent': 'TeslaNav/3.9 (+https://apev.onrender.com; automotive navigation client)'
+        },
+        timeout: 8000
+      }, res => {
+        if (res.statusCode !== 200) {
+          return resolve(cached ? cached.data : []);
+        }
+        let body = '';
+        res.on('data', chunk => body += chunk);
+        res.on('end', () => {
+          try {
+            const data = JSON.parse(body);
+            if (Array.isArray(data)) {
+              searchCache.set(qClean, { timestamp: Date.now(), data });
+              if (searchCache.size > 200) {
+                const oldest = searchCache.keys().next().value;
+                searchCache.delete(oldest);
+              }
+              resolve(data);
+            } else {
+              resolve([]);
+            }
+          } catch (e) {
+            resolve([]);
+          }
+        });
+      });
+      req.on('error', () => resolve(cached ? cached.data : []));
+      req.on('timeout', () => { req.destroy(); resolve(cached ? cached.data : []); });
+    }, waitMs);
+  });
+}
 
 // Resolve YouTube search query to Video ID
 function resolveYouTubeQuery(query) {
@@ -693,6 +749,27 @@ const server = http.createServer((req, res) => {
     }).catch(err => {
       res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
       res.end(JSON.stringify({ success: false, fallbackQuery: q, error: err.message }));
+    });
+    return;
+  }
+
+  // API Endpoint: /api/search (Server-side geocoding proxy with 24h cache & 1s rate-limiting)
+  if (pathname === '/api/search') {
+    const q = (urlObj.searchParams.get('q') || '').trim();
+    if (!q) {
+      res.writeHead(400, { 'Content-Type': 'application/json; charset=utf-8' });
+      res.end(JSON.stringify([]));
+      return;
+    }
+    searchNominatimProxy(q).then(results => {
+      res.writeHead(200, {
+        'Content-Type': 'application/json; charset=utf-8',
+        'Cache-Control': 'public, max-age=86400'
+      });
+      res.end(JSON.stringify(results));
+    }).catch(err => {
+      res.writeHead(500, { 'Content-Type': 'application/json; charset=utf-8' });
+      res.end(JSON.stringify([]));
     });
     return;
   }

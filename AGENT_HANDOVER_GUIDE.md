@@ -1,8 +1,8 @@
 # 🚀 Tesla In-Car Navigation (Georgia) — Master Agent Handover Guide
 
 > **Target Audience:** Future AI Agents, Engineers, and Auditors.  
-> **Status as of October 12, 2026:** Production Ready, Optimized for Tesla MCU Chromium Browser, Version **v3.6.3**.  
-> **Primary URL:** `http://localhost:3000` (Local) / `http://192.168.111.25:3000` (In-car WiFi/Hotspot).  
+> **Status as of October 13, 2026:** Production Ready, Optimized for Tesla MCU Chromium Browser, Version **v3.9.0**.  
+> **Primary URL:** `http://localhost:3000` (Local) / `http://192.168.111.25:3000` (In-car WiFi/Hotspot) / `https://apev.onrender.com` (Cloud).  
 > **Repository Location:** `C:\Users\skarapetiani\.gemini\antigravity\scratch\tesla-nav`  
 > **Backup Directory:** `C:\Users\skarapetiani\.gemini\antigravity\scratch\tesla-nav-backup`  
 > **Zip Archive:** `C:\Users\skarapetiani\.gemini\antigravity\scratch\tesla-nav-backup-complete.zip`  
@@ -99,23 +99,29 @@ tesla-nav/
 ├── weather.js           # Open-Meteo live weather client
 ├── speech.js            # Georgian voice navigation assistant
 ├── media-player.js      # Picture-in-picture YouTube player (unrestricted during driving)
+├── speed-limit.js      # OSM Overpass live maxspeed engine with spatial grid cache & fallback
 ├── traffic-signals.js   # Live traffic lights layer via Overpass API (+-50 deg heading filter)
 ├── traffic.js           # Traffic layer coordinator
-├── server.js            # Node.js HTTP/SSE server, YouTube resolver, charger auto-sync, static whitelist
+├── server.js            # Node.js HTTP/SSE server, Multi-PIN Single-Device lock, /api/search proxy, EV auto-sync
+├── sw.js                # Service Worker for instant PWA caching & R-gear instant reload
 ├── remote.html          # Smartphone web companion (QR code target, search, voice dictation)
 ├── chargers-cache.json  # 650+ cached charging stations across Georgia
 ├── leaflet.js / .css    # Offline local Leaflet library (v1.9.4)
 ├── qrcode.min.js        # Offline QR code generator
 └── tests/
-    └── test_routing.js  # Node.js navigation engine automated test suite (9 assertions)
+    ├── test_routing.js          # Navigation engine automated unit tests (9 assertions)
+    ├── test_speed_limit.js      # Speed limit fallback & corridor unit tests (13 assertions)
+    ├── test_speed_limit_osm.js  # OSM Overpass grid & road snapping unit tests (22 assertions)
+    ├── check_versions.js        # Version sync check across all manifests and HTML
+    └── smoke_server.js          # 18-point server security & regression test suite
 ```
 
 ---
 
 ## 4. Key Rules for Any Future Modification
-1. **Never implement driving lockout on media/search:** The user explicitly requires YouTube playback and search inputs to remain active and open during driving.
+1. **Never break Touch Propagation:** Overlay elements MUST have `L.DomEvent.disableClickPropagation(el)` and `button svg { pointer-events: none; }`.
 2. **Never use `backdrop-filter: blur()`:** It causes severe GPU stuttering on Tesla MCU Chromium.
-3. **Never break Touch Propagation:** Overlay elements MUST have `L.DomEvent.disableClickPropagation(el)` and `button svg { pointer-events: none; }`.
+3. **Driving Safety & Media:** YouTube playback while driving is enabled by user configuration (`DRIVING_LOCKOUT = false`), with an explicit driver safety disclaimer.
 4. **Keep Leaflet Zoom Animation Dynamic:**
    * On Yandex Map: `map.options.zoomAnimation = false; map._zoomAnimated = false;` (otherwise icons float and lag behind).
    * On Google Maps: `map.options.zoomAnimation = true; map._zoomAnimated = true;` (smooth tile zoom).
@@ -127,12 +133,19 @@ tesla-nav/
 
 ## 5. Verification Commands for Auditors
 To verify the application:
-1. Start server: `node server.js`
-2. Run automated navigation unit tests:
+1. Run automated test suite:
    ```bash
-   node tests/test_routing.js
+   npm test          # 44/44 unit tests (Routing + Speed limits + OSM Overpass)
    ```
-3. Check syntax across all JS files:
+2. Verify version consistency:
    ```bash
-   node -c app.js yandex.js routing.js chargers.js battery.js server.js media-player.js traffic.js traffic-signals.js tests/test_routing.js
+   npm run check     # Verifies v3.9.0 across package.json, index.html, sw.js
+   ```
+3. Run security and regression smoke tests:
+   ```bash
+   npm run smoke     # 18/18 server security tests (PIN auth, rate-limit, path traversal, SSE)
+   ```
+4. Verify JS syntax:
+   ```bash
+   node --check app.js yandex.js routing.js chargers.js battery.js server.js media-player.js speed-limit.js
    ```
