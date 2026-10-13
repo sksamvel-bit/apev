@@ -1,0 +1,22 @@
+name: CI
+on:
+  push:
+  pull_request:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Syntax check (every .js file)
+        run: |
+          for f in *.js tests/*.js; do node --check "$f" || exit 1; done
+      - name: Unit tests
+        run: npm test
+      - name: Version consistency (package.json vs index.html)
+        run: npm run check
+      - name: Server smoke + security regression
+        run: npm run smoke
