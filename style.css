@@ -916,6 +916,35 @@ html, body {
   }
 }
 
+.btn-flip-heading {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  background: rgba(14, 18, 26, 0.94);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 12px;
+  padding: 6px 10px;
+  color: var(--text-primary);
+  font-size: 0.8rem;
+  font-weight: 700;
+  cursor: pointer;
+  touch-action: manipulation;
+  transition: all 0.15s ease;
+  box-shadow: var(--shadow-card);
+  min-height: 44px;
+}
+
+.btn-flip-heading:hover {
+  background: rgba(255, 255, 255, 0.12);
+  border-color: rgba(0, 210, 255, 0.5);
+  color: var(--accent-cyan);
+}
+
+.btn-flip-heading:active {
+  transform: scale(0.92);
+  background: rgba(0, 136, 255, 0.25);
+}
+
 /* FLOATING CONTROLS DOCK (Right Side - Automotive Touch Strip) */
 .dock-controls {
   position: absolute;

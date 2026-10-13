@@ -55,6 +55,7 @@ document.addEventListener("DOMContentLoaded", () => {
   try { initEventListeners(); } catch (e) { console.error("initEventListeners error:", e); }
   try { requestWakeLock(); } catch (e) { console.error("requestWakeLock error:", e); }
   try { initGeolocation(); } catch (e) { console.error("initGeolocation error:", e); }
+  try { initCompassSensor(); } catch (e) { console.error("initCompassSensor error:", e); }
   try { initRemoteSession(); } catch (e) { console.error("initRemoteSession error:", e); }
   try { restoreActiveRouteState(); } catch (e) { console.error("restoreActiveRouteState error:", e); }
 });
@@ -182,6 +183,28 @@ function initMap() {
     icon: carIcon,
     zIndexOffset: 1000
   }).addTo(map);
+
+  carMarker.on("click", (e) => {
+    if (e && e.originalEvent) {
+      e.originalEvent.stopPropagation();
+    }
+    flipVehicleHeading180();
+  });
+
+  if (lastKnownValidHeading !== 0) {
+    currentHeading = Math.round(lastKnownValidHeading);
+    if (currentMapOrientation === "heading-up") {
+      currentMapRotation = -Math.round(lastKnownValidHeading);
+      applyMapRotation(currentMapRotation, false);
+    }
+    requestAnimationFrame(() => {
+      const markerEl = carMarker ? carMarker.getElement() : null;
+      const carIconEl = markerEl ? markerEl.querySelector(".tesla-car-icon-body") : document.getElementById("car-svg-icon");
+      if (carIconEl) {
+        carIconEl.style.transform = `rotate(${Math.round(lastKnownValidHeading)}deg)`;
+      }
+    });
+  }
 
   map.on("click", (e) => {
     handleMapClick(e.latlng);
@@ -840,8 +863,12 @@ let cachedCarIconEl = null;
 let lastGpsPos = null;
 let lastGpsTime = 0;
 let lastHeadingFixPos = null;
-let lastKnownValidHeading = 0;
-let continuousHeading = 0; // Continuous rotation angle (prevents 359->0 360-spin glitch)
+let lastKnownValidHeading = (() => {
+  const saved = parseFloat(localStorage.getItem("tesla_nav_saved_heading"));
+  return (isFinite(saved) && saved >= 0 && saved <= 360) ? saved : 0;
+})();
+let continuousHeading = lastKnownValidHeading; // Continuous rotation angle (prevents 359->0 360-spin glitch)
+let stationaryCompassHeading = null; // Stationary device compass heading (deviceorientation)
 const smoothedVelocityVector = { vx: 0, vy: 0, initialized: false };
 
 function calculateBearing(lat1, lon1, lat2, lon2) {
@@ -887,66 +914,68 @@ function updateVehicleMarker(lat, lng, headingDeg, speedKmh, accuracyMeters = nu
   const isMoving = speedKmh >= 3.5 || dFromLastGps >= 1.8;
   let targetHeading = null;
 
-  // PRIORITY 1: Hardware GNSS Doppler Heading
+  // PRIORITY 1: Hardware GNSS Doppler / Gyro Heading
   // In Tesla's Chromium browser or modern smartphones, coords.heading provides
   // satellite Doppler carrier-phase heading with 0.1-0.5 deg precision (zero position jitter).
   const hasHardwareHeading = typeof headingDeg === "number" && isFinite(headingDeg) && headingDeg !== null &&
-                             headingDeg >= 0 && headingDeg <= 360 &&
-                             (headingDeg > 0 || speedKmh >= 4);
+                             headingDeg >= 0 && headingDeg <= 360;
 
-  if (isMoving) {
-    if (hasHardwareHeading) {
-      targetHeading = headingDeg;
-    } else {
-      // PRIORITY 2: Exponentially Smoothed Velocity Vector (EMA)
-      // When hardware heading is null/unavailable, filter (vx, vy) displacement
-      // rather than computing noisy point-to-point bearing over short distances.
-      if (lastGpsPos && lastGpsTime > 0) {
-        const dt = Math.max(0.2, Math.min(3.0, (now - lastGpsTime) / 1000));
-        const radLat = lat * (Math.PI / 180);
-        const kx = 111320 * Math.cos(radLat);
-        const ky = 110540;
-        const instVx = ((lng - lastGpsPos.lng) * kx) / dt;
-        const instVy = ((lat - lastGpsPos.lat) * ky) / dt;
-        const instSpeedMps = Math.hypot(instVx, instVy);
+  if (hasHardwareHeading) {
+    // Hardware Doppler or vehicle gyro heading is highly accurate whether moving or stationary!
+    targetHeading = headingDeg;
+  } else if (isMoving) {
+    // PRIORITY 2: Exponentially Smoothed Velocity Vector (EMA)
+    // When hardware heading is null/unavailable, filter (vx, vy) displacement
+    // rather than computing noisy point-to-point bearing over short distances.
+    if (lastGpsPos && lastGpsTime > 0) {
+      const dt = Math.max(0.2, Math.min(3.0, (now - lastGpsTime) / 1000));
+      const radLat = lat * (Math.PI / 180);
+      const kx = 111320 * Math.cos(radLat);
+      const ky = 110540;
+      const instVx = ((lng - lastGpsPos.lng) * kx) / dt;
+      const instVy = ((lat - lastGpsPos.lat) * ky) / dt;
+      const instSpeedMps = Math.hypot(instVx, instVy);
 
-        if (instSpeedMps >= 0.8) { // moving at least ~3 km/h
-          if (!smoothedVelocityVector.initialized) {
-            smoothedVelocityVector.vx = instVx;
-            smoothedVelocityVector.vy = instVy;
-            smoothedVelocityVector.initialized = true;
-          } else {
-            // EMA filter: cancels zero-mean lateral GPS noise while tracking forward travel
-            smoothedVelocityVector.vx = smoothedVelocityVector.vx * 0.65 + instVx * 0.35;
-            smoothedVelocityVector.vy = smoothedVelocityVector.vy * 0.65 + instVy * 0.35;
-          }
-          targetHeading = (Math.atan2(smoothedVelocityVector.vx, smoothedVelocityVector.vy) * 180 / Math.PI + 360) % 360;
-        }
-      }
-
-      // Fallback: if smoothed vector still not ready, check displacement over >= 6 meters
-      if (targetHeading === null) {
-        if (!lastHeadingFixPos) {
-          lastHeadingFixPos = { lat, lng, time: now };
+      if (instSpeedMps >= 0.8) { // moving at least ~3 km/h
+        if (!smoothedVelocityVector.initialized) {
+          smoothedVelocityVector.vx = instVx;
+          smoothedVelocityVector.vy = instVy;
+          smoothedVelocityVector.initialized = true;
         } else {
-          const dMetersFromFix = routingEngine
-            ? routingEngine.haversineMeters(lastHeadingFixPos.lat, lastHeadingFixPos.lng, lat, lng)
-            : 0;
-          if (dMetersFromFix >= 6.0) {
-            targetHeading = calculateBearing(lastHeadingFixPos.lat, lastHeadingFixPos.lng, lat, lng);
-            lastHeadingFixPos = { lat, lng, time: now };
-          }
+          // EMA filter: cancels zero-mean lateral GPS noise while tracking forward travel
+          smoothedVelocityVector.vx = smoothedVelocityVector.vx * 0.65 + instVx * 0.35;
+          smoothedVelocityVector.vy = smoothedVelocityVector.vy * 0.65 + instVy * 0.35;
+        }
+        targetHeading = (Math.atan2(smoothedVelocityVector.vx, smoothedVelocityVector.vy) * 180 / Math.PI + 360) % 360;
+      }
+    }
+
+    // Fallback: if smoothed vector still not ready, check displacement over >= 6 meters
+    if (targetHeading === null) {
+      if (!lastHeadingFixPos) {
+        lastHeadingFixPos = { lat, lng, time: now };
+      } else {
+        const dMetersFromFix = routingEngine
+          ? routingEngine.haversineMeters(lastHeadingFixPos.lat, lastHeadingFixPos.lng, lat, lng)
+          : 0;
+        if (dMetersFromFix >= 6.0) {
+          targetHeading = calculateBearing(lastHeadingFixPos.lat, lastHeadingFixPos.lng, lat, lng);
+          lastHeadingFixPos = { lat, lng, time: now };
         }
       }
     }
   } else {
-    // Stationary mode (< 3.5 km/h): freeze heading! Reset reference points
+    // Stationary mode (< 3.5 km/h) without hardware GNSS heading:
+    // If device orientation compass is active, use it! Otherwise freeze heading.
+    if (stationaryCompassHeading !== null) {
+      targetHeading = stationaryCompassHeading;
+    }
     lastHeadingFixPos = { lat, lng, time: now };
     smoothedVelocityVector.initialized = false;
   }
 
   // PRIORITY 3: Road & Route Alignment (Keep Arrow Straight in Lane)
-  const candidateBearing = targetHeading !== null ? targetHeading : (isMoving ? lastKnownValidHeading : null);
+  const candidateBearing = targetHeading !== null ? targetHeading : lastKnownValidHeading;
 
   if (candidateBearing !== null) {
     if (routingEngine && routingEngine.isNavigating && !routingEngine.isRerouting) {
@@ -971,21 +1000,25 @@ function updateVehicleMarker(lat, lng, headingDeg, speedKmh, accuracyMeters = nu
   // Angular interpolation with adaptive shortest-angular-path smoothing
   if (targetHeading !== null) {
     lastKnownValidHeading = targetHeading;
+    try {
+      localStorage.setItem("tesla_nav_saved_heading", String(Math.round(lastKnownValidHeading)));
+    } catch (_) {}
   }
-  if (isMoving && lastKnownValidHeading !== null) {
+  if (lastKnownValidHeading !== null) {
     const normCur = ((continuousHeading % 360) + 360) % 360;
     const diff = shortestAngleDiff(lastKnownValidHeading, normCur);
     if (lastRenderedHeading === -999) {
       // First fix: snap immediately without slow rotation
       continuousHeading = lastKnownValidHeading;
-    } else {
+    } else if (isMoving) {
       // Adaptive smoothing: gentle (0.28) when cruising straight to kill jitter;
       // dynamic (0.55) when turning corners or intersections
       const factor = Math.abs(diff) <= 30 ? 0.28 : 0.55;
       continuousHeading += diff * factor;
+    } else if (Math.abs(diff) > 2) {
+      // Stationary: smooth towards compass/target heading
+      continuousHeading += diff * 0.45;
     }
-  } else if (!isMoving && lastKnownValidHeading !== null && lastRenderedHeading === -999) {
-    continuousHeading = lastKnownValidHeading;
   }
 
   currentHeading = Math.round(((continuousHeading % 360) + 360) % 360);
@@ -1173,6 +1206,69 @@ function updateOrientationUI() {
   } else {
     document.body.classList.add("orientation-north-up");
     if (tip) tip.textContent = "ჩრდილოეთი (North-Up)";
+  }
+}
+
+// 1-Tap 180-Degree Quick Inversion for Parked Vehicle Orientation Ambiguity
+function flipVehicleHeading180() {
+  const newHeading = Math.round(((continuousHeading + 180) % 360 + 360) % 360);
+  continuousHeading += 180;
+  lastKnownValidHeading = newHeading;
+  currentHeading = newHeading;
+  try {
+    localStorage.setItem("tesla_nav_saved_heading", String(currentHeading));
+  } catch (_) {}
+
+  // Update vehicle arrow rotation immediately
+  if (carMarker) {
+    const markerEl = carMarker.getElement();
+    if (!cachedCarIconEl || !cachedCarIconEl.isConnected) {
+      cachedCarIconEl = markerEl ? markerEl.querySelector(".tesla-car-icon-body") : document.getElementById("car-svg-icon");
+    }
+    if (cachedCarIconEl) {
+      cachedCarIconEl.style.transition = "transform 0.3s cubic-bezier(0.2, 0.9, 0.3, 1)";
+      cachedCarIconEl.style.transform = `rotate(${Math.round(continuousHeading)}deg)`;
+      setTimeout(() => {
+        if (cachedCarIconEl) cachedCarIconEl.style.transition = "none";
+      }, 350);
+    }
+    lastRenderedHeading = Math.round(continuousHeading);
+  }
+
+  // Update Heading-Up map rotation immediately
+  if (currentMapOrientation === "heading-up") {
+    currentMapRotation = -Math.round(continuousHeading);
+    applyMapRotation(currentMapRotation, true);
+  }
+
+  showToast(`🔄 მიმართულება შებრუნდა 180°-ით (${currentHeading}°)`, "info", 2000);
+}
+window.flipVehicleHeading180 = flipVehicleHeading180;
+
+// Device Orientation Compass Fallback for Stationary Orientation
+function initCompassSensor() {
+  if (typeof window === "undefined") return;
+
+  const handleOrientation = (e) => {
+    // 1. webkitCompassHeading (iOS Safari / modern Chromium)
+    if (typeof e.webkitCompassHeading === "number" && isFinite(e.webkitCompassHeading)) {
+      stationaryCompassHeading = (e.webkitCompassHeading + 360) % 360;
+      return;
+    }
+    // 2. W3C deviceorientationabsolute or alpha with absolute=true
+    if (e.absolute === true && typeof e.alpha === "number" && isFinite(e.alpha)) {
+      stationaryCompassHeading = (360 - e.alpha + 360) % 360;
+    }
+  };
+
+  try {
+    if ("ondeviceorientationabsolute" in window) {
+      window.addEventListener("deviceorientationabsolute", handleOrientation, { passive: true });
+    } else if ("ondeviceorientation" in window) {
+      window.addEventListener("deviceorientation", handleOrientation, { passive: true });
+    }
+  } catch (err) {
+    console.warn("Compass sensor not supported:", err);
   }
 }
 
@@ -1704,6 +1800,15 @@ function initEventListeners() {
     });
   }
   updateOrientationUI();
+
+  // 1-Tap 180-Degree Quick Flip Button
+  const btnFlipHeading = document.getElementById("btn-flip-heading");
+  if (btnFlipHeading) {
+    btnFlipHeading.addEventListener("click", (e) => {
+      e.stopPropagation();
+      flipVehicleHeading180();
+    });
+  }
 
   // Map Zoom Controls (+ and -)
   document.getElementById("btn-zoom-in").addEventListener("click", () => {

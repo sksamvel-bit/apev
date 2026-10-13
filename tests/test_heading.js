@@ -170,4 +170,31 @@ assert.strictEqual(cwDiff, 10, 'Crossing the -180/180 meridian CW must be +10 de
 
 console.log('PASS  multi-touch twist gesture: smooth 360-deg rotation & wrap-around math');
 
-console.log('All 12 heading assertions passed successfully.');
+// 13. Stationary Vehicle Hardware Heading & 180-Degree Quick Flip
+const stationarySpeed = 0;
+const stationaryHeading = 180; // Parked facing South
+const hasStationaryHwHeading = typeof stationaryHeading === "number" && isFinite(stationaryHeading) &&
+                              stationaryHeading >= 0 && stationaryHeading <= 360;
+assert.ok(hasStationaryHwHeading, 'Hardware heading must be accepted even when speed is 0 km/h');
+
+// Test 180-degree quick flip
+function flip180(heading) {
+  return Math.round(((heading + 180) % 360 + 360) % 360);
+}
+assert.strictEqual(flip180(180), 0, '180 deg flipped by 180 must equal 0 (North)');
+assert.strictEqual(flip180(0), 180, '0 deg flipped by 180 must equal 180 (South)');
+assert.strictEqual(flip180(90), 270, '90 deg flipped by 180 must equal 270 (West)');
+assert.strictEqual(flip180(270), 90, '270 deg flipped by 180 must equal 90 (East)');
+console.log('PASS  stationary hardware heading accepted & 180-degree flip calculation');
+
+// 14. Persistent heading across browser reload / reverse gear switch
+const mockStorage = {};
+mockStorage['tesla_nav_saved_heading'] = '180';
+const restoredHeading = (() => {
+  const saved = parseFloat(mockStorage['tesla_nav_saved_heading']);
+  return (isFinite(saved) && saved >= 0 && saved <= 360) ? saved : 0;
+})();
+assert.strictEqual(restoredHeading, 180, 'Restored heading from storage must retain parked direction (180 deg)');
+console.log('PASS  persistent heading retention across reload/reverse gear');
+
+console.log('All 14 heading assertions passed successfully.');
