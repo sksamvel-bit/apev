@@ -12,7 +12,12 @@ let destMarker = null;
 let currentBaseTileLayer = null;
 let currentLabelsTileLayer = null;
 let currentMapStyle = "google-roads";
-let currentMapOrientation = localStorage.getItem("tesla_nav_map_orientation") || "heading-up";
+let currentMapOrientation = localStorage.getItem("tesla_nav_map_orientation");
+if (!currentMapOrientation || currentMapOrientation === "heading-up") {
+  // CRITICAL: Reset legacy heading-up to north-up so raster street labels are ALWAYS 100% horizontal and readable!
+  currentMapOrientation = "north-up";
+  localStorage.setItem("tesla_nav_map_orientation", "north-up");
+}
 let currentMapRotation = 0;
 
 let trafficEngine = null;
@@ -255,6 +260,11 @@ function applyMapRotation(rotDeg, animated = false) {
     needleEl.style.transition = transitionVal;
     needleEl.style.transform = `rotate(${rotDeg}deg)`;
   }
+  // Counter-rotate popups and custom pins so they remain horizontal
+  try {
+    document.documentElement.style.setProperty("--map-rotation", `${rotDeg}deg`);
+    document.documentElement.style.setProperty("--counter-rotation", `${-rotDeg}deg`);
+  } catch (_) {}
 }
 
 let compassDragMoved = false;
@@ -1057,27 +1067,16 @@ function updateVehicleMarker(lat, lng, headingDeg, speedKmh, accuracyMeters = nu
     }
   }
 
-  // Heading-Up Map Rotation & Compass Needle Update (Native Tesla/Google Course-Up Experience)
-  const cachedMapEl = document.getElementById("map");
-  const cachedCompassNeedleEl = document.getElementById("compass-needle-svg");
+  // Heading-Up Map Rotation & Compass Needle Update
   if (currentMapOrientation === "heading-up") {
     currentMapRotation = -Math.round(continuousHeading);
-    if (cachedMapEl) {
-      cachedMapEl.style.transform = `rotate(${currentMapRotation}deg)`;
-    }
-    if (cachedCompassNeedleEl) {
-      cachedCompassNeedleEl.style.transform = `rotate(${currentMapRotation}deg)`;
-    }
+    applyMapRotation(currentMapRotation, false);
   } else if (currentMapOrientation === "north-up") {
     currentMapRotation = 0;
-    if (cachedMapEl) {
-      cachedMapEl.style.transform = "rotate(0deg)";
-    }
-    if (cachedCompassNeedleEl) {
-      cachedCompassNeedleEl.style.transform = "rotate(0deg)";
-    }
+    applyMapRotation(0, false);
   } else if (currentMapOrientation === "manual") {
     // Preserve manual 360-degree rotation angle chosen by driver
+    const cachedCompassNeedleEl = document.getElementById("compass-needle-svg");
     if (cachedCompassNeedleEl) {
       cachedCompassNeedleEl.style.transform = `rotate(${currentMapRotation}deg)`;
     }
@@ -1169,11 +1168,11 @@ function toggleMapOrientation() {
     // Smoothly resets rotation to True North (0 deg)!
     currentMapOrientation = "north-up";
     applyMapRotation(0, true);
-    showToast("⬆️ რუკა გასწორდა ჩრდილოეთზე (North-Up)", "info", 1800);
+    showToast("⬆️ რუკა გასწორდა ჩრდილოეთზე (North-Up) — წარწერები ჰორიზონტალურია ✅", "success", 2000);
   } else if (currentMapOrientation === "north-up") {
     // 2nd click (or when at North): switches to dynamic Heading-Up
     currentMapOrientation = "heading-up";
-    showToast("🧭 რუკის რეჟიმი: კურსზე (Heading-Up)", "info", 1800);
+    showToast("🧭 კურსის რეჟიმი (Heading-Up) — რასტერულ რუკაზე წარწერები ბრუნავს", "info", 2500);
     if (currentPos) {
       updateVehicleMarker(currentPos.lat, currentPos.lng, currentHeading, currentSpeedKmh);
     }
@@ -1181,7 +1180,7 @@ function toggleMapOrientation() {
     // In Heading-Up: switches to North-Up
     currentMapOrientation = "north-up";
     applyMapRotation(0, true);
-    showToast("⬆️ რუკის რეჟიმი: ჩრდილოეთზე (North-Up)", "info", 1800);
+    showToast("⬆️ რუკა გასწორდა ჩრდილოეთზე (North-Up) — წარწერები ჰორიზონტალურია ✅", "success", 2000);
   }
   localStorage.setItem("tesla_nav_map_orientation", currentMapOrientation);
   updateOrientationUI();
@@ -1205,7 +1204,7 @@ function updateOrientationUI() {
     if (tip) tip.textContent = "დააჭირეთ ჩრდილოეთზე (North) დასაბრუნებლად";
   } else {
     document.body.classList.add("orientation-north-up");
-    if (tip) tip.textContent = "ჩრდილოეთი (North-Up)";
+    if (tip) tip.textContent = "ჩრდილოეთი (North-Up) — წარწერები სწორია";
   }
 }
 

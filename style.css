@@ -34,6 +34,8 @@
   --radius-full: 9999px;
 
   --font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --map-rotation: 0deg;
+  --counter-rotation: 0deg;
 }
 
 * {
@@ -1087,7 +1089,11 @@ button svg * {
   opacity: 1;
 }
 
-/* MAP POPUP (Tesla Dark Styling) */
+/* MAP POPUP (Tesla Dark Styling with Counter-Rotation) */
+.leaflet-popup {
+  transform-origin: center bottom;
+}
+
 .leaflet-popup-content-wrapper {
   background: var(--bg-card) !important;
   backdrop-filter: var(--backdrop-blur) !important;
@@ -1097,6 +1103,15 @@ button svg * {
   box-shadow: var(--shadow-lg) !important;
   color: var(--text-primary) !important;
   padding: 8px 12px !important;
+  transform: rotate(var(--counter-rotation, 0deg));
+  transform-origin: center center;
+  transition: transform 0.15s ease-out;
+}
+
+.dest-custom-icon {
+  transform: rotate(var(--counter-rotation, 0deg)) !important;
+  transform-origin: center center;
+  transition: transform 0.15s ease-out;
 }
 
 .leaflet-popup-tip {
