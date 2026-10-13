@@ -189,13 +189,6 @@ function initMap() {
     zIndexOffset: 1000
   }).addTo(map);
 
-  carMarker.on("click", (e) => {
-    if (e && e.originalEvent) {
-      e.originalEvent.stopPropagation();
-    }
-    flipVehicleHeading180();
-  });
-
   if (lastKnownValidHeading !== 0) {
     currentHeading = Math.round(lastKnownValidHeading);
     if (currentMapOrientation === "heading-up") {
@@ -1799,15 +1792,6 @@ function initEventListeners() {
     });
   }
   updateOrientationUI();
-
-  // 1-Tap 180-Degree Quick Flip Button
-  const btnFlipHeading = document.getElementById("btn-flip-heading");
-  if (btnFlipHeading) {
-    btnFlipHeading.addEventListener("click", (e) => {
-      e.stopPropagation();
-      flipVehicleHeading180();
-    });
-  }
 
   // Map Zoom Controls (+ and -)
   document.getElementById("btn-zoom-in").addEventListener("click", () => {
