@@ -1,29 +1,26 @@
 /**
  * Speed Limit Engine (Automotive Road Speed Limit Detection & Warnings)
- * Multi-Tier Speed Limit System for Georgia & International Roads:
- * 1. TomTom Live FlowSegmentData (if API key provided in Settings)
- * 2. Active Route Step & Street Name Speed Profile (OSRM)
- * 3. High-Precision Georgian Highway & Express Corridor Geofences (110, 80, 70, 90, 60, 20 km/h)
- * 4. Dynamic Visual Overspeed Warning Pulse (when speed > limit + 5)
+ * High-Precision Verified Speed Limit System for Georgia:
+ * 1. Active Navigation Route Step (OSRM maxspeed & verified highway classifications)
+ * 2. High-Precision Georgia Highway & Express Corridor Geofences (80, 70 km/h)
+ * 3. Verified Georgian Municipal Urban Zones (60 km/h)
+ * 4. Honest Fallback: Shows "—" when speed limit is unverified (NEVER guesses or triggers false alarms)
+ * 5. Dynamic Visual Overspeed Warning: Pulses red ONLY when a verified numeric limit is exceeded by > 5 km/h
  */
 
 class SpeedLimitEngine {
   constructor(routingEngine = null) {
     this.routingEngine = routingEngine;
-    this.currentLimit = 60;
+    this.currentLimit = 60; // Initial default before GPS lock
     this.currentRoadName = "საქალაქო გზა";
-    this.tomtomKey = localStorage.getItem("tomtom_api_key") || "";
     this.lastCheckPos = null;
     this.lastCheckTime = 0;
-    this.lastTomTomCheckTime = 0;
-    this.isQueryingTomTom = false;
-    this.cachedCellResults = new Map();
 
     // DOM Elements Cache
     this.badgeEl = null;
     this.valEl = null;
 
-    // High-Precision Geometric Corridors for Georgia's High-Speed Road Network
+    // High-Precision Geometric Corridors for Georgia's High-Speed Express Roads
     this.corridors = [
       // 1. დავით აღმაშენებლის ხეივანი (80 კმ/სთ)
       {
@@ -115,66 +112,26 @@ class SpeedLimitEngine {
           [41.715, 44.765],
           [41.718, 44.748]
         ]
-      },
-      // 8. E60 აღმოსავლეთ-დასავლეთის ავტომაგისტრალი (110 კმ/სთ)
-      {
-        name: "E60 ავტომაგისტრალი (ნატახტარი-გორი)",
-        limit: 110,
-        tolerance: 140,
-        points: [
-          [41.870, 44.715],
-          [41.915, 44.580],
-          [41.980, 44.320],
-          [42.010, 44.110],
-          [42.000, 43.900]
-        ]
-      },
-      {
-        name: "E60 ავტომაგისტრალი (გორი-ხაშური)",
-        limit: 110,
-        tolerance: 140,
-        points: [
-          [42.000, 43.900],
-          [42.030, 43.800],
-          [42.010, 43.600],
-          [42.020, 43.520]
-        ]
-      },
-      {
-        name: "E60 ავტომაგისტრალი (ზესტაფონი-ქუთაისი)",
-        limit: 110,
-        tolerance: 140,
-        points: [
-          [42.110, 43.050],
-          [42.170, 42.800],
-          [42.220, 42.600]
-        ]
-      },
-      {
-        name: "E60 ავტომაგისტრალი (სამტრედია-ბათუმი)",
-        limit: 110,
-        tolerance: 140,
-        points: [
-          [42.150, 42.340],
-          [41.950, 41.800],
-          [41.800, 41.750],
-          [41.720, 41.700]
-        ]
       }
     ];
 
-    // Urban Bounding Boxes (Standard 60 km/h in inhabited areas)
+    // Verified Urban Bounding Boxes (Standard statutory 60 km/h in Georgian municipalities)
     this.urbanZones = [
-      { name: "თბილისი", minLat: 41.640, maxLat: 41.820, minLng: 44.680, maxLng: 44.920, defaultLimit: 60 },
-      { name: "ბათუმი", minLat: 41.580, maxLat: 41.680, minLng: 41.580, maxLng: 41.680, defaultLimit: 60 },
-      { name: "ქუთაისი", minLat: 42.200, maxLat: 42.300, minLng: 42.620, maxLng: 42.750, defaultLimit: 60 },
-      { name: "რუსთავი", minLat: 41.520, maxLat: 41.570, minLng: 44.950, maxLng: 45.040, defaultLimit: 60 }
+      { name: "თბილისი", minLat: 41.640, maxLat: 41.820, minLng: 44.680, maxLng: 44.920 },
+      { name: "ბათუმი", minLat: 41.580, maxLat: 41.680, minLng: 41.580, maxLng: 41.680 },
+      { name: "ქუთაისი", minLat: 42.200, maxLat: 42.300, minLng: 42.620, maxLng: 42.750 },
+      { name: "რუსთავი", minLat: 41.520, maxLat: 41.570, minLng: 44.950, maxLng: 45.040 },
+      { name: "გორი", minLat: 41.960, maxLat: 42.000, minLng: 44.090, maxLng: 44.140 },
+      { name: "ზუგდიდი", minLat: 42.490, maxLat: 42.530, minLng: 41.850, maxLng: 41.900 },
+      { name: "ფოთი", minLat: 42.130, maxLat: 42.170, minLng: 41.650, maxLng: 41.720 },
+      { name: "თელავი", minLat: 41.900, maxLat: 41.940, minLng: 45.450, maxLng: 45.510 },
+      { name: "ხაშური", minLat: 41.980, maxLat: 42.010, minLng: 43.580, maxLng: 43.620 },
+      { name: "სამტრედია", minLat: 42.140, maxLat: 42.170, minLng: 42.320, maxLng: 42.360 }
     ];
   }
 
-  setTomTomKey(key) {
-    this.tomtomKey = (key || "").trim();
-  }
+  // Backward compatibility stub (TomTom dead level removed per audit)
+  setTomTomKey(key) {}
 
   /**
    * Main periodic update called from updateVehicleMarker()
@@ -182,7 +139,7 @@ class SpeedLimitEngine {
   update(lat, lng, currentSpeedKmh = 0) {
     const now = performance.now();
 
-    // Throttle checks: if vehicle moved < 25m and < 3s passed, dirty check overspeed warning only
+    // Throttle checks: if vehicle moved < 25m and < 3s passed, check overspeed alert only
     if (this.lastCheckPos && (now - this.lastCheckTime < 3000)) {
       const d = this.haversineMeters(this.lastCheckPos.lat, this.lastCheckPos.lng, lat, lng);
       if (d < 25) {
@@ -200,24 +157,19 @@ class SpeedLimitEngine {
 
     // Update DOM UI
     this.renderUI(currentSpeedKmh);
-
-    // If TomTom API key is present, asynchronously verify live flow data (debounced every 12s)
-    if (this.tomtomKey && !this.isQueryingTomTom && (now - this.lastTomTomCheckTime > 12000)) {
-      this.fetchTomTomSpeedLimit(lat, lng, currentSpeedKmh);
-    }
   }
 
   /**
-   * Deterministic multi-tier detection algorithm
+   * Deterministic verified multi-tier detection algorithm
    */
   detectSpeedLimit(lat, lng) {
-    // Tier 1: Active Navigation Route Step Matching
+    // Tier 1: Active Navigation Route Step Matching (highest priority when navigating)
     if (this.routingEngine && this.routingEngine.isNavigating && this.routingEngine.activeRoute) {
       const routeLimit = this.checkRouteStepLimit(lat, lng);
       if (routeLimit) return routeLimit;
     }
 
-    // Tier 2: High-Precision Georgia Highway & Express Corridor Geofences
+    // Tier 2: High-Precision Georgia Highway & Express Corridor Geofences (80 & 70 km/h)
     for (const c of this.corridors) {
       for (let i = 0; i < c.points.length - 1; i++) {
         const d = this.pointToSegmentDistanceMeters(
@@ -231,19 +183,19 @@ class SpeedLimitEngine {
       }
     }
 
-    // Tier 3: Urban vs Non-Urban Statutory Zone Check
+    // Tier 3: Verified Municipal Urban Zones (Standard 60 km/h in inhabited areas)
     for (const zone of this.urbanZones) {
       if (lat >= zone.minLat && lat <= zone.maxLat && lng >= zone.minLng && lng <= zone.maxLng) {
-        return { limit: zone.defaultLimit, name: `${zone.name}-ს საქალაქო გზა`, source: "urban_zone" };
+        return { limit: 60, name: `${zone.name}-ს საქალაქო გზა`, source: "urban_zone" };
       }
     }
 
-    // Tier 4: Regional Intercity Highway Statutory Default (Georgia traffic code: 90 km/h)
-    return { limit: 90, name: "საქალაქთაშორისო საავტომობილო გზა", source: "rural_highway" };
+    // Tier 4: Unverified Road — Display neutral "—" (No blind guessing, no false red alerts)
+    return { limit: null, name: "შეზღუდვა დაუდასტურებელია", source: "unverified" };
   }
 
   /**
-   * Checks active route steps for specific road names or design speeds
+   * Checks active route steps for verified road names or OSRM maxspeed metadata
    */
   checkRouteStepLimit(lat, lng) {
     const steps = this.routingEngine.steps;
@@ -251,15 +203,20 @@ class SpeedLimitEngine {
     const step = steps[curIdx] || steps[0];
     if (!step) return null;
 
+    // Direct OSRM maxspeed tag if provided by routing server
+    if (typeof step.maxspeed === "number" && step.maxspeed > 0) {
+      return { limit: step.maxspeed, name: step.name || "მარშრუტი", source: "osrm_maxspeed" };
+    }
+
     const name = (step.name || "").trim();
 
-    // Motorway patterns
-    if (/(E[ -]?60|ს[ -]?1|ს[ -]?2|ავტობანი|მაგისტრალი|Autobahn|Motorway|Highway)/i.test(name)) {
+    // 110 km/h Motorway patterns (Strict matching: E60, ს-1, ს-2, ავტობანი)
+    if (/(E[ -]?60|ს[ -]?1|ს[ -]?2|ავტობანი|Autobahn|Motorway)/i.test(name) && !/კახეთის/i.test(name)) {
       return { limit: 110, name: name || "ავტომაგისტრალი", source: "route_motorway" };
     }
 
     // 80 km/h expressways
-    if (/(აღმაშენებლის ხეივანი|Aghmashenebeli|კახეთის გზატკეცილი|Kakheti|თბილისი-რუსთავი|რუსთავის ავტობანი)/i.test(name)) {
+    if (/(აღმაშენებლის ხეივანი|Aghmashenebeli|კახეთის გზატკეცილი|Kakheti Highway|თბილისი-რუსთავი|რუსთავის ავტობანი)/i.test(name)) {
       return { limit: 80, name, source: "route_expressway_80" };
     }
 
@@ -268,47 +225,7 @@ class SpeedLimitEngine {
       return { limit: 70, name, source: "route_expressway_70" };
     }
 
-    // Residential living streets / narrow alleys
-    if (/(შესახვევი|ჩიხი|ჩიხ\.|Blind|Lane|Living Street)/i.test(name)) {
-      return { limit: 20, name, source: "route_living_street" };
-    }
-
-    // High average design speed fallback from step geometry
-    if (step.distance > 500 && step.duration > 0) {
-      const avgSpeed = (step.distance / step.duration) * 3.6;
-      if (avgSpeed > 95) return { limit: 110, name, source: "route_speed_110" };
-      if (avgSpeed > 75) return { limit: 90, name, source: "route_speed_90" };
-      if (avgSpeed > 65) return { limit: 80, name, source: "route_speed_80" };
-      if (avgSpeed > 55) return { limit: 70, name, source: "route_speed_70" };
-    }
-
     return null;
-  }
-
-  /**
-   * Live TomTom Flow Segment API (runs in background without blocking UI)
-   */
-  async fetchTomTomSpeedLimit(lat, lng, currentSpeedKmh) {
-    this.isQueryingTomTom = true;
-    this.lastTomTomCheckTime = performance.now();
-
-    try {
-      const url = `https://api.tomtom.com/traffic/services/4/flowSegmentData/relative0/10/json?point=${lat},${lng}&key=${this.tomtomKey}&unit=KMPH`;
-      const res = await fetch(url, { signal: AbortSignal.timeout(4000) });
-      if (res.ok) {
-        const data = await res.json();
-        const flow = data.flowSegmentData;
-        if (flow && flow.speedLimit && flow.speedLimit > 0) {
-          this.currentLimit = Math.round(flow.speedLimit);
-          this.currentRoadName = "TomTom Live Traffic";
-          this.renderUI(currentSpeedKmh);
-        }
-      }
-    } catch (err) {
-      // Gracefully silent fallback to geo-corridors
-    } finally {
-      this.isQueryingTomTom = false;
-    }
   }
 
   /**
@@ -318,12 +235,18 @@ class SpeedLimitEngine {
     if (!this.valEl) this.valEl = document.getElementById("speed-limit-val");
     if (!this.badgeEl) this.badgeEl = document.getElementById("speed-limit-badge");
 
-    if (this.valEl && this.valEl.textContent !== String(this.currentLimit)) {
-      this.valEl.textContent = this.currentLimit;
+    const displayStr = (typeof this.currentLimit === "number" && this.currentLimit > 0)
+      ? String(this.currentLimit)
+      : "—";
+
+    if (this.valEl && this.valEl.textContent !== displayStr) {
+      this.valEl.textContent = displayStr;
     }
 
     if (this.badgeEl) {
-      this.badgeEl.title = `სიჩქარის შეზღუდვა: ${this.currentLimit} კმ/სთ (${this.currentRoadName})`;
+      this.badgeEl.title = (typeof this.currentLimit === "number")
+        ? `სიჩქარის შეზღუდვა: ${this.currentLimit} კმ/სთ (${this.currentRoadName})`
+        : `სიჩქარის შეზღუდვა: უცნობია (${this.currentRoadName})`;
     }
 
     this.updateOverspeedUI(currentSpeedKmh);
@@ -331,12 +254,15 @@ class SpeedLimitEngine {
 
   /**
    * Visual Red Pulsing Warning when exceeding speed limit by > 5 km/h
+   * Strict Safety Rule: Pulses ONLY when limit is verified numeric. NEVER on "—"!
    */
   updateOverspeedUI(currentSpeedKmh = 0) {
     if (!this.badgeEl) this.badgeEl = document.getElementById("speed-limit-badge");
     if (!this.badgeEl) return;
 
-    const isOverspeeding = currentSpeedKmh > (this.currentLimit + 5);
+    const isOverspeeding = (typeof this.currentLimit === "number" && this.currentLimit > 0) &&
+      currentSpeedKmh > (this.currentLimit + 5);
+
     this.badgeEl.classList.toggle("speeding", isOverspeeding);
   }
 

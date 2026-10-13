@@ -44,40 +44,45 @@ const r6 = engine.detectSpeedLimit(41.756, 44.776);
 console.log('Marshal Gelovani:', r6);
 ok(r6.limit === 70, 'Marshal Gelovani Ave detected as 70 km/h');
 
-// Test 7: Heroes Square / Chabua Amirejibi Highway (70 km/h)
+// Test 7: Chabua Amirejibi Highway (70 km/h)
 const r7 = engine.detectSpeedLimit(41.715, 44.765);
 console.log('Chabua Amirejibi Highway:', r7);
 ok(r7.limit === 70, 'Chabua Amirejibi Highway detected as 70 km/h');
 
-// Test 8: E60 Autobahn (110 km/h)
-const r8 = engine.detectSpeedLimit(41.980, 44.320);
-console.log('E60 Autobahn:', r8);
-ok(r8.limit === 110, 'E60 Autobahn detected as 110 km/h');
+// Test 8: Tbilisi City Center - Freedom Square (60 km/h)
+const r8 = engine.detectSpeedLimit(41.693, 44.801);
+console.log('Freedom Square:', r8);
+ok(r8.limit === 60, 'Freedom Square detected as 60 km/h');
 
-// Test 9: Tbilisi City Center - Freedom Square (60 km/h)
-const r9 = engine.detectSpeedLimit(41.693, 44.801);
-console.log('Freedom Square:', r9);
-ok(r9.limit === 60, 'Freedom Square detected as 60 km/h');
+// Test 9: Additional Urban Center - Batumi (60 km/h)
+const r9 = engine.detectSpeedLimit(41.640, 41.635);
+console.log('Batumi center:', r9);
+ok(r9.limit === 60, 'Batumi municipal area detected as 60 km/h');
 
-// Test 10: Non-Urban Highway - Gombori (90 km/h)
+// Test 10: Unverified Road outside cities - Gombori Pass (null -> "—", no blind guess)
 const r10 = engine.detectSpeedLimit(41.850, 45.200);
-console.log('Gombori Pass:', r10);
-ok(r10.limit === 90, 'Non-Urban regional road detected as 90 km/h');
+console.log('Gombori Pass (Unverified):', r10);
+ok(r10.limit === null && r10.source === 'unverified', 'Unverified rural road returns null instead of blind guess');
 
-// Test 11: Active Route Step Matching
+// Test 11: Active Route Step with OSRM maxspeed metadata
 const mockRouting = {
   isNavigating: true,
   activeRoute: {},
   currentStepIndex: 0,
-  steps: [{ name: 'კახეთის გზატკეცილი', distance: 2000, duration: 100 }]
+  steps: [{ name: 'E60 ავტომაგისტრალი', maxspeed: 110, distance: 5000, duration: 160 }]
 };
 const routeEngine = new SpeedLimitEngine(mockRouting);
-const r11 = routeEngine.detectSpeedLimit(41.700, 44.800);
-console.log('Route step override:', r11);
-ok(r11.limit === 80, 'Route step overrides speed limit accurately');
+const r11 = routeEngine.detectSpeedLimit(41.980, 44.320);
+console.log('Route step maxspeed:', r11);
+ok(r11.limit === 110, 'Route step maxspeed 110 km/h detected accurately');
 
-// Test 12: Route Step Living Street Matching (20 km/h)
-mockRouting.steps = [{ name: 'ჭავჭავაძის I შესახვევი', distance: 200, duration: 50 }];
-const r12 = routeEngine.detectSpeedLimit(41.700, 44.800);
-console.log('Living street:', r12);
-ok(r12.limit === 20, 'Living street detected as 20 km/h');
+// Test 12: Overspeed Safety Check: NEVER pulse red when limit is unverified (null)
+engine.currentLimit = null;
+engine.badgeEl = { classList: { toggle: (cls, val) => { engine.isSpeedingClass = val; } } };
+engine.updateOverspeedUI(120); // 120 km/h with unknown limit
+ok(!engine.isSpeedingClass, 'Overspeed does NOT trigger on unverified limit (null)');
+
+// Test 13: Overspeed fires when verified limit is exceeded (> limit + 5)
+engine.currentLimit = 80;
+engine.updateOverspeedUI(86);
+ok(engine.isSpeedingClass === true, 'Overspeed correctly fires when speed > verified limit + 5');

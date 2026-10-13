@@ -21,16 +21,6 @@ const STATIC_WHITELIST = new Set([
   'manifest.json','icon.svg','icon-192.png','icon-512.png'
 ]);
 
-let SpeedLimitEngine = null;
-try {
-  const code = fs.readFileSync(path.join(__dirname, 'speed-limit.js'), 'utf8');
-  const sandbox = { window: {}, localStorage: { getItem: () => '' }, performance: { now: () => Date.now() } };
-  vm.runInNewContext(code, sandbox);
-  SpeedLimitEngine = sandbox.window.SpeedLimitEngine;
-} catch (e) {
-  console.warn('SpeedLimitEngine load notice:', e);
-}
-const serverSpeedEngine = SpeedLimitEngine ? new SpeedLimitEngine() : null;
 const ALLOWED_EVENT_TYPES = new Set(['destination','gps','media']);
 const CODE_RE = /^[A-Z0-9]{12,32}$/;
 const MAX_BODY = 8 * 1024;
@@ -274,24 +264,6 @@ const server = http.createServer((req, res) => {
     return;
   }
 
-  // API Endpoint: /api/speed-limit?lat=...&lng=... (Road Speed Limit Service)
-  if (pathname === '/api/speed-limit') {
-    const lat = parseFloat(urlObj.searchParams.get('lat'));
-    const lng = parseFloat(urlObj.searchParams.get('lng'));
-    if (isNaN(lat) || isNaN(lng) || lat < -90 || lat > 90 || lng < -180 || lng > 180) {
-      res.writeHead(400, { 'Content-Type': 'application/json' });
-      res.end(JSON.stringify({ error: 'Valid lat and lng required' }));
-      return;
-    }
-    res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
-    if (serverSpeedEngine) {
-      const detected = serverSpeedEngine.detectSpeedLimit(lat, lng);
-      res.end(JSON.stringify({ speedLimit: detected.limit, roadName: detected.name, source: detected.source, lat, lng }));
-    } else {
-      res.end(JSON.stringify({ speedLimit: 60, roadName: 'საქალაქო გზა', lat, lng }));
-    }
-    return;
-  }
 
   // API Endpoint: /api/info (Network info and IP)
   if (pathname === '/api/info') {
