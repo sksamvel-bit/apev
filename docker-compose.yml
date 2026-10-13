@@ -1,0 +1,16 @@
+services:
+  tesla-nav:
+    build: .
+    container_name: tesla-nav-app
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    volumes:
+      - .:/app
+    environment:
+      - PORT=3000
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"

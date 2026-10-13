@@ -1,0 +1,9 @@
+node_modules
+.git
+.github
+conversation-logs
+conversation-logs/
+FULL_CONVERSATION_TRANSCRIPT.md
+pin-bindings.json
+tests
+*.md

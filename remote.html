@@ -584,7 +584,7 @@
     gpsToggle.addEventListener('change', (e) => {
       if (e.target.checked) {
         if (!navigator.geolocation) {
-          alert('თქვენს ბრაუზერს არ აქვს Geolocation მხარდაჭერა');
+          showToast('❌ თქვენს ბრაუზერს არ აქვს Geolocation მხარდაჭერა');
           e.target.checked = false;
           return;
         }

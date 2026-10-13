@@ -6,6 +6,7 @@
 > **Repository Location:** `D:\Projects\Tesla Model 3\tesla-nav`  
 > **Backup Directory:** `D:\Projects\Tesla Model 3\tesla-nav-backup`  
 > **Zip Archive:** `D:\Projects\Tesla Model 3\tesla-nav-backup-complete.zip`  
+> 📌 **Immediate Action Items:** Refer to the master task list in [TODO_FOR_AGENT.md](../TODO_FOR_AGENT.md) for secrets rotation, Render environment variables, and in-car screen verification.
 
 ---
 

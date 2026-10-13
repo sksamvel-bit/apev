@@ -175,34 +175,29 @@ class ChargersEngine {
     const west = bounds.getWest();
     const east = bounds.getEast();
 
-    // Max markers to render in DOM simultaneously (guarantees 60 FPS on Tesla Intel Atom MCU2)
-    const maxDomMarkers = zoom >= 14 ? 60 : zoom >= 11 ? 40 : 25;
-    let count = 0;
-    const currentlyVisible = new Set();
-
+    // Few, relevant markers only: nearest to the map centre first (not array order), fast chargers first.
+    // Old code rendered up to 60 and the first 60 in array order, which flooded the night map.
+    const maxDomMarkers = zoom >= 16 ? 30 : zoom >= 14 ? 18 : zoom >= 11 ? 12 : 8;
+    const c = this.map.getCenter();
+    const cand = [];
     for (let i = 0; i < this.chargers.length; i++) {
       const st = this.chargers[i];
-
-      // Fast coordinate bounding-box test
-      if (st.lat < south || st.lat > north || st.lon < west || st.lon > east) {
-        continue;
-      }
-
-      // At overview zoom, prioritize DC Fast and Ultra-Fast chargers
-      if (zoom < 11 && !st.isUltraFast && !st.isFast) {
-        continue;
-      }
-
+      if (st.lat < south || st.lat > north || st.lon < west || st.lon > east) continue;
+      // below street zoom only DC fast / ultra-fast chargers are interesting
+      if (zoom < 15 && !st.isUltraFast && !st.isFast) continue;
+      const dLat = st.lat - c.lat, dLon = (st.lon - c.lng) * 0.75;
+      cand.push({ st, d: dLat * dLat + dLon * dLon });
+    }
+    cand.sort((a, b) => a.d - b.d);
+    const currentlyVisible = new Set();
+    for (let k = 0; k < cand.length && k < maxDomMarkers; k++) {
+      const st = cand[k].st;
       currentlyVisible.add(st.key);
-
       if (!this.activeMarkers.has(st.key)) {
         const marker = this.createMarkerInstance(st);
         this.activeMarkers.set(st.key, marker);
         this.layerGroup.addLayer(marker);
       }
-
-      count++;
-      if (count >= maxDomMarkers) break;
     }
 
     // Remove markers that are no longer inside the viewport

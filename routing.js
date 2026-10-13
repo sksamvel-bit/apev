@@ -168,7 +168,11 @@ class RoutingEngine {
 
     // Fetch additional traffic signals along route bounds
     if (this.trafficSignalsEngine) {
-      this.trafficSignalsEngine.fetchSignalsForBounds(this.routeLine.getBounds());
+      if (typeof this.trafficSignalsEngine.fetchSignalsAlongRoute === "function") {
+        this.trafficSignalsEngine.fetchSignalsAlongRoute(latlngs);
+      } else {
+        this.trafficSignalsEngine.fetchSignalsForBounds(this.routeLine.getBounds());
+      }
     }
 
     if (autoStart) {

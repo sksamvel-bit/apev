@@ -42,7 +42,7 @@ class MediaPlayerEngine {
       customBtn.addEventListener("click", () => {
         const val = customInput.value.trim();
         if (val) {
-          this.playQueryOrUrl(val);
+          this.searchAndShow(val);
         } else {
           if (window.showToast) window.showToast("ჩაწერეთ სიმღერა ან YouTube ლინკი", "info");
         }
@@ -51,7 +51,7 @@ class MediaPlayerEngine {
       customInput.addEventListener("keydown", (e) => {
         if (e.key === "Enter") {
           const val = customInput.value.trim();
-          if (val) this.playQueryOrUrl(val);
+          if (val) this.searchAndShow(val);
         }
       });
     }
@@ -73,6 +73,57 @@ class MediaPlayerEngine {
     // Support youtube.com/watch?v=..., youtu.be/..., youtube.com/shorts/..., youtube.com/live/...
     const match = url.match(/(?:youtu\.be\/|youtube\.com\/(?:embed\/|v\/|watch\?v=|watch\?.+&v=|shorts\/|live\/))([\w-]{11})/);
     return match ? match[1] : null;
+  }
+
+  // Search: show a list of YouTube results to pick from (falls back to "play first result" if the list is unavailable)
+  async searchAndShow(input) {
+    const q = (input || "").trim();
+    if (!q) return;
+    if (this.extractYouTubeId(q)) { this.playQueryOrUrl(q); return; }
+    const box = document.getElementById("media-results");
+    if (!box) { this.playQueryOrUrl(q); return; }
+    box.textContent = "🔍 " + q + "...";
+    box.classList.add("show");
+    try {
+      const res = await fetch("/api/youtube/search?list=1&q=" + encodeURIComponent(q));
+      const data = await res.json();
+      if (data && data.success && Array.isArray(data.results) && data.results.length) {
+        this.renderResults(box, data.results);
+        return;
+      }
+    } catch (err) {
+      console.warn("YouTube list search fallback:", err);
+    }
+    box.classList.remove("show");
+    box.textContent = "";
+    this.playQueryOrUrl(q);
+  }
+
+  renderResults(box, results) {
+    box.textContent = "";
+    results.forEach((r) => {
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "media-result";
+      const t = document.createElement("span");
+      t.className = "media-result-title";
+      t.textContent = r.title;
+      const m = document.createElement("span");
+      m.className = "media-result-meta";
+      m.textContent = [r.channel, r.length].filter(Boolean).join(" · ");
+      btn.appendChild(t);
+      btn.appendChild(m);
+      btn.addEventListener("click", () => {
+        this.loadVideo(r.videoId);
+        this.open();
+        box.classList.remove("show");
+        box.textContent = "";
+        const inp = document.getElementById("media-custom-url-input");
+        if (inp) inp.value = "";
+      });
+      box.appendChild(btn);
+    });
+    box.classList.add("show");
   }
 
   async playQueryOrUrl(input) {

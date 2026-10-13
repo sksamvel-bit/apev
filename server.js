@@ -23,7 +23,7 @@ const STATIC_WHITELIST = new Set([
 ]);
 
 // Server-side Access PIN & Secret Key Protection
-// Supports Multi-PIN: "3828, 5591, 7720"
+// Supports Multi-PIN: "pin1, pin2, pin3" (comma separated)
 // - The FIRST PIN is the MASTER PIN (allows unlimited personal devices for the owner).
 // - Any subsequent PINs are GUEST PINS with STRICT SINGLE-DEVICE LOCK (1 PIN = 1 Device).
 const RAW_PINS = (process.env.ACCESS_PIN || '').split(',').map(s => s.trim()).filter(Boolean);
@@ -50,8 +50,13 @@ function saveBindings() {
   }
 }
 
+// The cookie never contains the PIN itself, only a short one-way id derived from it.
+function pinId(pin) {
+  return crypto.createHash('sha256').update('pin-id:' + pin).digest('hex').slice(0, 16);
+}
+
 function signToken(pin, deviceToken) {
-  const data = `${pin}:${deviceToken}`;
+  const data = `${pinId(pin)}:${deviceToken}`;
   const sig = crypto.createHmac('sha256', AUTH_SECRET).update(data).digest('hex');
   return `${data}:${sig}`;
 }
@@ -60,20 +65,37 @@ function verifyToken(tokenStr) {
   if (!tokenStr || typeof tokenStr !== 'string') return null;
   const parts = tokenStr.split(':');
   if (parts.length !== 3) return null;
-  const [pin, deviceToken, sig] = parts;
-  const expectedSig = crypto.createHmac('sha256', AUTH_SECRET).update(`${pin}:${deviceToken}`).digest('hex');
+  const [id, deviceToken, sig] = parts;
+  const expectedSig = crypto.createHmac('sha256', AUTH_SECRET).update(`${id}:${deviceToken}`).digest('hex');
   const bufA = Buffer.from(sig);
   const bufB = Buffer.from(expectedSig);
   if (bufA.length !== bufB.length || !crypto.timingSafeEqual(bufA, bufB)) {
     return null;
   }
+  const pin = RAW_PINS.find(p => pinId(p) === id);
+  if (!pin) return null;
   return { pin, deviceToken };
+}
+
+// Real client IP. Behind Render the LAST X-Forwarded-For entry is the one the proxy appended;
+// the first ones are client-controlled and must not be trusted for rate limiting.
+function clientIp(req) {
+  const xff = req.headers['x-forwarded-for'];
+  if (xff) {
+    const parts = String(xff).split(',').map(x => x.trim()).filter(Boolean);
+    if (parts.length) return parts[parts.length - 1].slice(0, 64);
+  }
+  return req.socket.remoteAddress || 'unknown';
 }
 
 // Failed PIN attempts rate limiter (max 5 failed attempts per IP per 5 mins)
 const failedPinAttempts = new Map();
 
+// Global brute-force guard: even with many IPs, at most 40 failures per 5 minutes in total.
+let globalFails = { count: 0, expireAt: 0 };
+
 function isRateLimited(ip) {
+  if (Date.now() < globalFails.expireAt && globalFails.count >= 40) return true;
   const record = failedPinAttempts.get(ip);
   if (!record) return false;
   if (Date.now() > record.expireAt) {
@@ -84,6 +106,9 @@ function isRateLimited(ip) {
 }
 
 function recordFailedAttempt(ip) {
+  if (Date.now() > globalFails.expireAt) globalFails = { count: 0, expireAt: Date.now() + 5 * 60 * 1000 };
+  globalFails.count++;
+  if (failedPinAttempts.size > 5000) failedPinAttempts.clear();
   const record = failedPinAttempts.get(ip) || { count: 0, expireAt: Date.now() + 5 * 60 * 1000 };
   record.count++;
   record.expireAt = Date.now() + 5 * 60 * 1000;
@@ -157,11 +182,11 @@ function attemptPinAuth(inputPin, req) {
     pinBindings[matchedPin] = {
       deviceToken,
       boundAt: Date.now(),
-      ip: req.headers['x-forwarded-for'] || req.socket.remoteAddress || 'unknown',
+      ip: clientIp(req),
       userAgent: (req.headers['user-agent'] || '').slice(0, 120)
     };
     saveBindings();
-    console.log(`[Auth] Single-device lock engaged for Guest PIN ${matchedPin}`);
+    console.log(`[Auth] Single-device lock engaged for Guest PIN id ${pinId(matchedPin)}`);
     const token = signToken(matchedPin, deviceToken);
     return { success: true, token, isMaster: false };
   } else {
@@ -177,6 +202,17 @@ function attemptPinAuth(inputPin, req) {
       error: 'ეს PIN კოდი უკვე გააქტიურებულია სხვა მოწყობილობაზე და ვერ გადაეცემა სხვას!'
     };
   }
+}
+
+// Telemetry log flood guard: max 20 lines per minute per IP.
+const telemetryHits = new Map();
+function isRateLimitedTelemetry(ip) {
+  const now = Date.now();
+  if (telemetryHits.size > 2000) telemetryHits.clear();
+  const r = telemetryHits.get(ip);
+  if (!r || now > r.expireAt) { telemetryHits.set(ip, { count: 1, expireAt: now + 60000 }); return false; }
+  r.count++;
+  return r.count > 20;
 }
 
 const PUBLIC_AUTH_PATHS = new Set([
@@ -231,6 +267,8 @@ function getLocalIpAddresses() {
 // In-Memory Realtime Session Hub for Phone-to-Car Pairing
 // Map of code -> Set of SSE Response objects
 const sessions = new Map();
+const MAX_SSE_TOTAL = 300, MAX_SSE_PER_CODE = 5;
+let sseTotal = 0;
 
 function sendSSE(res, event, data) {
   res.write(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`);
@@ -386,6 +424,16 @@ setTimeout(() => {
 const searchCache = new Map();
 const SEARCH_CACHE_TTL = 24 * 60 * 60 * 1000;
 let lastNominatimRequestTime = 0;
+const MAX_SEARCH_QUEUE_MS = 8000;       // never queue more than ~8 pending Nominatim calls
+const searchHits = new Map();           // per-IP: max 30 searches/minute
+function searchRateLimited(ip) {
+  const now = Date.now();
+  if (searchHits.size > 2000) searchHits.clear();
+  const r = searchHits.get(ip);
+  if (!r || now > r.expireAt) { searchHits.set(ip, { count: 1, expireAt: now + 60000 }); return false; }
+  r.count++;
+  return r.count > 30;
+}
 
 function searchNominatimProxy(query) {
   return new Promise((resolve) => {
@@ -399,6 +447,7 @@ function searchNominatimProxy(query) {
 
     const now = Date.now();
     const waitMs = Math.max(0, 1000 - (now - lastNominatimRequestTime));
+    if (lastNominatimRequestTime - now > MAX_SEARCH_QUEUE_MS) return resolve(cached ? cached.data : []);
     lastNominatimRequestTime = now + waitMs;
 
     setTimeout(() => {
@@ -445,7 +494,8 @@ function resolveYouTubeQuery(query) {
     const req = https.get(url, {
       headers: {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-        'Accept-Language': 'ka-GE,ka;q=0.9,en-US;q=0.8,en;q=0.7'
+        'Accept-Language': 'ka-GE,ka;q=0.9,en-US;q=0.8,en;q=0.7',
+        'Cookie': 'CONSENT=YES+cb.20210328-17-p0.en+FX+917; SOCS=CAI'
       },
       timeout: 6000
     }, resp => {
@@ -468,6 +518,190 @@ function resolveYouTubeQuery(query) {
     req.on('error', err => resolve({ success: false, fallbackQuery: query, error: err.message }));
     req.on('timeout', () => { req.destroy(); resolve({ success: false, fallbackQuery: query, error: 'timeout' }); });
   });
+}
+
+// YouTube search RESULTS (list of videos to pick from). Parses ytInitialData from the public results page.
+const ytListCache = new Map();
+function parseYouTubeResults(body, max) {
+  const out = [], seen = new Set();
+  const push = (id, title, channel, length) => {
+    if (!/^[a-zA-Z0-9_-]{11}$/.test(id || '') || seen.has(id) || !title) return;
+    seen.add(id);
+    out.push({ videoId: id, title: String(title).slice(0, 140), channel: String(channel || '').slice(0, 80), length: String(length || '').slice(0, 12) });
+  };
+  try {
+    const trimmed = body.trimStart();
+    const m = trimmed[0] === '{' ? [null, trimmed] : body.match(/ytInitialData\s*=\s*(\{[\s\S]*?\});\s*<\/script>/);
+    if (m) {
+      const data = JSON.parse(m[1]);
+      const walk = (o, depth) => {
+        if (!o || typeof o !== 'object' || depth > 40 || out.length >= max) return;
+        if (o.videoRenderer && o.videoRenderer.videoId) {
+          const v = o.videoRenderer;
+          push(v.videoId,
+            v.title && v.title.runs && v.title.runs[0] && v.title.runs[0].text,
+            v.ownerText && v.ownerText.runs && v.ownerText.runs[0] && v.ownerText.runs[0].text,
+            v.lengthText && v.lengthText.simpleText);
+        }
+        for (const k of Object.keys(o)) walk(o[k], depth + 1);
+      };
+      walk(data, 0);
+    }
+  } catch (_) { /* fall through to the regex fallback */ }
+  if (out.length === 0) {
+    const re = /"videoId":"([a-zA-Z0-9_-]{11})"[\s\S]{0,400}?"title":\{"runs":\[\{"text":"((?:[^"\\]|\\.)*)"/g;
+    let r;
+    while ((r = re.exec(body)) && out.length < max) {
+      let t = r[2]; try { t = JSON.parse('"' + t + '"'); } catch (_) {}
+      push(r[1], t, '', '');
+    }
+  }
+  return out.slice(0, max);
+}
+
+// Official YouTube Data API v3 (preferred when YOUTUBE_API_KEY is set; the HTML scraping above is the fallback).
+// Quota: search = 100 units, videos.list = 1 unit; default 10,000 units/day = ~100 searches/day (results are cached 10 min).
+const YOUTUBE_API_KEY = (process.env.YOUTUBE_API_KEY || '').trim();
+function decodeHtmlEntities(t) {
+  return String(t || '').replace(/&(#x?[0-9a-f]+|amp|lt|gt|quot|apos);/gi, (m, e) => {
+    const l = e.toLowerCase();
+    if (l === 'amp') return '&'; if (l === 'lt') return '<'; if (l === 'gt') return '>';
+    if (l === 'quot') return '"'; if (l === 'apos') return "'";
+    const n = l[1] === 'x' ? parseInt(l.slice(2), 16) : parseInt(l.slice(1), 10);
+    return Number.isFinite(n) && n > 0 && n < 0x110000 ? String.fromCodePoint(n) : m;
+  });
+}
+function isoDurationToText(iso) {
+  const m = /^P(?:(\d+)D)?T?(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?$/.exec(iso || '');
+  if (!m) return '';
+  const h = (+m[1] || 0) * 24 + (+m[2] || 0), mi = +m[3] || 0, se = +m[4] || 0;
+  const p2 = n => String(n).padStart(2, '0');
+  return h ? `${h}:${p2(mi)}:${p2(se)}` : `${mi}:${p2(se)}`;
+}
+function httpsGetJson(url) {
+  return new Promise((resolve, reject) => {
+    const req = https.get(url, { timeout: 6000 }, resp => {
+      let body = '';
+      resp.on('data', c => { body += c; if (body.length > 1024 * 1024) resp.destroy(); });
+      resp.on('end', () => {
+        if (resp.statusCode !== 200) return reject(new Error('HTTP ' + resp.statusCode));
+        try { resolve(JSON.parse(body)); } catch (e) { reject(new Error('bad JSON')); }
+      });
+      resp.on('error', reject);
+    });
+    req.on('error', reject);
+    req.on('timeout', () => { req.destroy(); reject(new Error('timeout')); });
+  });
+}
+async function searchYouTubeApi(query) {
+  const base = 'https://www.googleapis.com/youtube/v3/';
+  const s = await httpsGetJson(base + 'search?part=snippet&type=video&maxResults=6&videoEmbeddable=true&safeSearch=moderate'
+    + '&q=' + encodeURIComponent(query) + '&key=' + encodeURIComponent(YOUTUBE_API_KEY));
+  const items = (s.items || []).filter(i => i && i.id && /^[a-zA-Z0-9_-]{11}$/.test(i.id.videoId || ''));
+  if (!items.length) return { success: false, results: [] };
+  let dur = {};
+  try {
+    const v = await httpsGetJson(base + 'videos?part=contentDetails&id=' + items.map(i => i.id.videoId).join(',')
+      + '&key=' + encodeURIComponent(YOUTUBE_API_KEY));
+    (v.items || []).forEach(x => { dur[x.id] = isoDurationToText(x.contentDetails && x.contentDetails.duration); });
+  } catch (_) { /* durations are optional */ }
+  return {
+    success: true,
+    results: items.map(i => ({
+      videoId: i.id.videoId,
+      title: decodeHtmlEntities(i.snippet && i.snippet.title).slice(0, 140),
+      channel: decodeHtmlEntities(i.snippet && i.snippet.channelTitle).slice(0, 80),
+      length: dur[i.id.videoId] || ''
+    }))
+  };
+}
+
+// Keyless JSON endpoint used by youtube.com itself (more stable than parsing the HTML page).
+function searchYouTubeInnerTube(query) {
+  return new Promise((resolve) => {
+    const payload = JSON.stringify({
+      context: { client: { clientName: 'WEB', clientVersion: '2.20240101.00.00', hl: 'ka', gl: 'GE' } },
+      query
+    });
+    const req = https.request('https://www.youtube.com/youtubei/v1/search?prettyPrint=false', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Content-Length': Buffer.byteLength(payload),
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+        'Cookie': 'CONSENT=YES+cb.20210328-17-p0.en+FX+917; SOCS=CAI'
+      },
+      timeout: 6000
+    }, resp => {
+      let body = '';
+      resp.on('data', c => { body += c; if (body.length > 4 * 1024 * 1024) resp.destroy(); });
+      resp.on('end', () => {
+        const results = resp.statusCode === 200 ? parseYouTubeResults(body, 6) : [];
+        resolve({ success: results.length > 0, results });
+      });
+      resp.on('error', () => resolve({ success: false, results: [] }));
+    });
+    req.on('error', () => resolve({ success: false, results: [] }));
+    req.on('timeout', () => { req.destroy(); resolve({ success: false, results: [] }); });
+    req.write(payload);
+    req.end();
+  });
+}
+
+function searchYouTubeList(query) {
+  return new Promise((resolve) => {
+    const key = query.toLowerCase();
+    const hit = ytListCache.get(key);
+    if (hit && Date.now() - hit.t < 10 * 60 * 1000) return resolve(hit.v);
+    const done = v => {
+      if (v && v.success) {
+        ytListCache.set(key, { t: Date.now(), v });
+        if (ytListCache.size > 100) ytListCache.delete(ytListCache.keys().next().value);
+        resolve(v);
+        return true;
+      }
+      return false;
+    };
+    const viaPage = () => scrapeYouTubeList(query, key, resolve);
+    const viaInnerTube = () => searchYouTubeInnerTube(query).then(v => { if (!done(v)) viaPage(); }).catch(viaPage);
+    if (YOUTUBE_API_KEY) {
+      searchYouTubeApi(query).then(v => { if (!done(v)) viaInnerTube(); }).catch(err => {
+        console.warn('[YouTube API] ' + err.message + ' - falling back');
+        viaInnerTube();
+      });
+      return;
+    }
+    viaInnerTube();
+  });
+}
+
+function scrapeYouTubeList(query, key, resolve) {
+  {
+    const url = 'https://www.youtube.com/results?search_query=' + encodeURIComponent(query);
+    const req = https.get(url, {
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+        'Accept-Language': 'ka-GE,ka;q=0.9,en-US;q=0.8,en;q=0.7',
+        'Cookie': 'CONSENT=YES+cb.20210328-17-p0.en+FX+917; SOCS=CAI'
+      },
+      timeout: 6000
+    }, resp => {
+      let body = '';
+      resp.on('data', chunk => { body += chunk; if (body.length > 4 * 1024 * 1024) resp.destroy(); });
+      resp.on('end', () => {
+        const results = parseYouTubeResults(body, 6);
+        const v = { success: results.length > 0, results };
+        if (v.success) {
+          ytListCache.set(key, { t: Date.now(), v });
+          if (ytListCache.size > 100) ytListCache.delete(ytListCache.keys().next().value);
+        }
+        resolve(v);
+      });
+      resp.on('error', () => resolve({ success: false, results: [] }));
+    });
+    req.on('error', () => resolve({ success: false, results: [] }));
+    req.on('timeout', () => { req.destroy(); resolve({ success: false, results: [] }); });
+  }
 }
 
 const PIN_LOGIN_HTML = `<!DOCTYPE html>
@@ -558,6 +792,9 @@ const server = http.createServer((req, res) => {
   // AUDIT FIX: no wildcard CORS (same-origin only); basic hardening headers
   res.setHeader('X-Content-Type-Options', 'nosniff');
   res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
+  res.setHeader('X-Frame-Options', 'SAMEORIGIN');
+  res.setHeader('Permissions-Policy', 'geolocation=(self), camera=(), microphone=(), payment=()');
+  if (req.headers['x-forwarded-proto'] === 'https') res.setHeader('Strict-Transport-Security', 'max-age=15552000');
 
   if (req.method === 'OPTIONS') {
     res.writeHead(204);
@@ -580,7 +817,10 @@ const server = http.createServer((req, res) => {
       req.on('end', () => {
         try {
           const errData = JSON.parse(body);
-          console.warn('[Telemetry Error]', errData.message, 'at', errData.filename, errData.lineno);
+          const clean = v => String(v == null ? '' : v).replace(/[\x00-\x1f\x7f]/g, ' ').slice(0, 200);
+          if (!isRateLimitedTelemetry(clientIp(req))) {
+            console.warn('[Telemetry Error]', clean(errData.message), 'at', clean(errData.filename), clean(errData.lineno));
+          }
         } catch (_) {}
         res.writeHead(204);
         res.end();
@@ -596,7 +836,7 @@ const server = http.createServer((req, res) => {
       res.end(JSON.stringify({ error: 'Method Not Allowed' }));
       return;
     }
-    const ip = req.headers['x-forwarded-for'] || req.socket.remoteAddress || 'unknown';
+    const ip = clientIp(req);
     if (isRateLimited(ip)) {
       res.writeHead(429, { 'Content-Type': 'application/json' });
       res.end(JSON.stringify({ error: 'ძალიან ბევრი მცდელობა. გთხოვთ სცადოთ 5 წუთში.' }));
@@ -633,12 +873,19 @@ const server = http.createServer((req, res) => {
   // URL Key Authentication check: ?key=... sets cookie and 302 redirects to strip key from URL/Referer
   if (RAW_PINS.length > 0 && urlObj.searchParams.has('key')) {
     const keyParam = urlObj.searchParams.get('key');
+    const keyIp = clientIp(req);
+    if (isRateLimited(keyIp)) {
+      res.writeHead(429, { 'Content-Type': 'text/plain; charset=utf-8' });
+      res.end('Too many attempts. Try again in 5 minutes.');
+      return;
+    }
     const result = attemptPinAuth(keyParam, req);
+    if (result.success) resetFailedAttempts(keyIp); else recordFailedAttempt(keyIp);
     if (result.success) {
       const isHttps = req.headers['x-forwarded-proto'] === 'https';
       const cookieHeader = `tesla_auth=${result.token}; Path=/; HttpOnly; SameSite=Lax; Max-Age=2592000${isHttps ? '; Secure' : ''}`;
       urlObj.searchParams.delete('key');
-      const cleanUrl = urlObj.pathname + (urlObj.search ? urlObj.search : '');
+      const cleanUrl = (urlObj.pathname + (urlObj.search ? urlObj.search : '')).replace(/^[\/\\]+/, '/'); // no open redirect (//evil.com)
       res.writeHead(302, {
         'Location': cleanUrl || '/',
         'Set-Cookie': cookieHeader
@@ -743,6 +990,19 @@ const server = http.createServer((req, res) => {
       return;
     }
 
+    if (urlObj.searchParams.get('list') === '1') {
+      if (searchRateLimited(clientIp(req))) {
+        res.writeHead(429, { 'Content-Type': 'application/json; charset=utf-8', 'Retry-After': '60' });
+        res.end(JSON.stringify({ success: false, results: [] }));
+        return;
+      }
+      searchYouTubeList(q.slice(0, 120)).then(result => {
+        res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
+        res.end(JSON.stringify(result));
+      });
+      return;
+    }
+
     resolveYouTubeQuery(q).then(result => {
       res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
       res.end(JSON.stringify(result));
@@ -755,9 +1015,14 @@ const server = http.createServer((req, res) => {
 
   // API Endpoint: /api/search (Server-side geocoding proxy with 24h cache & 1s rate-limiting)
   if (pathname === '/api/search') {
-    const q = (urlObj.searchParams.get('q') || '').trim();
+    const q = (urlObj.searchParams.get('q') || '').trim().slice(0, 200);
     if (!q) {
       res.writeHead(400, { 'Content-Type': 'application/json; charset=utf-8' });
+      res.end(JSON.stringify([]));
+      return;
+    }
+    if (searchRateLimited(clientIp(req))) {
+      res.writeHead(429, { 'Content-Type': 'application/json; charset=utf-8', 'Retry-After': '60' });
       res.end(JSON.stringify([]));
       return;
     }
@@ -783,6 +1048,12 @@ const server = http.createServer((req, res) => {
       return;
     }
 
+    if (sseTotal >= MAX_SSE_TOTAL || (sessions.get(code) && sessions.get(code).size >= MAX_SSE_PER_CODE)) {
+      res.writeHead(503, { 'Content-Type': 'application/json', 'Retry-After': '30' });
+      res.end(JSON.stringify({ error: 'Too many open connections' }));
+      return;
+    }
+    sseTotal++;
     res.writeHead(200, {
       'Content-Type': 'text/event-stream',
       'Cache-Control': 'no-cache',
@@ -804,6 +1075,7 @@ const server = http.createServer((req, res) => {
 
     req.on('close', () => {
       clearInterval(heartbeat);
+      sseTotal = Math.max(0, sseTotal - 1);
       clientSet.delete(res);
       if (clientSet.size === 0) {
         sessions.delete(code);
@@ -937,6 +1209,8 @@ const server = http.createServer((req, res) => {
 
 const HOST = process.env.HOST || '0.0.0.0'; // set HOST=127.0.0.1 to keep it private
 server.listen(PORT, HOST, () => {
+  if (RAW_PINS.length === 0) console.warn('[Security] ACCESS_PIN is not set: the site is OPEN to everyone. Set ACCESS_PIN (and AUTH_SECRET) in production.');
+  if (!process.env.AUTH_SECRET && RAW_PINS.length > 0) console.warn('[Security] AUTH_SECRET is not set: logins are invalidated on every restart. Set AUTH_SECRET in production.');
   const localIps = getLocalIpAddresses();
   console.log('====================================================');
   console.log('⚡ Tesla Model 3 Navigation Web Server is Running! ⚡');

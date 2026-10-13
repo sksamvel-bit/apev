@@ -102,9 +102,17 @@ if ('serviceWorker' in navigator) {
     });
   });
   // When a new Service Worker takes control, reload cleanly so Tesla browser runs the fresh code immediately
+  // Never reload while the car is moving (a deploy during a drive must not blank the map), and not on the very first install.
+  const hadSwController = !!navigator.serviceWorker.controller;
+  let swReloadPending = false;
   navigator.serviceWorker.addEventListener('controllerchange', () => {
-    console.log('[SW] Controller changed, auto-reloading page for instant update...');
-    window.location.reload();
+    if (!hadSwController || swReloadPending) return;
+    swReloadPending = true;
+    const tryReload = () => {
+      if ((window.currentSpeedKmhForLock || 0) > 3) { setTimeout(tryReload, 5000); return; }
+      window.location.reload();
+    };
+    tryReload();
   });
 }
 
@@ -854,7 +862,6 @@ async function fetchWeatherForPos(lat, lng) {
   if (data) {
     document.getElementById("weather-icon").textContent = data.icon;
     document.getElementById("weather-temp").textContent = `${data.temp}°C`;
-    document.getElementById("weather-wind").textContent = `💨 ${data.windKmh} კმ/სთ`;
   }
 }
 
@@ -1720,29 +1727,6 @@ async function requestWakeLock() {
   }
 }
 
-function toggleFullscreen() {
-  const doc = document;
-  const docEl = document.documentElement;
-  const isFs = doc.fullscreenElement || doc.webkitFullscreenElement || doc.mozFullScreenElement || doc.msFullscreenElement;
-
-  if (!isFs) {
-    const requestFs = docEl.requestFullscreen || docEl.webkitRequestFullscreen || docEl.mozRequestFullScreen || docEl.msRequestFullscreen;
-    if (requestFs) {
-      requestFs.call(docEl).catch((err) => {
-        console.warn("Standard fullscreen note:", err);
-        showToast("Tesla ბრაუზერი სტაბილურ რეჟიმშია (მოძრაობისას არ გაითიშება)", "info", 3000);
-      });
-    } else {
-      showToast("Tesla ბრაუზერი სტაბილურ რეჟიმშია (მოძრაობისას არ გაითიშება)", "info", 3000);
-    }
-  } else {
-    const exitFs = doc.exitFullscreen || doc.webkitExitFullscreen || doc.mozCancelFullScreen || doc.msExitFullscreen;
-    if (exitFs) {
-      exitFs.call(doc).catch(err => console.warn("Fullscreen exit notice:", err));
-    }
-  }
-}
-
 function launchTeslaTheaterMode() {
   if (window.currentSpeedKmhForLock > 3) {
     showToast("⚠️ Tesla Theater მუშაობს მხოლოდ გაჩერებულზე (P-ში)!", "error", 4500);
@@ -1759,6 +1743,45 @@ function launchTeslaTheaterMode() {
   }, 800);
 }
 
+// In-page battery % dialog (replaces the blocking native prompt(), which is unusable on the car screen)
+function openBatteryDialog(current, modelName) {
+  let ov = document.getElementById("battery-dialog");
+  if (!ov) {
+    ov = document.createElement("div");
+    ov.id = "battery-dialog";
+    ov.className = "modal-overlay";
+    ov.innerHTML = `
+      <div class="modal-window" style="max-width:420px;text-align:center;">
+        <div class="modal-header"><h2 class="modal-title">🔋 ბატარეა (%) <span id="battery-dialog-model" style="font-size:.8em;opacity:.7"></span></h2>
+          <button type="button" class="modal-close-btn" id="battery-dialog-close">✕</button></div>
+        <div class="modal-body" style="display:flex;flex-direction:column;gap:14px;align-items:center;">
+          <div style="display:flex;gap:10px;align-items:center;">
+            <button type="button" class="btn-primary" id="battery-dialog-minus" style="min-width:64px;min-height:56px;font-size:1.6rem;">−</button>
+            <input type="number" id="battery-dialog-input" class="setting-input" min="1" max="100" inputmode="numeric" style="width:110px;min-height:56px;font-size:1.6rem;text-align:center;">
+            <button type="button" class="btn-primary" id="battery-dialog-plus" style="min-width:64px;min-height:56px;font-size:1.6rem;">+</button>
+          </div>
+          <button type="button" class="btn-primary" id="battery-dialog-ok" style="width:100%;min-height:56px;font-size:1.1rem;">შენახვა</button>
+        </div>
+      </div>`;
+    document.body.appendChild(ov);
+    const inp = ov.querySelector("#battery-dialog-input");
+    const clamp = v => Math.max(1, Math.min(100, v));
+    const close = () => ov.classList.remove("open");
+    ov.querySelector("#battery-dialog-close").addEventListener("click", close);
+    ov.addEventListener("click", e => { if (e.target === ov) close(); });
+    ov.querySelector("#battery-dialog-minus").addEventListener("click", () => { inp.value = clamp((parseInt(inp.value, 10) || 0) - 5); });
+    ov.querySelector("#battery-dialog-plus").addEventListener("click", () => { inp.value = clamp((parseInt(inp.value, 10) || 0) + 5); });
+    ov.querySelector("#battery-dialog-ok").addEventListener("click", () => {
+      const val = parseInt(inp.value, 10);
+      if (!isNaN(val) && val >= 1 && val <= 100) batteryEngine.setSoC(val);
+      close();
+    });
+  }
+  ov.querySelector("#battery-dialog-model").textContent = "[" + modelName + "]";
+  ov.querySelector("#battery-dialog-input").value = current;
+  ov.classList.add("open");
+}
+
 // Event Listeners Setup
 function initEventListeners() {
   initSearch();
@@ -1768,15 +1791,7 @@ function initEventListeners() {
   const batteryChip = document.getElementById("top-battery-chip");
   if (batteryChip) {
     batteryChip.addEventListener("click", () => {
-      const current = batteryEngine.currentSoC;
-      const modelName = batteryEngine.getModelConfig().name;
-      const input = prompt(`მიუთითეთ Tesla-ს მიმდინარე ბატარეა (%) [${modelName}]:`, current);
-      if (input !== null) {
-        const val = parseInt(input, 10);
-        if (!isNaN(val) && val >= 1 && val <= 100) {
-          batteryEngine.setSoC(val);
-        }
-      }
+      openBatteryDialog(batteryEngine.currentSoC, batteryEngine.getModelConfig().name);
     });
   }
 
@@ -1902,7 +1917,6 @@ function initEventListeners() {
     btnVoice.classList.toggle("active", !muted);
   });
 
-  document.getElementById("btn-fullscreen").addEventListener("click", toggleFullscreen);
   document.getElementById("btn-cancel-route").addEventListener("click", cancelNavigation);
 
   // Route Preview Buttons (Tesla GO and Cancel)
@@ -1994,28 +2008,6 @@ function initEventListeners() {
   document.getElementById("input-avoid-unpaved").checked = localStorage.getItem("avoid_unpaved") === "true";
   if (selectTeslaModel) selectTeslaModel.value = batteryEngine.modelKey;
   document.getElementById("input-initial-soc").value = batteryEngine.currentSoC;
-
-  // Bookmark Guide Modal Setup
-  const bookmarkModal = document.getElementById("bookmark-modal");
-  const btnBookmarkGuide = document.getElementById("btn-bookmark-guide");
-  const bookmarkCloseBtn = document.getElementById("bookmark-modal-close");
-  const bookmarkOkBtn = document.getElementById("bookmark-modal-ok-btn");
-
-  if (btnBookmarkGuide && bookmarkModal) {
-    btnBookmarkGuide.addEventListener("click", () => {
-      bookmarkModal.classList.add("open");
-    });
-  }
-  if (bookmarkCloseBtn && bookmarkModal) {
-    bookmarkCloseBtn.addEventListener("click", () => {
-      bookmarkModal.classList.remove("open");
-    });
-  }
-  if (bookmarkOkBtn && bookmarkModal) {
-    bookmarkOkBtn.addEventListener("click", () => {
-      bookmarkModal.classList.remove("open");
-    });
-  }
 
   // Tesla Theater Launcher in Settings
   const btnLaunchTheater = document.getElementById("btn-launch-theater");
