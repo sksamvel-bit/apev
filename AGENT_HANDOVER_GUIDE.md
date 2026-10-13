@@ -1,7 +1,7 @@
 # 🚀 Tesla In-Car Navigation (Georgia) — Master Agent Handover Guide
 
 > **Target Audience:** Future AI Agents, Engineers, and Auditors.  
-> **Status as of October 13, 2026:** Production Ready, Optimized for Tesla MCU Chromium Browser, Version **v3.9.0**.  
+> **Status as of October 13, 2026:** Production Ready, Optimized for Tesla MCU Chromium Browser, Version **v3.9.1**.  
 > **Primary URL:** `http://localhost:3000` (Local) / `http://192.168.111.25:3000` (In-car WiFi/Hotspot) / `https://apev.onrender.com` (Cloud).  
 > **Repository Location:** `C:\Users\skarapetiani\.gemini\antigravity\scratch\tesla-nav`  
 > **Backup Directory:** `C:\Users\skarapetiani\.gemini\antigravity\scratch\tesla-nav-backup`  
@@ -112,6 +112,7 @@ tesla-nav/
     ├── test_routing.js          # Navigation engine automated unit tests (9 assertions)
     ├── test_speed_limit.js      # Speed limit fallback & corridor unit tests (13 assertions)
     ├── test_speed_limit_osm.js  # OSM Overpass grid & road snapping unit tests (22 assertions)
+    ├── test_heading.js          # Automotive heading, COG & route alignment tests (5 assertions)
     ├── check_versions.js        # Version sync check across all manifests and HTML
     └── smoke_server.js          # 18-point server security & regression test suite
 ```

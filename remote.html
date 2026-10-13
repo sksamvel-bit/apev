@@ -599,7 +599,7 @@
             sendToCar('gps', {
               lat: latitude,
               lng: longitude,
-              heading: heading || 0,
+              heading: (typeof heading === 'number' && isFinite(heading) && heading !== null) ? heading : null,
               speedKmh: speedKmh,
               accuracy: accuracy
             });

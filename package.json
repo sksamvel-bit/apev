@@ -1,11 +1,11 @@
 {
   "name": "tesla-nav",
-  "version": "3.9.0",
+  "version": "3.9.1",
   "description": "Tesla Model 3/Y Web Navigation with Live EV Chargers, Dual-Server Routing, and Mobile Remote Control",
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
-    "test": "node tests/test_routing.js && node tests/test_speed_limit.js && node tests/test_speed_limit_osm.js",
+    "test": "node tests/test_routing.js && node tests/test_speed_limit.js && node tests/test_speed_limit_osm.js && node tests/test_heading.js",
     "smoke": "node tests/smoke_server.js",
     "check": "node tests/check_version.js"
   },
