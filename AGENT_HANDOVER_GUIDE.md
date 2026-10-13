@@ -1,11 +1,11 @@
 # 🚀 Tesla In-Car Navigation (Georgia) — Master Agent Handover Guide
 
 > **Target Audience:** Future AI Agents, Engineers, and Auditors.  
-> **Status as of October 13, 2026:** Production Ready, Optimized for Tesla MCU Chromium Browser, Version **v3.9.4**.  
+> **Status as of October 13, 2026:** Production Ready, Optimized for Tesla MCU Chromium Browser, Version **v3.9.7**.  
 > **Primary URL:** `http://localhost:3000` (Local) / `http://192.168.111.25:3000` (In-car WiFi/Hotspot) / `https://apev.onrender.com` (Cloud).  
-> **Repository Location:** `C:\Users\skarapetiani\.gemini\antigravity\scratch\tesla-nav`  
-> **Backup Directory:** `C:\Users\skarapetiani\.gemini\antigravity\scratch\tesla-nav-backup`  
-> **Zip Archive:** `C:\Users\skarapetiani\.gemini\antigravity\scratch\tesla-nav-backup-complete.zip`  
+> **Repository Location:** `D:\Projects\Tesla Model 3\tesla-nav`  
+> **Backup Directory:** `D:\Projects\Tesla Model 3\tesla-nav-backup`  
+> **Zip Archive:** `D:\Projects\Tesla Model 3\tesla-nav-backup-complete.zip`  
 
 ---
 
@@ -146,24 +146,26 @@ tesla-nav/
 5. **Keep OSRM Dual-Server Fallback:** Public demo servers may experience rate limits; dual servers ensure 100% uptime.
 6. **Cache Busting:** Always increment `?v=X.X.X` in `index.html` when modifying CSS or JS, because Tesla Chromium caches aggressively.
 7. **Server Port:** Runs on port 3000 (`node server.js`).
-
----
-
-## 5. Verification Commands for Auditors
-To verify the application:
-1. Run automated test suite:
-   ```bash
-   npm test          # 46/46 unit tests (Routing + Speed limits + OSM Overpass + Heading-Up + 360)
-   ```
-2. Verify version consistency:
-   ```bash
-   npm run check     # Verifies v3.9.4 across package.json, index.html, sw.js
-   ```
-3. Run security and regression smoke tests:
-   ```bash
-   npm run smoke     # 18/18 server security tests (PIN auth, rate-limit, path traversal, SSE)
-   ```
-4. Verify JS syntax:
-   ```bash
-   node --check app.js yandex.js routing.js chargers.js battery.js server.js media-player.js speed-limit.js
-   ```
+8. **Working Location Rule:** All modifications must be executed strictly within `D:\Projects\Tesla Model 3\tesla-nav`. Do NOT use `C:\...scratch`.
+9. **Orientation Default:** `currentMapOrientation` defaults to `north-up` to guarantee all raster street labels remain horizontal and readable.
+151: 
+152: ---
+153: 
+154: ## 5. Verification Commands for Auditors & Agents
+155: To verify the application:
+156: 1. Run automated test suite:
+157:    ```bash
+158:    npm test          # 48/48 unit tests (Routing + Speed limits + OSM Overpass + Heading + 360)
+159:    ```
+160: 2. Verify version consistency:
+161:    ```bash
+162:    npm run check     # Verifies v3.9.7 across package.json, index.html, sw.js
+163:    ```
+164: 3. Run security and regression smoke tests:
+165:    ```bash
+166:    npm run smoke     # 18/18 server security tests (PIN auth, rate-limit, path traversal, SSE)
+167:    ```
+168: 4. Verify JS syntax:
+169:    ```bash
+170:    node --check app.js yandex.js routing.js chargers.js battery.js server.js media-player.js speed-limit.js
+171:    ```
