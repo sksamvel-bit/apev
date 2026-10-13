@@ -10,23 +10,23 @@
  * 4. skipWaiting + clients.claim for atomic instant updates without stale caches.
  */
 
-const CACHE_NAME = 'tesla-nav-v3.9.20';
+const CACHE_NAME = 'tesla-nav-v3.9.21';
 
 const PRECACHE_ASSETS = [
   '/',
   '/index.html',
-  '/style.css?v=3.9.20',
-  '/app.js?v=3.9.20',
-  '/speed-limit.js?v=3.9.20',
-  '/routing.js?v=3.9.20',
-  '/chargers.js?v=3.9.20',
-  '/traffic-signals.js?v=3.9.20',
-  '/traffic.js?v=3.9.20',
-  '/yandex.js?v=3.9.20',
-  '/weather.js?v=3.9.20',
-  '/battery.js?v=3.9.20',
-  '/media-player.js?v=3.9.20',
-  '/speech.js?v=3.9.20',
+  '/style.css?v=3.9.21',
+  '/app.js?v=3.9.21',
+  '/speed-limit.js?v=3.9.21',
+  '/routing.js?v=3.9.21',
+  '/chargers.js?v=3.9.21',
+  '/traffic-signals.js?v=3.9.21',
+  '/traffic.js?v=3.9.21',
+  '/yandex.js?v=3.9.21',
+  '/weather.js?v=3.9.21',
+  '/battery.js?v=3.9.21',
+  '/media-player.js?v=3.9.21',
+  '/speech.js?v=3.9.21',
   '/leaflet.js',
   '/leaflet.css',
   '/qrcode.min.js',

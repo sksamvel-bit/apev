@@ -1716,7 +1716,13 @@ button svg * {
 }
 
 .media-player-card.minimized .media-player-body {
-  display: none;
+  height: 0;
+  max-height: 0;
+  opacity: 0;
+  pointer-events: none;
+  overflow: hidden;
+  padding: 0;
+  margin: 0;
 }
 
 .media-player-header {
