@@ -6,13 +6,39 @@
  * 3. Verified Georgian Municipal Urban Zones (60 km/h)
  * 4. Honest Fallback: Shows "—" when speed limit is unverified (NEVER guesses or triggers false alarms)
  * 5. Dynamic Visual Overspeed Warning: Pulses red ONLY when a verified numeric limit is exceeded by > 5 km/h
+ *
+ * OSM LAYER (v3.9): the posted limit is read from OpenStreetMap `maxspeed` tags (Overpass API, ~0.5 km tiles,
+ * cached 24 h, LRU 40 tiles, back-off on failure). Confidence levels:
+ *   confirmed = numeric OSM/OSRM maxspeed  -> shown as "60", red alarm allowed
+ *   estimate  = hand-made corridors / city boxes / road-name rules -> shown as "~60", NO alarm (by default)
+ *   unknown   -> "—"
+ * A motorway/trunk without a maxspeed tag is never labelled with the city default.
  */
 
 class SpeedLimitEngine {
   constructor(routingEngine = null) {
     this.routingEngine = routingEngine;
-    this.currentLimit = 60; // Initial default before GPS lock
-    this.currentRoadName = "საქალაქო გზა";
+    this.currentLimit = null; // unknown until a real fix: never show a guessed number
+    this.currentRoadName = "—";
+    this.currentConfidence = "unknown"; // 'confirmed' | 'estimate' | 'unknown'
+    this.OVERSPEED_ON_ESTIMATE = false; // red alarm only for CONFIRMED limits (set true to also alarm on estimates)
+    this.lastSpeed = 0;
+
+    // ---- OpenStreetMap (Overpass) layer ----
+    this.osmEnabled = true;
+    this.osmEndpoints = ["https://overpass-api.de/api/interpreter", "https://overpass.kumi.systems/api/interpreter"];
+    this.osmTileLat = 0.005;   // ~555 m
+    this.osmTileLng = 0.007;   // ~520 m at Georgia's latitudes
+    this.osmMaxTiles = 40;
+    this.osmTtlMs = 24 * 3600 * 1000;
+    this.osmMatchMeters = 22;  // nearest road must be within this distance of the GPS point
+    this.osmTiles = new Map();   // "i,j" -> { t, ways }
+    this.osmPending = new Map(); // "i,j" -> Promise
+    this.osmFailCount = 0;
+    this.osmFailUntil = 0;
+    this.osmHeading = null;
+    this.osmLastPos = null;
+    this.fetchFn = (...a) => fetch(...a); // injectable for tests
     this.lastCheckPos = null;
     this.lastCheckTime = 0;
 
@@ -136,7 +162,7 @@ class SpeedLimitEngine {
   /**
    * Main periodic update called from updateVehicleMarker()
    */
-  update(lat, lng, currentSpeedKmh = 0) {
+  update(lat, lng, currentSpeedKmh = 0, headingDeg = null) {
     const now = performance.now();
 
     // Throttle checks: if vehicle moved < 25m and < 3s passed, check overspeed alert only
@@ -148,14 +174,30 @@ class SpeedLimitEngine {
       }
     }
 
+    // Heading: explicit value, else derived from movement (>= 10 m since the last reference point)
+    if (typeof headingDeg === "number" && isFinite(headingDeg)) {
+      this.osmHeading = headingDeg;
+    } else if (this.osmLastPos && this.haversineMeters(this.osmLastPos.lat, this.osmLastPos.lng, lat, lng) >= 10) {
+      this.osmHeading = this.bearingDeg(this.osmLastPos.lat, this.osmLastPos.lng, lat, lng);
+      this.osmLastPos = { lat, lng };
+    }
+    if (!this.osmLastPos) this.osmLastPos = { lat, lng };
+
     this.lastCheckPos = { lat, lng };
     this.lastCheckTime = now;
+    this.lastSpeed = currentSpeedKmh;
 
+    // Ask OSM for the tile under us and the one ahead (async, never blocks the UI)
+    this.prefetchOsm(lat, lng);
+
+    this.applyDetection(lat, lng, currentSpeedKmh);
+  }
+
+  applyDetection(lat, lng, currentSpeedKmh = 0) {
     const detected = this.detectSpeedLimit(lat, lng);
     this.currentLimit = detected.limit;
     this.currentRoadName = detected.name;
-
-    // Update DOM UI
+    this.currentConfidence = detected.confidence || (detected.limit == null ? "unknown" : "estimate");
     this.renderUI(currentSpeedKmh);
   }
 
@@ -163,6 +205,14 @@ class SpeedLimitEngine {
    * Deterministic verified multi-tier detection algorithm
    */
   detectSpeedLimit(lat, lng) {
+    // Tier 0: OpenStreetMap maxspeed of the road we are actually on (cached tile lookup, synchronous)
+    const osm = this.osmLookup(lat, lng);
+    if (osm && osm.limit != null) {
+      return { limit: osm.limit, name: osm.name, source: "osm", confidence: osm.confidence };
+    }
+    // A motorway/trunk without a maxspeed tag must NOT inherit the city default
+    const fastRoad = !!(osm && /^(motorway|trunk)(_link)?$/.test(osm.highway || ""));
+
     // Tier 1: Active Navigation Route Step Matching (highest priority when navigating)
     if (this.routingEngine && this.routingEngine.isNavigating && this.routingEngine.activeRoute) {
       const routeLimit = this.checkRouteStepLimit(lat, lng);
@@ -178,20 +228,20 @@ class SpeedLimitEngine {
           c.points[i + 1][0], c.points[i + 1][1]
         );
         if (d <= c.tolerance) {
-          return { limit: c.limit, name: c.name, source: "corridor" };
+          return { limit: c.limit, name: c.name, source: "corridor", confidence: "estimate" };
         }
       }
     }
 
     // Tier 3: Verified Municipal Urban Zones (Standard 60 km/h in inhabited areas)
     for (const zone of this.urbanZones) {
-      if (lat >= zone.minLat && lat <= zone.maxLat && lng >= zone.minLng && lng <= zone.maxLng) {
-        return { limit: 60, name: `${zone.name}-ს საქალაქო გზა`, source: "urban_zone" };
+      if (!fastRoad && lat >= zone.minLat && lat <= zone.maxLat && lng >= zone.minLng && lng <= zone.maxLng) {
+        return { limit: 60, name: `${zone.name}-ს საქალაქო გზა`, source: "urban_zone", confidence: "estimate" };
       }
     }
 
     // Tier 4: Unverified Road — Display neutral "—" (No blind guessing, no false red alerts)
-    return { limit: null, name: "შეზღუდვა დაუდასტურებელია", source: "unverified" };
+    return { limit: null, name: "შეზღუდვა დაუდასტურებელია", source: "unverified", confidence: "unknown" };
   }
 
   /**
@@ -205,24 +255,24 @@ class SpeedLimitEngine {
 
     // Direct OSRM maxspeed tag if provided by routing server
     if (typeof step.maxspeed === "number" && step.maxspeed > 0) {
-      return { limit: step.maxspeed, name: step.name || "მარშრუტი", source: "osrm_maxspeed" };
+      return { limit: step.maxspeed, name: step.name || "მარშრუტი", source: "osrm_maxspeed", confidence: "confirmed" };
     }
 
     const name = (step.name || "").trim();
 
     // 110 km/h Motorway patterns (Strict matching: E60, ს-1, ს-2, ავტობანი)
     if (/(E[ -]?60|ს[ -]?1|ს[ -]?2|ავტობანი|Autobahn|Motorway)/i.test(name) && !/კახეთის/i.test(name)) {
-      return { limit: 110, name: name || "ავტომაგისტრალი", source: "route_motorway" };
+      return { limit: 110, name: name || "ავტომაგისტრალი", source: "route_motorway", confidence: "estimate" };
     }
 
     // 80 km/h expressways
     if (/(აღმაშენებლის ხეივანი|Aghmashenebeli|კახეთის გზატკეცილი|Kakheti Highway|თბილისი-რუსთავი|რუსთავის ავტობანი)/i.test(name)) {
-      return { limit: 80, name, source: "route_expressway_80" };
+      return { limit: 80, name, source: "route_expressway_80", confidence: "estimate" };
     }
 
     // 70 km/h express roads
     if (/(სანაპირო|Sanapiro|გელოვანი|ამირეჯიბი|გმირთა მოედანი|ვარაზისხევი|თამარაშვილი|მაჭავარიანი|სალოსის გამზირი)/i.test(name)) {
-      return { limit: 70, name, source: "route_expressway_70" };
+      return { limit: 70, name, source: "route_expressway_70", confidence: "estimate" };
     }
 
     return null;
@@ -235,9 +285,11 @@ class SpeedLimitEngine {
     if (!this.valEl) this.valEl = document.getElementById("speed-limit-val");
     if (!this.badgeEl) this.badgeEl = document.getElementById("speed-limit-badge");
 
-    const displayStr = (typeof this.currentLimit === "number" && this.currentLimit > 0)
-      ? String(this.currentLimit)
+    const hasNum = typeof this.currentLimit === "number" && this.currentLimit > 0;
+    const displayStr = hasNum
+      ? (this.currentConfidence === "confirmed" ? String(this.currentLimit) : "~" + this.currentLimit)
       : "—";
+    if (this.badgeEl) this.badgeEl.classList.toggle("estimated", hasNum && this.currentConfidence !== "confirmed");
 
     if (this.valEl && this.valEl.textContent !== displayStr) {
       this.valEl.textContent = displayStr;
@@ -245,7 +297,7 @@ class SpeedLimitEngine {
 
     if (this.badgeEl) {
       this.badgeEl.title = (typeof this.currentLimit === "number")
-        ? `სიჩქარის შეზღუდვა: ${this.currentLimit} კმ/სთ (${this.currentRoadName})`
+        ? `სიჩქარის შეზღუდვა: ${this.currentLimit} კმ/სთ (${this.currentRoadName})${this.currentConfidence === "confirmed" ? "" : " — დაახლოებითი"}`
         : `სიჩქარის შეზღუდვა: უცნობია (${this.currentRoadName})`;
     }
 
@@ -260,10 +312,161 @@ class SpeedLimitEngine {
     if (!this.badgeEl) this.badgeEl = document.getElementById("speed-limit-badge");
     if (!this.badgeEl) return;
 
-    const isOverspeeding = (typeof this.currentLimit === "number" && this.currentLimit > 0) &&
+    const alarmAllowed = this.currentConfidence === "confirmed" ||
+      (this.OVERSPEED_ON_ESTIMATE && this.currentConfidence === "estimate");
+    const isOverspeeding = alarmAllowed && (typeof this.currentLimit === "number" && this.currentLimit > 0) &&
       currentSpeedKmh > (this.currentLimit + 5);
 
     this.badgeEl.classList.toggle("speeding", isOverspeeding);
+  }
+
+  // ===================== OpenStreetMap (Overpass) layer =====================
+  bearingDeg(lat1, lon1, lat2, lon2) {
+    const t = Math.PI / 180;
+    const y = Math.sin((lon2 - lon1) * t) * Math.cos(lat2 * t);
+    const x = Math.cos(lat1 * t) * Math.sin(lat2 * t) - Math.sin(lat1 * t) * Math.cos(lat2 * t) * Math.cos((lon2 - lon1) * t);
+    return (Math.atan2(y, x) / t + 360) % 360;
+  }
+
+  tileIndex(lat, lng) { return [Math.floor(lat / this.osmTileLat), Math.floor(lng / this.osmTileLng)]; }
+  tileKey(i, j) { return i + "," + j; }
+  tileBounds(i, j) {
+    return { s: i * this.osmTileLat, n: (i + 1) * this.osmTileLat, w: j * this.osmTileLng, e: (j + 1) * this.osmTileLng };
+  }
+
+  /** Request the tile under the car and the one ~400 m ahead. Returns a Promise (useful in tests). */
+  prefetchOsm(lat, lng) {
+    if (!this.osmEnabled) return Promise.resolve([]);
+    const [i, j] = this.tileIndex(lat, lng);
+    const jobs = [this.requestTile(i, j)];
+    if (this.osmHeading != null) {
+      const rad = this.osmHeading * Math.PI / 180;
+      const aLat = lat + (400 * Math.cos(rad)) / 111320;
+      const aLng = lng + (400 * Math.sin(rad)) / (111320 * Math.cos(lat * Math.PI / 180));
+      const [ai, aj] = this.tileIndex(aLat, aLng);
+      if (ai !== i || aj !== j) jobs.push(this.requestTile(ai, aj));
+    }
+    return Promise.all(jobs);
+  }
+
+  requestTile(i, j) {
+    const key = this.tileKey(i, j);
+    const hit = this.osmTiles.get(key);
+    if (hit && Date.now() - hit.t < this.osmTtlMs) return Promise.resolve(hit);
+    if (this.osmPending.has(key)) return this.osmPending.get(key);
+    if (Date.now() < this.osmFailUntil) return Promise.resolve(null); // back-off after failures
+    if (this.osmPending.size >= 2) return Promise.resolve(null);      // be polite to the public API
+
+    const p = this.fetchTile(i, j)
+      .then(tile => {
+        this.osmFailCount = 0;
+        this.osmFailUntil = 0;
+        this.osmTiles.delete(key);
+        this.osmTiles.set(key, tile);
+        while (this.osmTiles.size > this.osmMaxTiles) this.osmTiles.delete(this.osmTiles.keys().next().value);
+        if (this.lastCheckPos) this.applyDetection(this.lastCheckPos.lat, this.lastCheckPos.lng, this.lastSpeed || 0);
+        return tile;
+      })
+      .catch(() => {
+        this.osmFailCount++;
+        this.osmFailUntil = Date.now() + Math.min(300000, 15000 * Math.pow(2, this.osmFailCount));
+        return null;
+      })
+      .finally(() => { this.osmPending.delete(key); });
+    this.osmPending.set(key, p);
+    return p;
+  }
+
+  async fetchTile(i, j) {
+    const b = this.tileBounds(i, j);
+    const q = '[out:json][timeout:10];way[highway~"^(motorway|trunk|primary|secondary|tertiary|unclassified|residential|living_street)(_link)?$"](' +
+      b.s.toFixed(5) + "," + b.w.toFixed(5) + "," + b.n.toFixed(5) + "," + b.e.toFixed(5) + ");out tags geom;";
+    let lastErr = null;
+    for (const ep of this.osmEndpoints) {
+      const ctrl = typeof AbortController !== "undefined" ? new AbortController() : null;
+      const timer = ctrl ? setTimeout(() => ctrl.abort(), 12000) : null;
+      try {
+        const res = await this.fetchFn(ep + "?data=" + encodeURIComponent(q), ctrl ? { signal: ctrl.signal } : undefined);
+        if (!res.ok) throw new Error("Overpass HTTP " + res.status);
+        return this.buildTile(await res.json());
+      } catch (e) {
+        lastErr = e;
+      } finally {
+        if (timer) clearTimeout(timer);
+      }
+    }
+    throw lastErr || new Error("Overpass failed");
+  }
+
+  buildTile(data) {
+    const ways = [];
+    for (const el of (data && data.elements) || []) {
+      if (el.type !== "way" || !el.geometry || el.geometry.length < 2 || !el.tags) continue;
+      const t = el.tags;
+      ways.push({
+        id: el.id,
+        highway: t.highway,
+        name: t.name || t["name:ka"] || t.ref || "",
+        maxspeed: t.maxspeed,
+        mType: t["maxspeed:type"] || "",
+        mFwd: t["maxspeed:forward"],
+        mBwd: t["maxspeed:backward"],
+        pts: el.geometry.map(g => [g.lat, g.lon])
+      });
+    }
+    return { t: Date.now(), ways };
+  }
+
+  /** "60", "60 km/h", "30 mph", "GE:urban" -> { limit, confidence } | null ("none", "signals", "60;80" ... -> null) */
+  parseMaxspeed(v) {
+    if (v == null) return null;
+    const s = String(v).trim().toLowerCase();
+    let m = s.match(/^(\d{1,3})(\s*km\/h)?$/);
+    if (m) { const n = parseInt(m[1], 10); return n >= 5 && n <= 140 ? { limit: n, confidence: "confirmed" } : null; }
+    m = s.match(/^(\d{1,3})\s*mph$/);
+    if (m) { const n = Math.round(parseInt(m[1], 10) * 1.609); return n >= 5 && n <= 140 ? { limit: n, confidence: "confirmed" } : null; }
+    if (/(^|:)urban$/.test(s)) return { limit: 60, confidence: "estimate" };
+    return null;
+  }
+
+  /** Nearest drivable OSM way (within osmMatchMeters, heading-aware) from the cached tile; null if nothing known. */
+  osmLookup(lat, lng) {
+    if (!this.osmEnabled) return null;
+    const [i, j] = this.tileIndex(lat, lng);
+    const tile = this.osmTiles.get(this.tileKey(i, j));
+    if (!tile) return null;
+    const kx = 111320 * Math.cos(lat * Math.PI / 180), ky = 110540;
+    let best = null;
+    for (const w of tile.ways) {
+      const pts = w.pts;
+      for (let k = 0; k < pts.length - 1; k++) {
+        const ax = (pts[k][1] - lng) * kx, ay = (pts[k][0] - lat) * ky;
+        const bx = (pts[k + 1][1] - lng) * kx, by = (pts[k + 1][0] - lat) * ky;
+        const dx = bx - ax, dy = by - ay, l2 = dx * dx + dy * dy;
+        const t = l2 ? Math.max(0, Math.min(1, -(ax * dx + ay * dy) / l2)) : 0;
+        const d = Math.hypot(ax + t * dx, ay + t * dy);
+        if (d > this.osmMatchMeters) continue;
+        let score = d;
+        if (this.osmHeading != null && l2 > 4) { // prefer the road we are travelling along (not a crossing one)
+          const seg = (Math.atan2(dx, dy) * 180 / Math.PI + 360) % 360;
+          let diff = Math.abs(seg - this.osmHeading) % 180;
+          if (diff > 90) diff = 180 - diff;
+          score += diff > 45 ? 30 : diff * 0.25;
+        }
+        if (!best || score < best.score) best = { score, w };
+      }
+    }
+    if (!best) return null;
+    const w = best.w;
+    const parsed = this.parseMaxspeed(w.maxspeed) ||
+      this.parseMaxspeed(w.mFwd != null && w.mFwd === w.mBwd ? w.mFwd : null) ||
+      this.parseMaxspeed(w.mType);
+    return {
+      limit: parsed ? parsed.limit : null,
+      confidence: parsed ? parsed.confidence : "unknown",
+      highway: w.highway,
+      name: w.name || w.highway
+    };
   }
 
   // Trigonometry helpers

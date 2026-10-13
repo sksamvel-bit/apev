@@ -57,6 +57,42 @@ document.addEventListener("DOMContentLoaded", () => {
   try { restoreActiveRouteState(); } catch (e) { console.error("restoreActiveRouteState error:", e); }
 });
 
+// Clean ?key= from browser address bar immediately (prevents leaking in Referer)
+try {
+  const currentUrl = new URL(window.location.href);
+  if (currentUrl.searchParams.has("key")) {
+    currentUrl.searchParams.delete("key");
+    window.history.replaceState({}, document.title, currentUrl.pathname + (currentUrl.search ? currentUrl.search : "") + currentUrl.hash);
+  }
+} catch (_) {}
+
+// Automotive Client Error Telemetry -> Server Log
+window.addEventListener("error", (event) => {
+  try {
+    const payload = {
+      message: event.message,
+      filename: event.filename,
+      lineno: event.lineno,
+      colno: event.colno,
+      time: new Date().toISOString()
+    };
+    if (navigator.sendBeacon) {
+      navigator.sendBeacon("/api/telemetry/error", JSON.stringify(payload));
+    }
+  } catch (_) {}
+});
+
+// Automotive Service Worker for instant reload on Tesla Reverse (R)
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('/sw.js').then((reg) => {
+      console.log('[SW] ServiceWorker active with scope:', reg.scope);
+    }).catch((err) => {
+      console.warn('[SW] Registration failed:', err);
+    });
+  });
+}
+
 // Real-time Top Clock (Strict 24-Hour Format)
 function initClock() {
   const clockEl = document.getElementById("top-clock");
@@ -199,16 +235,38 @@ function setMapStyle(styleKey) {
     updateWhenIdle: true      // Loads tiles only when panning settles
   };
 
+  function createResilientTileLayer(url, options) {
+    const layer = L.tileLayer(url, options);
+    let failCount = 0;
+    layer.on("tileerror", () => {
+      failCount++;
+      if (failCount >= 4 && !layer._fallbackActive && map && map.hasLayer(layer)) {
+        layer._fallbackActive = true;
+        console.warn("[Map] Primary tiles failing, switching to CartoDB Voyager fallback");
+        map.removeLayer(layer);
+        const fallbackLayer = L.tileLayer("https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png", {
+          ...options,
+          subdomains: "abcd",
+          maxZoom: 19,
+          attribution: '&copy; OpenStreetMap &copy; CARTO'
+        }).addTo(map);
+        currentBaseTileLayer = fallbackLayer;
+        window.currentBaseTileLayer = fallbackLayer;
+      }
+    });
+    return layer;
+  }
+
   if (styleKey === "google-roads") {
     // Official Google Maps Standard Roads with Georgian labels
-    currentBaseTileLayer = L.tileLayer("https://mt{s}.google.com/vt/lyrs=m&hl=ka&gl=GE&x={x}&y={y}&z={z}", perfTileOptions).addTo(map);
+    currentBaseTileLayer = createResilientTileLayer("https://mt{s}.google.com/vt/lyrs=m&hl=ka&gl=GE&x={x}&y={y}&z={z}", perfTileOptions).addTo(map);
   } else if (styleKey === "google-sat") {
     // Official Google Maps Satellite Hybrid with Georgian street labels
-    currentBaseTileLayer = L.tileLayer("https://mt{s}.google.com/vt/lyrs=y&hl=ka&gl=GE&x={x}&y={y}&z={z}", perfTileOptions).addTo(map);
+    currentBaseTileLayer = createResilientTileLayer("https://mt{s}.google.com/vt/lyrs=y&hl=ka&gl=GE&x={x}&y={y}&z={z}", perfTileOptions).addTo(map);
   } else if (styleKey === "yandex") {
     // If Yandex Map is loading, show fallback base road tiles so screen is NEVER black!
     if (!yandexEngine || !yandexEngine.isLoaded) {
-      currentBaseTileLayer = L.tileLayer("https://mt{s}.google.com/vt/lyrs=m&hl=ka&gl=GE&x={x}&y={y}&z={z}", perfTileOptions).addTo(map);
+      currentBaseTileLayer = createResilientTileLayer("https://mt{s}.google.com/vt/lyrs=m&hl=ka&gl=GE&x={x}&y={y}&z={z}", perfTileOptions).addTo(map);
     }
   }
   window.currentBaseTileLayer = currentBaseTileLayer;

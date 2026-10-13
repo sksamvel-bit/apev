@@ -5,6 +5,7 @@ const os = require('os');
 const zlib = require('zlib');
 const https = require('https');
 const vm = require('vm');
+const crypto = require('crypto');
 
 const PORT = process.env.PORT || 3000;
 const PUBLIC_DIR = __dirname;
@@ -18,8 +19,82 @@ const STATIC_WHITELIST = new Set([
   'index.html','remote.html','style.css','leaflet.css','leaflet.js','qrcode.min.js',
   'app.js','routing.js','yandex.js','traffic.js','traffic-signals.js','chargers.js',
   'battery.js','weather.js','speech.js','media-player.js','speed-limit.js',
-  'manifest.json','icon.svg','icon-192.png','icon-512.png'
+  'manifest.json','icon.svg','icon-192.png','icon-512.png','sw.js'
 ]);
+
+// Server-side Access PIN & Secret Key Protection
+const ACCESS_PIN = (process.env.ACCESS_PIN || '').trim();
+const AUTH_SECRET = process.env.AUTH_SECRET || 'tesla-nav-secret-salt-2026';
+const VALID_TOKEN = ACCESS_PIN ? crypto.createHmac('sha256', AUTH_SECRET).update(ACCESS_PIN).digest('hex') : '';
+
+// Failed PIN attempts rate limiter (max 5 failed attempts per IP per 5 mins)
+const failedPinAttempts = new Map();
+
+function isRateLimited(ip) {
+  const record = failedPinAttempts.get(ip);
+  if (!record) return false;
+  if (Date.now() > record.expireAt) {
+    failedPinAttempts.delete(ip);
+    return false;
+  }
+  return record.count >= 5;
+}
+
+function recordFailedAttempt(ip) {
+  const record = failedPinAttempts.get(ip) || { count: 0, expireAt: Date.now() + 5 * 60 * 1000 };
+  record.count++;
+  record.expireAt = Date.now() + 5 * 60 * 1000;
+  failedPinAttempts.set(ip, record);
+}
+
+function resetFailedAttempts(ip) {
+  failedPinAttempts.delete(ip);
+}
+
+function parseCookies(cookieHeader) {
+  const cookies = {};
+  if (!cookieHeader) return cookies;
+  cookieHeader.split(';').forEach(c => {
+    const parts = c.split('=');
+    if (parts.length >= 2) {
+      cookies[parts[0].trim()] = parts.slice(1).join('=').trim();
+    }
+  });
+  return cookies;
+}
+
+function isValidPin(inputPin) {
+  if (!ACCESS_PIN || typeof inputPin !== 'string') return false;
+  const a = Buffer.from(inputPin);
+  const b = Buffer.from(ACCESS_PIN);
+  if (a.length !== b.length) return false;
+  return crypto.timingSafeEqual(a, b);
+}
+
+function isAuthenticated(req) {
+  if (!ACCESS_PIN) return true; // Open mode when ACCESS_PIN is not configured
+  const cookies = parseCookies(req.headers.cookie);
+  if (cookies.tesla_auth) {
+    const a = Buffer.from(cookies.tesla_auth);
+    const b = Buffer.from(VALID_TOKEN);
+    if (a.length === b.length && crypto.timingSafeEqual(a, b)) {
+      return true;
+    }
+  }
+  return false;
+}
+
+const PUBLIC_AUTH_PATHS = new Set([
+  '/healthz', '/api/info', '/remote.html', '/manifest.json',
+  '/icon.svg', '/icon-192.png', '/icon-512.png', '/sw.js',
+  '/api/auth/pin', '/api/telemetry/error'
+]);
+
+function isPublicAuthPath(p) {
+  if (PUBLIC_AUTH_PATHS.has(p)) return true;
+  if (p.startsWith('/api/session/')) return true;
+  return false;
+}
 
 const ALLOWED_EVENT_TYPES = new Set(['destination','gps','media']);
 const CODE_RE = /^[A-Z0-9]{12,32}$/;
@@ -244,6 +319,81 @@ function resolveYouTubeQuery(query) {
   });
 }
 
+const PIN_LOGIN_HTML = `<!DOCTYPE html>
+<html lang="ka">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Tesla Nav - PIN დაცვა</title>
+  <style>
+    body {
+      margin: 0; background: #0f1115; color: #f1f5f9; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      display: flex; align-items: center; justify-content: center; height: 100vh; overflow: hidden;
+    }
+    .pin-card {
+      background: #181b20; border: 1px solid #2a2f38; border-radius: 16px; padding: 28px 24px; width: 320px;
+      text-align: center; box-shadow: 0 12px 36px rgba(0,0,0,0.6);
+    }
+    .pin-logo { font-size: 2.2rem; margin-bottom: 8px; }
+    .pin-title { font-size: 1.2rem; font-weight: 700; margin-bottom: 6px; }
+    .pin-desc { font-size: 0.85rem; color: #94a3b8; margin-bottom: 20px; }
+    .pin-input {
+      width: 100%; box-sizing: border-box; background: #0b0c0e; border: 2px solid #334155; border-radius: 10px;
+      color: #fff; font-size: 1.6rem; text-align: center; letter-spacing: 8px; padding: 12px; margin-bottom: 16px; outline: none;
+    }
+    .pin-input:focus { border-color: #e82127; }
+    .pin-btn {
+      width: 100%; background: #e82127; color: #fff; border: none; border-radius: 10px; padding: 14px;
+      font-size: 1rem; font-weight: 600; cursor: pointer; transition: background 0.2s;
+    }
+    .pin-btn:hover { background: #c5161b; }
+    .pin-err { color: #f87171; font-size: 0.85rem; margin-top: 12px; min-height: 18px; }
+  </style>
+</head>
+<body>
+  <div class="pin-card">
+    <div class="pin-logo">🔒</div>
+    <div class="pin-title">Tesla Nav</div>
+    <div class="pin-desc">შეიყვანეთ PIN კოდი წვდომისთვის</div>
+    <input type="password" id="pin" class="pin-input" maxlength="12" autofocus placeholder="••••">
+    <button id="btn" class="pin-btn">შესვლა</button>
+    <div id="err" class="pin-err"></div>
+  </div>
+  <script>
+    const pinEl = document.getElementById('pin');
+    const errEl = document.getElementById('err');
+    const btnEl = document.getElementById('btn');
+    async function submitPin() {
+      errEl.textContent = '';
+      const pin = pinEl.value.trim();
+      if (!pin) return;
+      btnEl.disabled = true;
+      try {
+        const res = await fetch('/api/auth/pin', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ pin })
+        });
+        const data = await res.json();
+        if (res.ok && data.success) {
+          window.location.reload();
+        } else {
+          errEl.textContent = data.error || 'არასწორი PIN კოდი';
+          pinEl.value = '';
+          pinEl.focus();
+        }
+      } catch (e) {
+        errEl.textContent = 'კავშირის შეცდომა';
+      } finally {
+        btnEl.disabled = false;
+      }
+    }
+    btnEl.addEventListener('click', submitPin);
+    pinEl.addEventListener('keypress', (e) => { if (e.key === 'Enter') submitPin(); });
+  </script>
+</body>
+</html>`;
+
 const server = http.createServer((req, res) => {
   let urlObj, pathname;
   try {
@@ -264,6 +414,100 @@ const server = http.createServer((req, res) => {
     return;
   }
 
+  // Health check endpoint (for keep-alive pings / UptimeRobot)
+  if (pathname === '/healthz') {
+    res.writeHead(200, { 'Content-Type': 'text/plain; charset=utf-8' });
+    res.end('ok');
+    return;
+  }
+
+  // Telemetry: client window.onerror error logging
+  if (pathname === '/api/telemetry/error') {
+    if (req.method === 'POST') {
+      let body = '';
+      req.on('data', c => { body += c; if (body.length > 2048) req.destroy(); });
+      req.on('end', () => {
+        try {
+          const errData = JSON.parse(body);
+          console.warn('[Telemetry Error]', errData.message, 'at', errData.filename, errData.lineno);
+        } catch (_) {}
+        res.writeHead(204);
+        res.end();
+      });
+      return;
+    }
+  }
+
+  // Authentication: PIN submission
+  if (pathname === '/api/auth/pin') {
+    if (req.method !== 'POST') {
+      res.writeHead(405, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: 'Method Not Allowed' }));
+      return;
+    }
+    const ip = req.headers['x-forwarded-for'] || req.socket.remoteAddress || 'unknown';
+    if (isRateLimited(ip)) {
+      res.writeHead(429, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: 'ძალიან ბევრი მცდელობა. გთხოვთ სცადოთ 5 წუთში.' }));
+      return;
+    }
+    let body = '';
+    req.on('data', c => { body += c; if (body.length > 512) req.destroy(); });
+    req.on('end', () => {
+      try {
+        const parsed = JSON.parse(body);
+        if (isValidPin(parsed && parsed.pin)) {
+          resetFailedAttempts(ip);
+          const isHttps = req.headers['x-forwarded-proto'] === 'https';
+          const cookieHeader = `tesla_auth=${VALID_TOKEN}; Path=/; HttpOnly; SameSite=Lax; Max-Age=2592000${isHttps ? '; Secure' : ''}`;
+          res.writeHead(200, {
+            'Content-Type': 'application/json',
+            'Set-Cookie': cookieHeader
+          });
+          res.end(JSON.stringify({ success: true }));
+        } else {
+          recordFailedAttempt(ip);
+          res.writeHead(401, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ error: 'არასწორი PIN კოდი' }));
+        }
+      } catch (_) {
+        res.writeHead(400, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: 'არასწორი მოთხოვნა' }));
+      }
+    });
+    return;
+  }
+
+  // URL Key Authentication check: ?key=... sets cookie and 302 redirects to strip key from URL/Referer
+  if (ACCESS_PIN && urlObj.searchParams.has('key')) {
+    const keyParam = urlObj.searchParams.get('key');
+    if (isValidPin(keyParam)) {
+      const isHttps = req.headers['x-forwarded-proto'] === 'https';
+      const cookieHeader = `tesla_auth=${VALID_TOKEN}; Path=/; HttpOnly; SameSite=Lax; Max-Age=2592000${isHttps ? '; Secure' : ''}`;
+      urlObj.searchParams.delete('key');
+      const cleanUrl = urlObj.pathname + (urlObj.search ? urlObj.search : '');
+      res.writeHead(302, {
+        'Location': cleanUrl || '/',
+        'Set-Cookie': cookieHeader
+      });
+      res.end();
+      return;
+    }
+  }
+
+  // Auth Gatekeeper: if ACCESS_PIN is set and route is protected and user is not authenticated
+  if (ACCESS_PIN && !isPublicAuthPath(pathname) && !isAuthenticated(req)) {
+    if (pathname === '/' || pathname === '/index.html') {
+      res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
+      res.end(PIN_LOGIN_HTML);
+      return;
+    }
+    if (pathname.startsWith('/api/')) {
+      res.writeHead(401, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: 'Unauthorized' }));
+      return;
+    }
+  }
 
   // API Endpoint: /api/info (Network info and IP)
   if (pathname === '/api/info') {
@@ -492,6 +736,11 @@ const server = http.createServer((req, res) => {
       'Content-Type': contentType,
       'Cache-Control': cacheControl
     };
+
+    if (name === 'sw.js') {
+      headers['Service-Worker-Allowed'] = '/';
+      headers['Cache-Control'] = 'no-cache, no-store, must-revalidate';
+    }
 
     if (canGzip) {
       headers['Content-Encoding'] = 'gzip';

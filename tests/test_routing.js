@@ -30,7 +30,8 @@ global.fetch = async () => { if (failNext) throw new Error('network down'); retu
   const eng = new RE({ fitBounds() { log.push('fitBounds') }, removeLayer() { } }, null, null, { speak: t => spoken.push(t) }, null);
   eng.onManeuverUpdate = d => hud.push(d); eng.onSummaryUpdate = () => { }; let arrived = 0; eng.onArrival = () => arrived++;
   await eng.calculateRoute({ lat: 41.70, lng: 44.80 }, { lat: 41.72, lng: 44.82 }, true);
-  const ok = (c, m) => console.log((c ? 'PASS' : 'FAIL') + '  ' + m);
+  const ok = (c, m) => { if (!c) global.__fails = (global.__fails || 0) + 1; console.log((c ? 'PASS' : 'FAIL') + '  ' + m); };
+  process.on('exit', () => { if (global.__fails) process.exitCode = 1; });
   console.log('stepRouteDist:', eng.stepRouteDist.map(Math.round), 'total', Math.round(total));
   spoken.length = 0;
   // drive north, 1 fix/sec at 50 km/h (~14 m)

@@ -12,7 +12,9 @@ const SpeedLimitEngine = window.SpeedLimitEngine;
 
 const engine = new SpeedLimitEngine();
 
-const ok = (c, m) => console.log((c ? 'PASS' : 'FAIL') + '  ' + m);
+let __fails = 0;
+process.on('exit', () => { if (__fails) process.exitCode = 1; });
+const ok = (c, m) => { if (!c) __fails++; console.log((c ? 'PASS' : 'FAIL') + '  ' + m); };
 
 // Test 1: Davit Aghmashenebeli Alley (80 km/h)
 const r1 = engine.detectSpeedLimit(41.780, 44.773);
@@ -84,5 +86,6 @@ ok(!engine.isSpeedingClass, 'Overspeed does NOT trigger on unverified limit (nul
 
 // Test 13: Overspeed fires when verified limit is exceeded (> limit + 5)
 engine.currentLimit = 80;
+engine.currentConfidence = 'confirmed';
 engine.updateOverspeedUI(86);
 ok(engine.isSpeedingClass === true, 'Overspeed correctly fires when speed > verified limit + 5');
