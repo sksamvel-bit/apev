@@ -16,12 +16,14 @@
   <!-- Leaflet CSS (Local Offline) -->
   <link rel="stylesheet" href="leaflet.css">
   <!-- Custom Stylesheet -->
-  <link rel="stylesheet" href="style.css?v=3.9.2">
+  <link rel="stylesheet" href="style.css?v=3.9.3">
 </head>
 <body>
 
-  <!-- Fullscreen Map Canvas -->
-  <div id="map"></div>
+  <!-- Fullscreen Map Canvas Viewport (Supports 3D Heading-Up Rotation) -->
+  <div id="map-viewport">
+    <div id="map"></div>
+  </div>
 
   <!-- TOP BAR: Brand, Search, Weather, Battery, Quick POIs & Status -->
   <header class="top-bar">
@@ -219,6 +221,15 @@
         <polygon points="3 11 22 2 13 21 11 13 3 11"></polygon>
       </svg>
       <span class="dock-tooltip">ცენტრირება</span>
+    </button>
+
+    <button id="btn-map-orientation" class="dock-btn active" title="რუკის ორიენტაცია: კურსი / ჩრდილოეთი">
+      <svg viewBox="0 0 24 24" id="compass-needle-svg" class="compass-needle-icon">
+        <polygon points="12 3 16 12 12 10 8 12" fill="#ef4444" stroke="#ffffff" stroke-width="0.8"/>
+        <polygon points="12 21 16 12 12 14 8 12" fill="#94a3b8" stroke="#ffffff" stroke-width="0.8"/>
+        <circle cx="12" cy="12" r="1.5" fill="#ffffff"/>
+      </svg>
+      <span class="dock-tooltip" id="orientation-tooltip">კურსის რეჟიმი</span>
     </button>
 
     <button id="btn-zoom-in" class="dock-btn" title="გადიდება (+)">
@@ -495,7 +506,7 @@
         </div>
       </div>
       <div class="modal-footer">
-        <span class="settings-version-tag" style="margin-right: auto; font-size: 0.8rem; color: var(--text-secondary); opacity: 0.8;">ვერსია: v3.9.2</span>
+        <span class="settings-version-tag" style="margin-right: auto; font-size: 0.8rem; color: var(--text-secondary); opacity: 0.8;">ვერსია: v3.9.3</span>
         <button id="modal-cancel-btn" class="btn-secondary">გაუქმება</button>
         <button id="modal-save-btn" class="btn-primary">შენახვა</button>
       </div>
@@ -550,16 +561,16 @@
   <!-- QR Code Generator -->
   <script src="qrcode.min.js"></script>
   <!-- Application Engines -->
-  <script src="speech.js?v=3.9.2"></script>
-  <script src="weather.js?v=3.9.2"></script>
-  <script src="battery.js?v=3.9.2"></script>
-  <script src="chargers.js?v=3.9.2"></script>
-  <script src="traffic-signals.js?v=3.9.2"></script>
-  <script src="traffic.js?v=3.9.2"></script>
-  <script src="media-player.js?v=3.9.2"></script>
-  <script src="yandex.js?v=3.9.2"></script>
-  <script src="routing.js?v=3.9.2"></script>
-  <script src="speed-limit.js?v=3.9.2"></script>
-  <script src="app.js?v=3.9.2"></script>
+  <script src="speech.js?v=3.9.3"></script>
+  <script src="weather.js?v=3.9.3"></script>
+  <script src="battery.js?v=3.9.3"></script>
+  <script src="chargers.js?v=3.9.3"></script>
+  <script src="traffic-signals.js?v=3.9.3"></script>
+  <script src="traffic.js?v=3.9.3"></script>
+  <script src="media-player.js?v=3.9.3"></script>
+  <script src="yandex.js?v=3.9.3"></script>
+  <script src="routing.js?v=3.9.3"></script>
+  <script src="speed-limit.js?v=3.9.3"></script>
+  <script src="app.js?v=3.9.3"></script>
 </body>
 </html>

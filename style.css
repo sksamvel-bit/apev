@@ -54,15 +54,40 @@ html, body {
   font-size: 16px;
 }
 
-/* Map Container */
-#map {
+/* Map Viewport & Automotive Heading-Up Rotation Engine (v3.9.3) */
+#map-viewport {
   position: absolute;
   top: 0;
   left: 0;
   width: 100vw;
   height: 100vh;
+  overflow: hidden;
+  z-index: 1;
+}
+
+#map {
+  position: absolute;
+  top: -35vh;
+  left: -35vw;
+  width: 170vw;
+  height: 170vh;
   z-index: 1;
   background: #11141a;
+  transform-origin: 50% 50%;
+  will-change: transform;
+  transition: transform 0.28s cubic-bezier(0.25, 0.9, 0.35, 1);
+}
+
+body.orientation-north-up #map {
+  transform: rotate(0deg) !important;
+}
+
+.compass-needle-icon {
+  width: 22px;
+  height: 22px;
+  transform-origin: 50% 50%;
+  transition: transform 0.28s cubic-bezier(0.25, 0.9, 0.35, 1);
+  will-change: transform;
 }
 
 /* Custom Leaflet Controls Removal / Repositioning */

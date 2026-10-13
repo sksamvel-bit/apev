@@ -12,6 +12,8 @@ let destMarker = null;
 let currentBaseTileLayer = null;
 let currentLabelsTileLayer = null;
 let currentMapStyle = "google-roads";
+let currentMapOrientation = localStorage.getItem("tesla_nav_map_orientation") || "heading-up";
+let currentMapRotation = 0;
 
 let trafficEngine = null;
 let trafficSignalsEngine = null;
@@ -87,9 +89,16 @@ if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
     navigator.serviceWorker.register('/sw.js').then((reg) => {
       console.log('[SW] ServiceWorker active with scope:', reg.scope);
+      // Auto-update check on load
+      reg.update().catch(() => {});
     }).catch((err) => {
       console.warn('[SW] Registration failed:', err);
     });
+  });
+  // When a new Service Worker takes control, reload cleanly so Tesla browser runs the fresh code immediately
+  navigator.serviceWorker.addEventListener('controllerchange', () => {
+    console.log('[SW] Controller changed, auto-reloading page for instant update...');
+    window.location.reload();
   });
 }
 
@@ -120,6 +129,24 @@ function initMap() {
     inertiaMaxSpeed: 1600
   });
   window.map = map;
+
+  // Screen-to-Rotated-Map touch/click un-projection hook (Heading-Up support)
+  const origMouseEventToContainerPoint = map.mouseEventToContainerPoint;
+  map.mouseEventToContainerPoint = function(e) {
+    const p = origMouseEventToContainerPoint.call(this, e);
+    if (currentMapOrientation === "heading-up" && currentMapRotation !== 0) {
+      const size = this.getSize();
+      const cx = size.x / 2;
+      const cy = size.y / 2;
+      const dx = p.x - cx;
+      const dy = p.y - cy;
+      const rad = (-currentMapRotation * Math.PI) / 180;
+      const unX = cx + (dx * Math.cos(rad) - dy * Math.sin(rad));
+      const unY = cy + (dx * Math.sin(rad) + dy * Math.cos(rad));
+      return L.point(unX, unY);
+    }
+    return p;
+  };
 
   // Set initial map style (persisted or Google Roads by default)
   const savedStyle = localStorage.getItem("tesla_nav_map_style");
@@ -812,6 +839,27 @@ function updateVehicleMarker(lat, lng, headingDeg, speedKmh, accuracyMeters = nu
     }
   }
 
+  // Heading-Up Map Rotation & Compass Needle Update (Native Tesla/Google Course-Up Experience)
+  const cachedMapEl = document.getElementById("map");
+  const cachedCompassNeedleEl = document.getElementById("compass-needle-svg");
+  if (currentMapOrientation === "heading-up") {
+    currentMapRotation = -Math.round(continuousHeading);
+    if (cachedMapEl) {
+      cachedMapEl.style.transform = `rotate(${currentMapRotation}deg)`;
+    }
+    if (cachedCompassNeedleEl) {
+      cachedCompassNeedleEl.style.transform = `rotate(${currentMapRotation}deg)`;
+    }
+  } else {
+    currentMapRotation = 0;
+    if (cachedMapEl) {
+      cachedMapEl.style.transform = "rotate(0deg)";
+    }
+    if (cachedCompassNeedleEl) {
+      cachedCompassNeedleEl.style.transform = "rotate(0deg)";
+    }
+  }
+
   // Dirty check: only update DOM textContent when speed actually changes
   if (speedKmh !== lastRenderedSpeed) {
     if (!cachedSpeedValEl) cachedSpeedValEl = document.getElementById("speed-val");
@@ -879,6 +927,29 @@ function setFollowCarMode(enabled) {
       btn.classList.remove("active");
     }
   }
+}
+
+function toggleMapOrientation() {
+  if (currentMapOrientation === "heading-up") {
+    currentMapOrientation = "north-up";
+    showToast("⬆️ რუკის რეჟიმი: ჩრდილოეთზე (North-Up)", "info", 2000);
+  } else {
+    currentMapOrientation = "heading-up";
+    showToast("🧭 რუკის რეჟიმი: კურსზე (Heading-Up)", "info", 2000);
+  }
+  localStorage.setItem("tesla_nav_map_orientation", currentMapOrientation);
+  updateOrientationUI();
+  if (currentPos) {
+    updateVehicleMarker(currentPos.lat, currentPos.lng, currentHeading, currentSpeedKmh);
+  }
+}
+
+function updateOrientationUI() {
+  const btn = document.getElementById("btn-map-orientation");
+  const tip = document.getElementById("orientation-tooltip");
+  if (btn) btn.classList.toggle("active", currentMapOrientation === "heading-up");
+  if (tip) tip.textContent = currentMapOrientation === "heading-up" ? "კურსის რეჟიმი (Heading-Up)" : "ჩრდილოეთის რეჟიმი (North-Up)";
+  document.body.classList.toggle("orientation-north-up", currentMapOrientation === "north-up");
 }
 
 // Map Click to Set Destination
@@ -1401,6 +1472,14 @@ function initEventListeners() {
   document.getElementById("btn-follow-car").addEventListener("click", () => {
     setFollowCarMode(!isFollowCar);
   });
+
+  const btnOrientation = document.getElementById("btn-map-orientation");
+  if (btnOrientation) {
+    btnOrientation.addEventListener("click", () => {
+      toggleMapOrientation();
+    });
+  }
+  updateOrientationUI();
 
   // Map Zoom Controls (+ and -)
   document.getElementById("btn-zoom-in").addEventListener("click", () => {

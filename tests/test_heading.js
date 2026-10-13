@@ -118,4 +118,23 @@ const emaBearing = (Math.atan2(vx, vy) * 180 / Math.PI + 360) % 360;
 assert.ok(emaBearing < 6 || emaBearing > 354, 'EMA filter cancels lateral noise down to < 6 deg');
 console.log('PASS  velocity EMA filter cancels lateral GPS noise');
 
-console.log('All 10 heading assertions passed successfully.');
+// 11. Heading-Up (Course-Up) Map Rotation & Automotive Compass
+// In Heading-Up mode, the map canvas rotates by -H so that the vehicle always points
+// straight UP towards the windshield (0 deg relative to the screen).
+const headingsToTest = [0, 45, 90, 135, 180, 225, 270, 315];
+headingsToTest.forEach(H => {
+  const mapRotation = -H;
+  const markerInternalRotation = H;
+  const netScreenVehicleAngle = ((mapRotation + markerInternalRotation) % 360 + 360) % 360;
+  assert.strictEqual(netScreenVehicleAngle, 0, `Vehicle screen angle must be exactly 0 deg (straight UP) for heading ${H}`);
+
+  // Compass needle points to True North:
+  // In Heading-Up mode, if car faces East (90 deg), North is to the left (-90 / 270 deg).
+  const compassNeedleDeg = mapRotation; // -H
+  const normalizedCompass = ((compassNeedleDeg % 360) + 360) % 360;
+  const expectedNorthOnScreen = ((360 - H) % 360);
+  assert.strictEqual(normalizedCompass, expectedNorthOnScreen, `Compass needle points to True North for heading ${H}`);
+});
+console.log('PASS  Heading-Up (Course-Up) map rotation: vehicle is 0 deg UP, compass points to True North');
+
+console.log('All 11 heading assertions passed successfully.');

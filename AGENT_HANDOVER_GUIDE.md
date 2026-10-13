@@ -1,7 +1,7 @@
 # 🚀 Tesla In-Car Navigation (Georgia) — Master Agent Handover Guide
 
 > **Target Audience:** Future AI Agents, Engineers, and Auditors.  
-> **Status as of October 13, 2026:** Production Ready, Optimized for Tesla MCU Chromium Browser, Version **v3.9.2**.  
+> **Status as of October 13, 2026:** Production Ready, Optimized for Tesla MCU Chromium Browser, Version **v3.9.3**.  
 > **Primary URL:** `http://localhost:3000` (Local) / `http://192.168.111.25:3000` (In-car WiFi/Hotspot) / `https://apev.onrender.com` (Cloud).  
 > **Repository Location:** `C:\Users\skarapetiani\.gemini\antigravity\scratch\tesla-nav`  
 > **Backup Directory:** `C:\Users\skarapetiani\.gemini\antigravity\scratch\tesla-nav-backup`  
@@ -82,6 +82,13 @@ This application provides a native-feeling, zero-lag, 60 FPS web navigation syst
   * **Auto-resume & UI:** Auto-resume waits for real GPS fix; navigation zoom >= 17 on GO; fixed `btn-sim-drive` TypeError.
   * **STRICT EXCLUSION (Item 7):** Driving lockout (>5 km/h) was NOT added per explicit user instruction. YouTube iframe and search inputs remain open and unrestricted while driving.
   * **Tests:** Automated synthetic navigation test suite added in `tests/test_routing.js` (100% PASS).
+* **6.16 Heading-Up (Course-Up) Map Rotation & Automotive Compass (v3.9.3):**
+  * **Driver Problem:** In default North-Up Leaflet maps, driving South makes the car move backwards on screen; driving West moves it left; driving diagonally moves it askew.
+  * **Solution:** True automotive Heading-Up mode: map canvas wrapped in `#map-viewport` (`100vw x 100vh`, `overflow: hidden`) with `#map` oversized to `170vw x 170vh` centered at `(-35vw, -35vh)` to mathematically prevent corner clipping at any rotation angle ($85vw > \sqrt{50^2 + 50^2} \approx 70.7vw$).
+  * Map rotates by $-H^\circ$, vehicle marker faces $0^\circ$ (straight UP towards windshield / top of 15" screen), road ahead scrolls under vehicle.
+  * Dock Compass toggle button (`#btn-map-orientation`) with 3D SVG needle pointing to True North in Heading-Up mode, switching to North-Up on click.
+  * Touch & click coordinate un-projection hook on `map.mouseEventToContainerPoint` accounting for $-H^\circ$ rotation matrix.
+  * Automated tests in `tests/test_heading.js` (11/11 PASS) verifying mathematical rotation and compass angles.
 
 ---
 
@@ -112,7 +119,7 @@ tesla-nav/
     ├── test_routing.js          # Navigation engine automated unit tests (9 assertions)
     ├── test_speed_limit.js      # Speed limit fallback & corridor unit tests (13 assertions)
     ├── test_speed_limit_osm.js  # OSM Overpass grid & road snapping unit tests (22 assertions)
-    ├── test_heading.js          # Automotive heading, COG & route alignment tests (5 assertions)
+    ├── test_heading.js          # Automotive heading, COG & Heading-Up rotation tests (11 assertions)
     ├── check_versions.js        # Version sync check across all manifests and HTML
     └── smoke_server.js          # 18-point server security & regression test suite
 ```
@@ -136,11 +143,11 @@ tesla-nav/
 To verify the application:
 1. Run automated test suite:
    ```bash
-   npm test          # 44/44 unit tests (Routing + Speed limits + OSM Overpass)
+   npm test          # 45/45 unit tests (Routing + Speed limits + OSM Overpass + Heading-Up)
    ```
 2. Verify version consistency:
    ```bash
-   npm run check     # Verifies v3.9.0 across package.json, index.html, sw.js
+   npm run check     # Verifies v3.9.3 across package.json, index.html, sw.js
    ```
 3. Run security and regression smoke tests:
    ```bash

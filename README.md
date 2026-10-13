@@ -1,7 +1,7 @@
-# ⚡ Tesla Model 3 & Model Y In-Car Navigation (Georgia EV Edition) — v3.9.2
+# ⚡ Tesla Model 3 & Model Y In-Car Navigation (Georgia EV Edition) — v3.9.3
 
 > **სპეციალურად Tesla Model 3-ისა და Model Y-ის 15-ინჩიან ცენტრალურ ეკრანზე (MCU2 Intel Atom და MCU3 AMD Ryzen) მორგებული სრულფასოვანი ნავიგაციის სისტემა.**
-> **v3.9.2 სიახლე:** ავტომობილის ისრის სტაბილიზაცია მარშრუტის გარეშე თავისუფალი მოძრაობისას (Free Driving OSM Road Snapping, Hardware GNSS Doppler Heading პრიორიტეტი და ვექტორული სიჩქარის ფილტრი).
+> **v3.9.3 სიახლე:** სრულფასოვანი საავტომობილო **Heading-Up (Course-Up) რუკის როტაცია** და კომპასის გადამრთველი: რუკა ავტომატურად ტრიალებს მანქანის კურსზე, წინ სვლა მუდმივად მიმართულია ეკრანის ზემოთ (საქარე მინისკენ), ხოლო ქვედა პანელზე დამატებულია 3D კომპასის ისარი (Heading-Up / North-Up რეჟიმების გადასართავად).
 
 ---
 
@@ -93,8 +93,8 @@ node server.js
 
 ### ავტომატური ტესტების გაშვება:
 ```bash
-npm test        # 44/44 ტესტი (Routing, Speed Limit, OSM)
-npm run check   # ვერსიების სინქრონიზაცია (v3.9.0)
+npm test        # 45/45 ტესტი (Routing, Speed Limit, OSM, Heading-Up)
+npm run check   # ვერსიების სინქრონიზაცია (v3.9.3)
 npm run smoke   # 18/18 უსაფრთხოებისა და სერვერის ტესტი
 ```
 
