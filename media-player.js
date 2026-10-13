@@ -107,7 +107,7 @@ class MediaPlayerEngine {
 
     // Embed search fallback
     if (this.iframe) {
-      this.iframe.src = `https://www.youtube-nocookie.com/embed?listType=search&list=${encodeURIComponent(trimmed)}&autoplay=1&enablejsapi=1&origin=${window.location.origin}`;
+      this.iframe.src = `https://www.youtube-nocookie.com/embed?listType=search&list=${encodeURIComponent(trimmed)}&autoplay=1&enablejsapi=1&origin=${window.location.origin}&playsinline=1&controls=1&modestbranding=1&rel=0&iv_load_policy=3&disablekb=1&vq=tiny`;
     }
     this.open();
     if (window.showToast) window.showToast(`▶ იკვრება: "${trimmed}"`, "success");
@@ -116,7 +116,7 @@ class MediaPlayerEngine {
   loadVideo(id) {
     this.currentTrackId = id;
     if (this.iframe) {
-      this.iframe.src = `https://www.youtube-nocookie.com/embed/${id}?autoplay=1&enablejsapi=1&origin=${window.location.origin}`;
+      this.iframe.src = `https://www.youtube-nocookie.com/embed/${id}?autoplay=1&enablejsapi=1&origin=${window.location.origin}&playsinline=1&controls=1&modestbranding=1&rel=0&iv_load_policy=3&disablekb=1&vq=tiny`;
     }
   }
 

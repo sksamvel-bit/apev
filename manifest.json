@@ -1,0 +1,30 @@
+{
+  "name": "Tesla Model 3 & Y Navigation - EV Pro",
+  "short_name": "Tesla Nav",
+  "description": "High-precision automotive navigation with live speed limit, range estimation, and traffic awareness for Tesla Model 3 and Model Y.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0d1117",
+  "theme_color": "#0d1117",
+  "orientation": "any",
+  "icons": [
+    {
+      "src": "/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}

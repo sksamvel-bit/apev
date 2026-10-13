@@ -17,7 +17,8 @@ process.on('unhandledRejection', e => console.error('[unhandled]', e && e.messag
 const STATIC_WHITELIST = new Set([
   'index.html','remote.html','style.css','leaflet.css','leaflet.js','qrcode.min.js',
   'app.js','routing.js','yandex.js','traffic.js','traffic-signals.js','chargers.js',
-  'battery.js','weather.js','speech.js','media-player.js','speed-limit.js'
+  'battery.js','weather.js','speech.js','media-player.js','speed-limit.js',
+  'manifest.json','icon.svg','icon-192.png','icon-512.png'
 ]);
 
 let SpeedLimitEngine = null;

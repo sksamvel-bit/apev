@@ -1,0 +1,41 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0e121a"/>
+      <stop offset="100%" stop-color="#05080c"/>
+    </linearGradient>
+    <linearGradient id="neonGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#e82127"/>
+      <stop offset="100%" stop-color="#ff4b50"/>
+    </linearGradient>
+    <linearGradient id="cyanGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#00d2ff"/>
+      <stop offset="100%" stop-color="#0077ff"/>
+    </linearGradient>
+    <filter id="glow" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur stdDeviation="16" result="blur"/>
+      <feMerge>
+        <feMergeNode in="blur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+
+  <!-- Background Card -->
+  <rect width="512" height="512" rx="128" fill="url(#bgGrad)"/>
+  <rect width="504" height="504" x="4" y="4" rx="124" fill="none" stroke="rgba(255,255,255,0.12)" stroke-width="4"/>
+
+  <!-- Compass / Radar Ring -->
+  <circle cx="256" cy="256" r="180" fill="none" stroke="rgba(0, 210, 255, 0.15)" stroke-width="3" stroke-dasharray="8 8"/>
+  <circle cx="256" cy="256" r="130" fill="none" stroke="rgba(232, 33, 39, 0.2)" stroke-width="2"/>
+
+  <!-- Tesla Navigation Direction Arrow -->
+  <g filter="url(#glow)">
+    <polygon points="256,76 376,396 256,336 136,396" fill="url(#neonGrad)"/>
+    <polygon points="256,76 256,336 136,396" fill="#c0151a"/>
+  </g>
+
+  <!-- Central Pulse Indicator -->
+  <circle cx="256" cy="336" r="16" fill="url(#cyanGrad)"/>
+  <circle cx="256" cy="336" r="8" fill="#ffffff"/>
+</svg>

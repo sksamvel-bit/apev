@@ -1202,23 +1202,6 @@ async function requestWakeLock() {
 }
 
 function toggleFullscreen() {
-  const isTesla = /Tesla/i.test(navigator.userAgent);
-  let liveUrl = window.location.href;
-  if (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1") {
-    liveUrl = "https://apev.onrender.com";
-  }
-  const theaterUrl = `https://www.youtube.com/redirect?q=${encodeURIComponent(liveUrl)}`;
-
-  // If running on Tesla browser, invoke Tesla Theater Mode redirect for true 100% borderless fullscreen
-  if (isTesla) {
-    showToast("გადადის Tesla Theater სრულ ეკრანზე...", "info", 3000);
-    setTimeout(() => {
-      window.location.href = theaterUrl;
-    }, 600);
-    return;
-  }
-
-  // On standard desktop/tablet browsers, attempt HTML5 requestFullscreen first
   const doc = document;
   const docEl = document.documentElement;
   const isFs = doc.fullscreenElement || doc.webkitFullscreenElement || doc.mozFullScreenElement || doc.msFullscreenElement;
@@ -1227,17 +1210,11 @@ function toggleFullscreen() {
     const requestFs = docEl.requestFullscreen || docEl.webkitRequestFullscreen || docEl.mozRequestFullScreen || docEl.msRequestFullscreen;
     if (requestFs) {
       requestFs.call(docEl).catch((err) => {
-        console.warn("Standard fullscreen rejected, falling back to Tesla Theater redirect:", err);
-        showToast("გადადის Tesla Theater სრულ ეკრანზე...", "info", 3000);
-        setTimeout(() => {
-          window.location.href = theaterUrl;
-        }, 600);
+        console.warn("Standard fullscreen note:", err);
+        showToast("Tesla ბრაუზერი სტაბილურ რეჟიმშია (მოძრაობისას არ გაითიშება)", "info", 3000);
       });
     } else {
-      showToast("გადადის Tesla Theater სრულ ეკრანზე...", "info", 3000);
-      setTimeout(() => {
-        window.location.href = theaterUrl;
-      }, 600);
+      showToast("Tesla ბრაუზერი სტაბილურ რეჟიმშია (მოძრაობისას არ გაითიშება)", "info", 3000);
     }
   } else {
     const exitFs = doc.exitFullscreen || doc.webkitExitFullscreen || doc.mozCancelFullScreen || doc.msExitFullscreen;
@@ -1245,6 +1222,22 @@ function toggleFullscreen() {
       exitFs.call(doc).catch(err => console.warn("Fullscreen exit notice:", err));
     }
   }
+}
+
+function launchTeslaTheaterMode() {
+  if (window.currentSpeedKmhForLock > 3) {
+    showToast("⚠️ Tesla Theater მუშაობს მხოლოდ გაჩერებულზე (P-ში)!", "error", 4500);
+    return;
+  }
+  let liveUrl = window.location.href;
+  if (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1") {
+    liveUrl = "https://apev.onrender.com";
+  }
+  const theaterUrl = `https://www.youtube.com/redirect?q=${encodeURIComponent(liveUrl)}`;
+  showToast("გადადის Tesla Theater სრულ ეკრანზე (გაჩერებულზე)...", "info", 3500);
+  setTimeout(() => {
+    window.location.href = theaterUrl;
+  }, 800);
 }
 
 // Event Listeners Setup
@@ -1474,6 +1467,37 @@ function initEventListeners() {
   document.getElementById("input-avoid-unpaved").checked = localStorage.getItem("avoid_unpaved") === "true";
   if (selectTeslaModel) selectTeslaModel.value = batteryEngine.modelKey;
   document.getElementById("input-initial-soc").value = batteryEngine.currentSoC;
+
+  // Bookmark Guide Modal Setup
+  const bookmarkModal = document.getElementById("bookmark-modal");
+  const btnBookmarkGuide = document.getElementById("btn-bookmark-guide");
+  const bookmarkCloseBtn = document.getElementById("bookmark-modal-close");
+  const bookmarkOkBtn = document.getElementById("bookmark-modal-ok-btn");
+
+  if (btnBookmarkGuide && bookmarkModal) {
+    btnBookmarkGuide.addEventListener("click", () => {
+      bookmarkModal.classList.add("open");
+    });
+  }
+  if (bookmarkCloseBtn && bookmarkModal) {
+    bookmarkCloseBtn.addEventListener("click", () => {
+      bookmarkModal.classList.remove("open");
+    });
+  }
+  if (bookmarkOkBtn && bookmarkModal) {
+    bookmarkOkBtn.addEventListener("click", () => {
+      bookmarkModal.classList.remove("open");
+    });
+  }
+
+  // Tesla Theater Launcher in Settings
+  const btnLaunchTheater = document.getElementById("btn-launch-theater");
+  if (btnLaunchTheater) {
+    btnLaunchTheater.addEventListener("click", () => {
+      modal.classList.remove("open");
+      launchTeslaTheaterMode();
+    });
+  }
 
   // Remote Phone Companion Modal & Pairing Setup
   const remoteModal = document.getElementById("remote-modal");

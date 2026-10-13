@@ -8,11 +8,15 @@
   <meta name="theme-color" content="#0d1117">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Tesla Nav">
+  <link rel="manifest" href="manifest.json">
+  <link rel="icon" type="image/svg+xml" href="icon.svg">
+  <link rel="apple-touch-icon" href="icon-192.png">
   
   <!-- Leaflet CSS (Local Offline) -->
   <link rel="stylesheet" href="leaflet.css">
   <!-- Custom Stylesheet -->
-  <link rel="stylesheet" href="style.css?v=3.8.4">
+  <link rel="stylesheet" href="style.css?v=3.8.5">
 </head>
 <body>
 
@@ -59,8 +63,12 @@
     </div>
 
 
-    <!-- Right Side Status (GPS & Clock) -->
+    <!-- Right Side Status (GPS, Bookmark Guide & Clock) -->
     <div class="top-status">
+      <button id="btn-bookmark-guide" class="status-chip bookmark-chip" title="შენახვა ფავორიტებში (Bookmark)">
+        <span class="bookmark-star">⭐</span>
+        <span class="bookmark-text">Bookmark</span>
+      </button>
       <div class="status-chip">
         <span id="gps-status-dot" class="gps-dot" title="GPS სიგნალი"></span>
         <span id="top-clock">12:00</span>
@@ -295,11 +303,11 @@
       <span class="dock-tooltip">ხმა (Voice)</span>
     </button>
 
-    <button id="btn-fullscreen" class="dock-btn" title="სრული ეკრანი (Tesla Theater)">
+    <button id="btn-fullscreen" class="dock-btn" title="სრული ეკრანი">
       <svg viewBox="0 0 24 24">
         <path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"></path>
       </svg>
-      <span class="dock-tooltip">სრული ეკრანი (Theater)</span>
+      <span class="dock-tooltip">სრული ეკრანი</span>
     </button>
 
     <button id="btn-remote-phone" class="dock-btn" title="ტელეფონით მართვა (QR Remote)">
@@ -465,6 +473,21 @@
               </div>
               <input type="checkbox" id="input-avoid-unpaved" class="setting-checkbox">
             </div>
+
+            <div class="setting-group bookmark-tip-card">
+              <div class="bookmark-tip-title">⭐ უკანა სვლისას (R) ბრაუზერის შენახვა:</div>
+              <div class="bookmark-tip-desc">
+                დააჭირეთ ვარსკვლავს (⭐) Tesla-ს ბრაუზერის მისამართების ზოლში. საიტი შეინახება ფავორიტებში და უკანა სვლის შემდეგ 1 შეხებით გაიხსნება — ხელახლა აკრეფვა აღარ დაგჭირდებათ!
+              </div>
+            </div>
+
+            <div class="setting-group theater-mode-row">
+              <div>
+                <label class="setting-label" style="margin-bottom: 2px;">🎬 Tesla Theater სრული ეკრანი:</label>
+                <span class="theater-warn-sub">(მხოლოდ გაჩერებულზე / P-ში)</span>
+              </div>
+              <button id="btn-launch-theater" class="btn-theater-launch" type="button">გაშვება</button>
+            </div>
           </div>
         </div>
       </div>
@@ -475,21 +498,64 @@
     </div>
   </div>
 
+  <!-- BOOKMARK GUIDE MODAL -->
+  <div id="bookmark-modal" class="modal-backdrop">
+    <div class="modal-window bookmark-modal-window">
+      <div class="modal-header">
+        <div class="modal-title">⭐ საიტის შენახვა Tesla-ს ბრაუზერში</div>
+        <button id="bookmark-modal-close" class="modal-close-btn">✕</button>
+      </div>
+      <div class="bookmark-modal-body">
+        <div class="bookmark-step">
+          <div class="step-num">1</div>
+          <div class="step-content">
+            <strong>დააჭირეთ ვარსკვლავს (⭐) ბრაუზერში</strong>
+            <p>Tesla-ს ეკრანზე, ბრაუზერის მისამართების ზოლის მარჯვენა მხარეს დააჭირეთ <strong>⭐ (Bookmark / Favorites)</strong> ღილაკს.</p>
+          </div>
+        </div>
+        <div class="bookmark-step">
+          <div class="step-num">2</div>
+          <div class="step-content">
+            <strong>საიტი შეინახება მთავარ ეკრანზე</strong>
+            <p>საიტი გამოჩნდება ბრაუზერის საწყის ეკრანზე Tesla Nav-ის წითელი ლოგოთი.</p>
+          </div>
+        </div>
+        <div class="bookmark-step">
+          <div class="step-num">3</div>
+          <div class="step-content">
+            <strong>უკანა სვლის (Reverse) შემდეგ — 1 შეხებით გახსნა!</strong>
+            <p>როცა უკანა სვლიდან (R) გადმოხვალთ Drive-ში და ბრაუზერს გახსნით, უბრალოდ დააჭირეთ ამ აიქონს — მისამართის აკრეფვა აღარასდროს დაგჭირდებათ!</p>
+          </div>
+        </div>
+        <div class="bookmark-step highlight">
+          <div class="step-num">🔄</div>
+          <div class="step-content">
+            <strong>მარშრუტი ავტომატურად გაგრძელდება</strong>
+            <p>გახსნისთანავე სისტემა თავისით გააგრძელებს მიმდინარე ნავიგაციასა და მარშრუტს.</p>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button id="bookmark-modal-ok-btn" class="btn-primary" style="width: 100%;">გავიგე, მადლობა!</button>
+      </div>
+    </div>
+  </div>
+
   <!-- Leaflet JS (Local Offline) -->
   <script src="leaflet.js"></script>
   <!-- QR Code Generator -->
   <script src="qrcode.min.js"></script>
   <!-- Application Engines -->
-  <script src="speech.js?v=3.8.4"></script>
-  <script src="weather.js?v=3.8.4"></script>
-  <script src="battery.js?v=3.8.4"></script>
-  <script src="chargers.js?v=3.8.4"></script>
-  <script src="traffic-signals.js?v=3.8.4"></script>
-  <script src="traffic.js?v=3.8.4"></script>
-  <script src="media-player.js?v=3.8.4"></script>
-  <script src="yandex.js?v=3.8.4"></script>
-  <script src="routing.js?v=3.8.4"></script>
-  <script src="speed-limit.js?v=3.8.4"></script>
-  <script src="app.js?v=3.8.4"></script>
+  <script src="speech.js?v=3.8.5"></script>
+  <script src="weather.js?v=3.8.5"></script>
+  <script src="battery.js?v=3.8.5"></script>
+  <script src="chargers.js?v=3.8.5"></script>
+  <script src="traffic-signals.js?v=3.8.5"></script>
+  <script src="traffic.js?v=3.8.5"></script>
+  <script src="media-player.js?v=3.8.5"></script>
+  <script src="yandex.js?v=3.8.5"></script>
+  <script src="routing.js?v=3.8.5"></script>
+  <script src="speed-limit.js?v=3.8.5"></script>
+  <script src="app.js?v=3.8.5"></script>
 </body>
 </html>

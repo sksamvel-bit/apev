@@ -2186,3 +2186,154 @@ input {
 .map-style-yandex .leaflet-map-pane {
   transition: none !important;
 }
+
+/* Bookmark Guide Top Chip */
+.bookmark-chip {
+  background: rgba(245, 158, 11, 0.16);
+  border: 1px solid rgba(245, 158, 11, 0.4);
+  color: #fbbf24;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-weight: 700;
+  padding: 4px 10px;
+  border-radius: 20px;
+  font-size: 0.82rem;
+  transition: all 0.2s ease;
+}
+
+.bookmark-chip:hover {
+  background: rgba(245, 158, 11, 0.28);
+  border-color: #fbbf24;
+  transform: translateY(-1px);
+}
+
+.bookmark-chip:active {
+  transform: scale(0.96);
+}
+
+/* Settings Tip Card */
+.bookmark-tip-card {
+  background: rgba(245, 158, 11, 0.08);
+  border: 1px solid rgba(245, 158, 11, 0.25);
+  border-radius: var(--radius-md);
+  padding: 10px 12px;
+}
+
+.bookmark-tip-title {
+  font-size: 0.86rem;
+  font-weight: 700;
+  color: #fbbf24;
+  margin-bottom: 4px;
+}
+
+.bookmark-tip-desc {
+  font-size: 0.78rem;
+  color: var(--text-secondary);
+  line-height: 1.4;
+}
+
+/* Theater Mode Row in Settings */
+.theater-mode-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 12px;
+  background: rgba(232, 33, 39, 0.08);
+  border: 1px solid rgba(232, 33, 39, 0.25);
+  border-radius: var(--radius-md);
+  gap: 10px;
+}
+
+.theater-warn-sub {
+  font-size: 0.72rem;
+  color: #f87171;
+  font-weight: 500;
+  display: block;
+}
+
+.btn-theater-launch {
+  background: rgba(232, 33, 39, 0.25);
+  border: 1px solid rgba(232, 33, 39, 0.6);
+  color: #fff;
+  padding: 6px 14px;
+  border-radius: 8px;
+  font-size: 0.85rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+}
+
+.btn-theater-launch:hover {
+  background: rgba(232, 33, 39, 0.45);
+}
+
+/* Bookmark Guide Modal Window */
+.bookmark-modal-window {
+  max-width: 520px;
+  background: rgba(14, 18, 26, 0.98);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 20px;
+  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.75);
+}
+
+.bookmark-modal-body {
+  padding: 16px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.bookmark-step {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  padding: 10px 14px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 12px;
+}
+
+.bookmark-step.highlight {
+  background: rgba(0, 210, 255, 0.08);
+  border-color: rgba(0, 210, 255, 0.25);
+}
+
+.step-num {
+  width: 32px;
+  height: 32px;
+  min-width: 32px;
+  background: linear-gradient(135deg, rgba(0, 136, 255, 0.3), rgba(0, 210, 255, 0.2));
+  border: 1px solid var(--accent-cyan);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 800;
+  font-size: 0.95rem;
+  color: var(--accent-cyan);
+}
+
+.bookmark-step.highlight .step-num {
+  font-size: 1.1rem;
+}
+
+.step-content {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.step-content strong {
+  font-size: 0.92rem;
+  color: var(--text-primary);
+}
+
+.step-content p {
+  margin: 0;
+  font-size: 0.82rem;
+  color: var(--text-secondary);
+  line-height: 1.4;
+}
