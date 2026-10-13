@@ -786,15 +786,35 @@ html, body {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 42px;
-  height: 42px;
+  width: 44px;
+  height: 44px;
   background: #ffffff;
-  border: 3.5px solid #e11d48;
+  border: 4px solid #e11d48;
   border-radius: 50%;
   color: #000000;
   font-weight: 900;
   font-size: 1.15rem;
   box-shadow: var(--shadow-card);
+  transition: transform 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+  user-select: none;
+}
+
+.speed-limit-badge.speeding {
+  border-color: #ef4444;
+  box-shadow: 0 0 14px rgba(239, 68, 68, 0.9), 0 0 25px rgba(239, 68, 68, 0.5);
+  animation: pulse-overspeed 0.8s infinite alternate ease-in-out;
+}
+
+@keyframes pulse-overspeed {
+  from {
+    transform: scale(1);
+    border-color: #e11d48;
+  }
+  to {
+    transform: scale(1.12);
+    border-color: #ff0033;
+    box-shadow: 0 0 18px rgba(255, 0, 51, 1), 0 0 30px rgba(255, 0, 51, 0.6);
+  }
 }
 
 /* FLOATING CONTROLS DOCK (Right Side - Automotive Touch Strip) */

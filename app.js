@@ -22,6 +22,7 @@ let batteryEngine = null;
 let chargersEngine = null;
 let mediaEngine = null;
 let yandexEngine = null;
+let speedLimitEngine = null;
 
 // Driving lockout switch (false keeps YouTube & search unrestricted while driving by user command)
 const DRIVING_LOCKOUT = false;
@@ -313,6 +314,12 @@ function initSubsystems() {
     routingEngine.setAvoidUnpaved(avoidUnpavedSaved);
     window.routingEngine = routingEngine;
   } catch (e) { console.warn("routingEngine init notice:", e); }
+
+  try {
+    speedLimitEngine = new SpeedLimitEngine(routingEngine);
+    window.speedLimitEngine = speedLimitEngine;
+    speedLimitEngine.update(currentPos.lat, currentPos.lng, currentSpeedKmh);
+  } catch (e) { console.warn("speedLimitEngine init notice:", e); }
 
   // Initial battery stats render
   if (batteryEngine) {
@@ -674,6 +681,11 @@ function updateVehicleMarker(lat, lng, headingDeg, speedKmh, accuracyMeters = nu
     if (!cachedSpeedValEl) cachedSpeedValEl = document.getElementById("speed-val");
     if (cachedSpeedValEl) cachedSpeedValEl.textContent = speedKmh;
     lastRenderedSpeed = speedKmh;
+  }
+
+  // Dynamic Road Speed Limit & Overspeed Alert
+  if (window.speedLimitEngine) {
+    window.speedLimitEngine.update(lat, lng, speedKmh);
   }
 
   // GPS Accuracy status update
@@ -1436,6 +1448,7 @@ function initEventListeners() {
   document.getElementById("modal-save-btn").addEventListener("click", () => {
     const key = document.getElementById("input-tomtom-key").value.trim();
     trafficEngine.setApiKey(key);
+    if (window.speedLimitEngine) window.speedLimitEngine.setTomTomKey(key);
 
     const modelType = document.getElementById("select-tesla-model").value;
     batteryEngine.setModel(modelType);
