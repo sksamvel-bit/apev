@@ -23,9 +23,52 @@ const STATIC_WHITELIST = new Set([
 ]);
 
 // Server-side Access PIN & Secret Key Protection
-const ACCESS_PIN = (process.env.ACCESS_PIN || '').trim();
+// Supports Multi-PIN: "3828, 5591, 7720"
+// - The FIRST PIN is the MASTER PIN (allows unlimited personal devices for the owner).
+// - Any subsequent PINs are GUEST PINS with STRICT SINGLE-DEVICE LOCK (1 PIN = 1 Device).
+const RAW_PINS = (process.env.ACCESS_PIN || '').split(',').map(s => s.trim()).filter(Boolean);
+const MASTER_PIN = RAW_PINS[0] || '';
 const AUTH_SECRET = process.env.AUTH_SECRET || 'tesla-nav-secret-salt-2026';
-const VALID_TOKEN = ACCESS_PIN ? crypto.createHmac('sha256', AUTH_SECRET).update(ACCESS_PIN).digest('hex') : '';
+
+// Persistent storage for single-device bindings: pin-bindings.json
+const BINDINGS_FILE = path.join(PUBLIC_DIR, 'pin-bindings.json');
+let pinBindings = {}; // pin -> { deviceToken, boundAt, ip, userAgent }
+
+try {
+  if (fs.existsSync(BINDINGS_FILE)) {
+    pinBindings = JSON.parse(fs.readFileSync(BINDINGS_FILE, 'utf8')) || {};
+  }
+} catch (e) {
+  console.warn('[Auth] Pin bindings load notice:', e.message);
+}
+
+function saveBindings() {
+  try {
+    fs.writeFileSync(BINDINGS_FILE, JSON.stringify(pinBindings, null, 2), 'utf8');
+  } catch (e) {
+    console.error('[Auth] Failed to save pin bindings:', e.message);
+  }
+}
+
+function signToken(pin, deviceToken) {
+  const data = `${pin}:${deviceToken}`;
+  const sig = crypto.createHmac('sha256', AUTH_SECRET).update(data).digest('hex');
+  return `${data}:${sig}`;
+}
+
+function verifyToken(tokenStr) {
+  if (!tokenStr || typeof tokenStr !== 'string') return null;
+  const parts = tokenStr.split(':');
+  if (parts.length !== 3) return null;
+  const [pin, deviceToken, sig] = parts;
+  const expectedSig = crypto.createHmac('sha256', AUTH_SECRET).update(`${pin}:${deviceToken}`).digest('hex');
+  const bufA = Buffer.from(sig);
+  const bufB = Buffer.from(expectedSig);
+  if (bufA.length !== bufB.length || !crypto.timingSafeEqual(bufA, bufB)) {
+    return null;
+  }
+  return { pin, deviceToken };
+}
 
 // Failed PIN attempts rate limiter (max 5 failed attempts per IP per 5 mins)
 const failedPinAttempts = new Map();
@@ -63,25 +106,77 @@ function parseCookies(cookieHeader) {
   return cookies;
 }
 
-function isValidPin(inputPin) {
-  if (!ACCESS_PIN || typeof inputPin !== 'string') return false;
-  const a = Buffer.from(inputPin);
-  const b = Buffer.from(ACCESS_PIN);
-  if (a.length !== b.length) return false;
-  return crypto.timingSafeEqual(a, b);
+function isAuthenticated(req) {
+  if (RAW_PINS.length === 0) return true; // Open mode when ACCESS_PIN is not configured
+  const cookies = parseCookies(req.headers.cookie);
+  if (!cookies.tesla_auth) return false;
+  const verified = verifyToken(cookies.tesla_auth);
+  if (!verified) return false;
+
+  const { pin, deviceToken } = verified;
+  if (!RAW_PINS.includes(pin)) return false;
+
+  // Master PIN is allowed on any device
+  if (pin === MASTER_PIN) return true;
+
+  // Guest PIN must strictly match the bound device token!
+  const binding = pinBindings[pin];
+  if (!binding) return false;
+  return binding.deviceToken === deviceToken;
 }
 
-function isAuthenticated(req) {
-  if (!ACCESS_PIN) return true; // Open mode when ACCESS_PIN is not configured
-  const cookies = parseCookies(req.headers.cookie);
-  if (cookies.tesla_auth) {
-    const a = Buffer.from(cookies.tesla_auth);
-    const b = Buffer.from(VALID_TOKEN);
-    if (a.length === b.length && crypto.timingSafeEqual(a, b)) {
-      return true;
-    }
+function attemptPinAuth(inputPin, req) {
+  if (!inputPin || typeof inputPin !== 'string') {
+    return { success: false, error: 'შეიყვანეთ PIN კოდი' };
   }
-  return false;
+
+  const matchedPin = RAW_PINS.find(p => {
+    const a = Buffer.from(p);
+    const b = Buffer.from(inputPin);
+    return a.length === b.length && crypto.timingSafeEqual(a, b);
+  });
+
+  if (!matchedPin) {
+    return { success: false, error: 'არასწორი PIN კოდი' };
+  }
+
+  // 1. MASTER PIN (Owner): unlimited devices
+  if (matchedPin === MASTER_PIN) {
+    const token = signToken(matchedPin, 'master');
+    return { success: true, token, isMaster: true };
+  }
+
+  // 2. GUEST PIN (Single-Device Lock)
+  const binding = pinBindings[matchedPin];
+  const cookies = parseCookies(req.headers.cookie);
+  const currentVerified = verifyToken(cookies.tesla_auth);
+
+  if (!binding) {
+    // First activation: bind to this device!
+    const deviceToken = crypto.randomBytes(24).toString('hex');
+    pinBindings[matchedPin] = {
+      deviceToken,
+      boundAt: Date.now(),
+      ip: req.headers['x-forwarded-for'] || req.socket.remoteAddress || 'unknown',
+      userAgent: (req.headers['user-agent'] || '').slice(0, 120)
+    };
+    saveBindings();
+    console.log(`[Auth] Single-device lock engaged for Guest PIN ${matchedPin}`);
+    const token = signToken(matchedPin, deviceToken);
+    return { success: true, token, isMaster: false };
+  } else {
+    // Already bound! Check if current device is the authorized bound device:
+    if (currentVerified && currentVerified.pin === matchedPin && currentVerified.deviceToken === binding.deviceToken) {
+      const token = signToken(matchedPin, binding.deviceToken);
+      return { success: true, token, isMaster: false };
+    }
+
+    // A DIFFERENT device is trying to reuse this PIN!
+    return {
+      success: false,
+      error: 'ეს PIN კოდი უკვე გააქტიურებულია სხვა მოწყობილობაზე და ვერ გადაეცემა სხვას!'
+    };
+  }
 }
 
 const PUBLIC_AUTH_PATHS = new Set([
@@ -456,10 +551,11 @@ const server = http.createServer((req, res) => {
     req.on('end', () => {
       try {
         const parsed = JSON.parse(body);
-        if (isValidPin(parsed && parsed.pin)) {
+        const result = attemptPinAuth(parsed && parsed.pin, req);
+        if (result.success) {
           resetFailedAttempts(ip);
           const isHttps = req.headers['x-forwarded-proto'] === 'https';
-          const cookieHeader = `tesla_auth=${VALID_TOKEN}; Path=/; HttpOnly; SameSite=Lax; Max-Age=2592000${isHttps ? '; Secure' : ''}`;
+          const cookieHeader = `tesla_auth=${result.token}; Path=/; HttpOnly; SameSite=Lax; Max-Age=2592000${isHttps ? '; Secure' : ''}`;
           res.writeHead(200, {
             'Content-Type': 'application/json',
             'Set-Cookie': cookieHeader
@@ -468,7 +564,7 @@ const server = http.createServer((req, res) => {
         } else {
           recordFailedAttempt(ip);
           res.writeHead(401, { 'Content-Type': 'application/json' });
-          res.end(JSON.stringify({ error: 'არასწორი PIN კოდი' }));
+          res.end(JSON.stringify({ error: result.error }));
         }
       } catch (_) {
         res.writeHead(400, { 'Content-Type': 'application/json' });
@@ -479,11 +575,12 @@ const server = http.createServer((req, res) => {
   }
 
   // URL Key Authentication check: ?key=... sets cookie and 302 redirects to strip key from URL/Referer
-  if (ACCESS_PIN && urlObj.searchParams.has('key')) {
+  if (RAW_PINS.length > 0 && urlObj.searchParams.has('key')) {
     const keyParam = urlObj.searchParams.get('key');
-    if (isValidPin(keyParam)) {
+    const result = attemptPinAuth(keyParam, req);
+    if (result.success) {
       const isHttps = req.headers['x-forwarded-proto'] === 'https';
-      const cookieHeader = `tesla_auth=${VALID_TOKEN}; Path=/; HttpOnly; SameSite=Lax; Max-Age=2592000${isHttps ? '; Secure' : ''}`;
+      const cookieHeader = `tesla_auth=${result.token}; Path=/; HttpOnly; SameSite=Lax; Max-Age=2592000${isHttps ? '; Secure' : ''}`;
       urlObj.searchParams.delete('key');
       const cleanUrl = urlObj.pathname + (urlObj.search ? urlObj.search : '');
       res.writeHead(302, {
@@ -492,11 +589,15 @@ const server = http.createServer((req, res) => {
       });
       res.end();
       return;
+    } else {
+      res.writeHead(403, { 'Content-Type': 'text/html; charset=utf-8' });
+      res.end(`<!DOCTYPE html><html><body style="background:#0f1115;color:#f87171;font-family:sans-serif;display:flex;align-items:center;justify-content:center;height:100vh;margin:0;"><div style="background:#181b20;padding:24px;border-radius:12px;border:1px solid #334155;text-align:center;max-width:360px;"><h2>🔒 წვდომა შეზღუდულია</h2><p style="color:#cbd5e1;">${result.error}</p><a href="/" style="color:#e82127;">მთავარ გვერდზე დაბრუნება</a></div></body></html>`);
+      return;
     }
   }
 
   // Auth Gatekeeper: if ACCESS_PIN is set and route is protected and user is not authenticated
-  if (ACCESS_PIN && !isPublicAuthPath(pathname) && !isAuthenticated(req)) {
+  if (RAW_PINS.length > 0 && !isPublicAuthPath(pathname) && !isAuthenticated(req)) {
     if (pathname === '/' || pathname === '/index.html') {
       res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
       res.end(PIN_LOGIN_HTML);
