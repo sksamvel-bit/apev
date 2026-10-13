@@ -469,6 +469,88 @@ class SpeedLimitEngine {
     };
   }
 
+  /**
+   * Free-Driving Road Snapping (v3.9.2):
+   * When driving without an active route, snaps vehicle heading to the nearest OSM road or corridor centerline
+   * if the vehicle is within 18m and traveling along the road within ±28 deg.
+   * Returns snapped bearing in degrees [0, 360), or null if not aligned with a road.
+   */
+  getRoadBearing(lat, lng, candidateHeading) {
+    if (candidateHeading === null || candidateHeading === undefined) return null;
+    const maxDistanceMeters = 18;
+    const maxAngleTolerance = 28;
+
+    // 1. Check cached OSM ways first
+    const [i, j] = this.tileIndex(lat, lng);
+    const tile = this.osmTiles.get(this.tileKey(i, j));
+    let bestMatch = null;
+
+    if (tile && tile.ways && tile.ways.length > 0) {
+      const kx = 111320 * Math.cos(lat * Math.PI / 180), ky = 110540;
+      for (const w of tile.ways) {
+        const pts = w.pts;
+        for (let k = 0; k < pts.length - 1; k++) {
+          const ax = (pts[k][1] - lng) * kx, ay = (pts[k][0] - lat) * ky;
+          const bx = (pts[k + 1][1] - lng) * kx, by = (pts[k + 1][0] - lat) * ky;
+          const dx = bx - ax, dy = by - ay, l2 = dx * dx + dy * dy;
+          if (l2 < 9) continue;
+          const t = Math.max(0, Math.min(1, -(ax * dx + ay * dy) / l2));
+          const d = Math.hypot(ax + t * dx, ay + t * dy);
+          if (d > maxDistanceMeters) continue;
+
+          const segBearing = (Math.atan2(dx, dy) * 180 / Math.PI + 360) % 360;
+          const diffFwd = Math.abs(((segBearing - candidateHeading + 540) % 360) - 180);
+          const oppBearing = (segBearing + 180) % 360;
+          const diffBwd = Math.abs(((oppBearing - candidateHeading + 540) % 360) - 180);
+
+          let chosenBearing = null;
+          let minDiff = 999;
+          if (diffFwd <= maxAngleTolerance) {
+            chosenBearing = segBearing;
+            minDiff = diffFwd;
+          } else if (diffBwd <= maxAngleTolerance) {
+            chosenBearing = oppBearing;
+            minDiff = diffBwd;
+          }
+
+          if (chosenBearing !== null) {
+            const score = d + minDiff * 0.25;
+            if (!bestMatch || score < bestMatch.score) {
+              bestMatch = { score, bearing: Math.round(chosenBearing) };
+            }
+          }
+        }
+      }
+    }
+
+    if (bestMatch) return bestMatch.bearing;
+
+    // 2. Check Georgian high-speed corridors if OSM tile not loaded
+    if (this.corridors && this.corridors.length > 0) {
+      for (const corridor of this.corridors) {
+        const pts = corridor.points;
+        for (let k = 0; k < pts.length - 1; k++) {
+          const d = this.pointToSegmentDistanceMeters(lat, lng, pts[k][0], pts[k][1], pts[k + 1][0], pts[k + 1][1]);
+          if (d <= (corridor.tolerance || 60)) {
+            const segBearing = this.bearingDeg(pts[k][0], pts[k][1], pts[k + 1][0], pts[k + 1][1]);
+            const diffFwd = Math.abs(((segBearing - candidateHeading + 540) % 360) - 180);
+            const oppBearing = (segBearing + 180) % 360;
+            const diffBwd = Math.abs(((oppBearing - candidateHeading + 540) % 360) - 180);
+
+            if (diffFwd <= maxAngleTolerance) {
+              return Math.round(segBearing);
+            }
+            if (diffBwd <= maxAngleTolerance) {
+              return Math.round(oppBearing);
+            }
+          }
+        }
+      }
+    }
+
+    return null;
+  }
+
   // Trigonometry helpers
   haversineMeters(lat1, lon1, lat2, lon2) {
     const R = 6371000;

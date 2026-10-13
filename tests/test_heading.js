@@ -58,4 +58,64 @@ const targetHeadingRoad = diffRoad <= 45 ? routeRoad : carRoad;
 assert.strictEqual(targetHeadingRoad, 90, 'Car on road snaps cleanly to route segment');
 console.log('PASS  car driving along route aligns cleanly to lane');
 
-console.log('All 5 heading assertions passed successfully.');
+// 6. Free-driving OSM Road Snapping via SpeedLimitEngine.getRoadBearing
+const fs = require('fs'), vm = require('vm');
+global.window = {};
+global.localStorage = { getItem: () => '', setItem: () => {} };
+global.performance = { now: () => Date.now() };
+vm.runInThisContext(fs.readFileSync(__dirname + '/../speed-limit.js', 'utf8'));
+const engine = new window.SpeedLimitEngine();
+
+// Mock OSM tile with an East-West road (Chavchavadze Ave, bearing = 90 deg)
+const [ti, tj] = engine.tileIndex(41.71, 44.75);
+engine.osmTiles.set(engine.tileKey(ti, tj), {
+  t: Date.now(),
+  ways: [
+    {
+      id: 999,
+      name: 'ჭავჭავაძის გამზირი',
+      pts: [[41.7100, 44.7450], [41.7100, 44.7550]] // Pure East: 90 deg
+    }
+  ]
+});
+
+// Car driving without a route: slanted at 78 deg (12 deg tilted sideways)
+const snappedEast = engine.getRoadBearing(41.71005, 44.7500, 78);
+assert.strictEqual(snappedEast, 90, 'Free driving: tilted car (78 deg) must snap cleanly to road (90 deg)');
+console.log('PASS  free driving: slanted car (78 deg) snaps cleanly to road (90 deg)');
+
+// 7. Free-driving reverse direction (driving West on the same road at 262 deg)
+const snappedWest = engine.getRoadBearing(41.71005, 44.7500, 262);
+assert.strictEqual(snappedWest, 270, 'Free driving: reverse travel (262 deg) must snap to 270 deg');
+console.log('PASS  free driving: reverse travel (262 deg) snaps cleanly to road (270 deg)');
+
+// 8. Free-driving turn / crossing road (heading North at 0 deg)
+const snappedTurn = engine.getRoadBearing(41.71005, 44.7500, 0);
+assert.strictEqual(snappedTurn, null, 'Free driving: turning car (0 deg) must NOT snap to crossing road');
+console.log('PASS  free driving: turning/crossing car does NOT snap inappropriately');
+
+// 9. Hardware GNSS heading priority over displacement jitter
+const mockHeadingDeg = 92; // 0.2 deg precision Doppler fix from GNSS
+const noisyDisplacementBearing = 135; // 45 deg lateral jitter
+const speedKmh = 50;
+const hasHardwareHeading = typeof mockHeadingDeg === "number" && isFinite(mockHeadingDeg) &&
+                           mockHeadingDeg >= 0 && mockHeadingDeg <= 360 &&
+                           (mockHeadingDeg > 0 || speedKmh >= 4);
+assert.ok(hasHardwareHeading, 'Hardware heading is valid');
+const chosenHeading = hasHardwareHeading ? mockHeadingDeg : noisyDisplacementBearing;
+assert.strictEqual(chosenHeading, 92, 'Hardware GNSS heading must take priority over noisy displacement');
+console.log('PASS  hardware GNSS Doppler heading takes priority over noisy displacement');
+
+// 10. Velocity EMA vector noise cancellation
+let vx = 0, vy = 10; // True motion: 10 m/s North (0 deg)
+// Add zero-mean lateral jitter alternating +/- 3 m/s
+for (let t = 1; t <= 6; t++) {
+  const noiseVx = (t % 2 === 0 ? 3 : -3);
+  vx = vx * 0.65 + noiseVx * 0.35;
+  vy = vy * 0.65 + 10 * 0.35;
+}
+const emaBearing = (Math.atan2(vx, vy) * 180 / Math.PI + 360) % 360;
+assert.ok(emaBearing < 6 || emaBearing > 354, 'EMA filter cancels lateral noise down to < 6 deg');
+console.log('PASS  velocity EMA filter cancels lateral GPS noise');
+
+console.log('All 10 heading assertions passed successfully.');

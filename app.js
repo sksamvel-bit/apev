@@ -630,6 +630,7 @@ let lastGpsTime = 0;
 let lastHeadingFixPos = null;
 let lastKnownValidHeading = 0;
 let continuousHeading = 0; // Continuous rotation angle (prevents 359->0 360-spin glitch)
+const smoothedVelocityVector = { vx: 0, vy: 0, initialized: false };
 
 function calculateBearing(lat1, lon1, lat2, lon2) {
   const toRad = deg => (deg * Math.PI) / 180;
@@ -671,59 +672,91 @@ function updateVehicleMarker(lat, lng, headingDeg, speedKmh, accuracyMeters = nu
   const dFromLastGps = (lastGpsPos && routingEngine)
     ? routingEngine.haversineMeters(lastGpsPos.lat, lastGpsPos.lng, lat, lng)
     : 0;
-  const isMoving = speedKmh >= 3 || dFromLastGps >= 1.8;
+  const isMoving = speedKmh >= 3.5 || dFromLastGps >= 1.8;
   let targetHeading = null;
 
+  // PRIORITY 1: Hardware GNSS Doppler Heading
+  // In Tesla's Chromium browser or modern smartphones, coords.heading provides
+  // satellite Doppler carrier-phase heading with 0.1-0.5 deg precision (zero position jitter).
+  const hasHardwareHeading = typeof headingDeg === "number" && isFinite(headingDeg) && headingDeg !== null &&
+                             headingDeg >= 0 && headingDeg <= 360 &&
+                             (headingDeg > 0 || speedKmh >= 4);
+
   if (isMoving) {
-    if (!lastHeadingFixPos) {
-      lastHeadingFixPos = { lat, lng, time: now };
+    if (hasHardwareHeading) {
+      targetHeading = headingDeg;
     } else {
-      const dMetersFromFix = routingEngine
-        ? routingEngine.haversineMeters(lastHeadingFixPos.lat, lastHeadingFixPos.lng, lat, lng)
-        : 0;
-      // When vehicle moves at least 3.5m, calculate true Course Over Ground vector
-      if (dMetersFromFix >= 3.5) {
-        targetHeading = calculateBearing(lastHeadingFixPos.lat, lastHeadingFixPos.lng, lat, lng);
-        lastHeadingFixPos = { lat, lng, time: now };
+      // PRIORITY 2: Exponentially Smoothed Velocity Vector (EMA)
+      // When hardware heading is null/unavailable, filter (vx, vy) displacement
+      // rather than computing noisy point-to-point bearing over short distances.
+      if (lastGpsPos && lastGpsTime > 0) {
+        const dt = Math.max(0.2, Math.min(3.0, (now - lastGpsTime) / 1000));
+        const radLat = lat * (Math.PI / 180);
+        const kx = 111320 * Math.cos(radLat);
+        const ky = 110540;
+        const instVx = ((lng - lastGpsPos.lng) * kx) / dt;
+        const instVy = ((lat - lastGpsPos.lat) * ky) / dt;
+        const instSpeedMps = Math.hypot(instVx, instVy);
+
+        if (instSpeedMps >= 0.8) { // moving at least ~3 km/h
+          if (!smoothedVelocityVector.initialized) {
+            smoothedVelocityVector.vx = instVx;
+            smoothedVelocityVector.vy = instVy;
+            smoothedVelocityVector.initialized = true;
+          } else {
+            // EMA filter: cancels zero-mean lateral GPS noise while tracking forward travel
+            smoothedVelocityVector.vx = smoothedVelocityVector.vx * 0.65 + instVx * 0.35;
+            smoothedVelocityVector.vy = smoothedVelocityVector.vy * 0.65 + instVy * 0.35;
+          }
+          targetHeading = (Math.atan2(smoothedVelocityVector.vx, smoothedVelocityVector.vy) * 180 / Math.PI + 360) % 360;
+        }
+      }
+
+      // Fallback: if smoothed vector still not ready, check displacement over >= 6 meters
+      if (targetHeading === null) {
+        if (!lastHeadingFixPos) {
+          lastHeadingFixPos = { lat, lng, time: now };
+        } else {
+          const dMetersFromFix = routingEngine
+            ? routingEngine.haversineMeters(lastHeadingFixPos.lat, lastHeadingFixPos.lng, lat, lng)
+            : 0;
+          if (dMetersFromFix >= 6.0) {
+            targetHeading = calculateBearing(lastHeadingFixPos.lat, lastHeadingFixPos.lng, lat, lng);
+            lastHeadingFixPos = { lat, lng, time: now };
+          }
+        }
       }
     }
   } else {
-    // Stationary mode (< 3 km/h): freeze heading! Reset reference point to current stationary position
+    // Stationary mode (< 3.5 km/h): freeze heading! Reset reference points
     lastHeadingFixPos = { lat, lng, time: now };
+    smoothedVelocityVector.initialized = false;
   }
 
-  // Hardware GPS Heading: use if provided by GNSS hardware and vehicle is in motion
-  const hasHardwareHeading = typeof headingDeg === "number" && isFinite(headingDeg) && headingDeg !== null &&
-                             headingDeg >= 0 && headingDeg <= 360 &&
-                             (headingDeg > 0 || speedKmh >= 5);
-  if (targetHeading === null && hasHardwareHeading) {
-    targetHeading = headingDeg;
-  }
+  // PRIORITY 3: Road & Route Alignment (Keep Arrow Straight in Lane)
+  const candidateBearing = targetHeading !== null ? targetHeading : (isMoving ? lastKnownValidHeading : null);
 
-  // Snap to route segment when navigating (keeps arrow pointing cleanly down the road lane)
-  // CRITICAL: Only align to route if the vehicle is travelling in the general direction of the route (within 45 deg)!
-  if (routingEngine && routingEngine.isNavigating && !routingEngine.isRerouting) {
-    const routeBearing = routingEngine.getCurrentSegmentBearing ? routingEngine.getCurrentSegmentBearing() : null;
-    if (routeBearing !== null) {
-      if (targetHeading !== null) {
-        const diffWithRoute = Math.abs(shortestAngleDiff(routeBearing, targetHeading));
+  if (candidateBearing !== null) {
+    if (routingEngine && routingEngine.isNavigating && !routingEngine.isRerouting) {
+      // CASE A: Active Navigation Route - snap to route segment if aligned within 45 deg
+      const routeBearing = routingEngine.getCurrentSegmentBearing ? routingEngine.getCurrentSegmentBearing() : null;
+      if (routeBearing !== null) {
+        const diffWithRoute = Math.abs(shortestAngleDiff(routeBearing, candidateBearing));
         if (diffWithRoute <= 45) {
           targetHeading = routeBearing;
         }
-        // If diffWithRoute > 45, vehicle is turning off-route, making a U-turn or reversing!
-        // DO NOT override targetHeading with routeBearing, preserve true vehicle motion!
-      } else if (isMoving && lastKnownValidHeading !== null) {
-        const diffWithRoute = Math.abs(shortestAngleDiff(routeBearing, lastKnownValidHeading));
-        if (diffWithRoute <= 45) {
-          targetHeading = routeBearing;
-        }
-      } else if (!isMoving && (lastKnownValidHeading === 0 || lastKnownValidHeading === null)) {
-        targetHeading = routeBearing;
+      }
+    } else if (window.speedLimitEngine && typeof window.speedLimitEngine.getRoadBearing === "function") {
+      // CASE B: Free Driving Mode (No Active Route) - snap to OSM road / corridor centerline
+      // Prevents slanted arrow when cruising down city avenues, expressways or highways
+      const roadBearing = window.speedLimitEngine.getRoadBearing(lat, lng, candidateBearing);
+      if (roadBearing !== null) {
+        targetHeading = roadBearing;
       }
     }
   }
 
-  // Angular interpolation with shortest-angular-path smoothing
+  // Angular interpolation with adaptive shortest-angular-path smoothing
   if (targetHeading !== null) {
     lastKnownValidHeading = targetHeading;
   }
@@ -734,8 +767,10 @@ function updateVehicleMarker(lat, lng, headingDeg, speedKmh, accuracyMeters = nu
       // First fix: snap immediately without slow rotation
       continuousHeading = lastKnownValidHeading;
     } else {
-      // Snappy and responsive tracking
-      continuousHeading += diff * 0.60;
+      // Adaptive smoothing: gentle (0.28) when cruising straight to kill jitter;
+      // dynamic (0.55) when turning corners or intersections
+      const factor = Math.abs(diff) <= 30 ? 0.28 : 0.55;
+      continuousHeading += diff * factor;
     }
   } else if (!isMoving && lastKnownValidHeading !== null && lastRenderedHeading === -999) {
     continuousHeading = lastKnownValidHeading;

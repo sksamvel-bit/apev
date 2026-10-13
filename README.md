@@ -1,6 +1,7 @@
-# ⚡ Tesla Model 3 & Model Y In-Car Navigation (Georgia EV Edition) — v3.9.1
+# ⚡ Tesla Model 3 & Model Y In-Car Navigation (Georgia EV Edition) — v3.9.2
 
 > **სპეციალურად Tesla Model 3-ისა და Model Y-ის 15-ინჩიან ცენტრალურ ეკრანზე (MCU2 Intel Atom და MCU3 AMD Ryzen) მორგებული სრულფასოვანი ნავიგაციის სისტემა.**
+> **v3.9.2 სიახლე:** ავტომობილის ისრის სტაბილიზაცია მარშრუტის გარეშე თავისუფალი მოძრაობისას (Free Driving OSM Road Snapping, Hardware GNSS Doppler Heading პრიორიტეტი და ვექტორული სიჩქარის ფილტრი).
 
 ---
 
