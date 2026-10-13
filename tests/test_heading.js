@@ -137,4 +137,37 @@ headingsToTest.forEach(H => {
 });
 console.log('PASS  Heading-Up (Course-Up) map rotation: vehicle is 0 deg UP, compass points to True North');
 
-console.log('All 11 heading assertions passed successfully.');
+// 12. Multi-Touch 2-Finger Twist-to-Rotate Gesture (Full 360 Continuous Rotation)
+// Verifies that incremental angular delta across the 180/-180 wrap boundary produces
+// smooth, continuous accumulation without jumps, allowing full 360 and 720 deg rotation.
+function normDiff(diff) {
+  let d = diff % 360;
+  if (d > 180) d -= 360;
+  if (d < -180) d += 360;
+  return d;
+}
+
+// Simulate full 360-degree clockwise twist in 10-degree increments
+let simulatedLastAngle = 0;
+let accumulatedRotation = 0;
+for (let step = 1; step <= 36; step++) {
+  // Simulating Math.atan2 result which wraps in [-180, 180]
+  let currentSimAngle = (step * 10);
+  if (currentSimAngle > 180) currentSimAngle -= 360;
+  const dAngle = normDiff(currentSimAngle - simulatedLastAngle);
+  accumulatedRotation += dAngle;
+  simulatedLastAngle = currentSimAngle;
+}
+assert.strictEqual(accumulatedRotation, 360, 'Accumulated rotation over 360-degree twist must equal exactly 360 deg');
+
+// Simulate counter-clockwise twist across -175 to +175 (10 deg CCW)
+const ccwDiff = normDiff(175 - (-175));
+assert.strictEqual(ccwDiff, -10, 'Crossing the -180/180 meridian CCW must be -10 deg');
+
+// Simulate clockwise twist across +175 to -175 (10 deg CW)
+const cwDiff = normDiff((-175) - 175);
+assert.strictEqual(cwDiff, 10, 'Crossing the -180/180 meridian CW must be +10 deg');
+
+console.log('PASS  multi-touch twist gesture: smooth 360-deg rotation & wrap-around math');
+
+console.log('All 12 heading assertions passed successfully.');

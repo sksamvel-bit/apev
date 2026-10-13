@@ -1,7 +1,7 @@
 # 🚀 Tesla In-Car Navigation (Georgia) — Master Agent Handover Guide
 
 > **Target Audience:** Future AI Agents, Engineers, and Auditors.  
-> **Status as of October 13, 2026:** Production Ready, Optimized for Tesla MCU Chromium Browser, Version **v3.9.3**.  
+> **Status as of October 13, 2026:** Production Ready, Optimized for Tesla MCU Chromium Browser, Version **v3.9.4**.  
 > **Primary URL:** `http://localhost:3000` (Local) / `http://192.168.111.25:3000` (In-car WiFi/Hotspot) / `https://apev.onrender.com` (Cloud).  
 > **Repository Location:** `C:\Users\skarapetiani\.gemini\antigravity\scratch\tesla-nav`  
 > **Backup Directory:** `C:\Users\skarapetiani\.gemini\antigravity\scratch\tesla-nav-backup`  
@@ -89,6 +89,16 @@ This application provides a native-feeling, zero-lag, 60 FPS web navigation syst
   * Dock Compass toggle button (`#btn-map-orientation`) with 3D SVG needle pointing to True North in Heading-Up mode, switching to North-Up on click.
   * Touch & click coordinate un-projection hook on `map.mouseEventToContainerPoint` accounting for $-H^\circ$ rotation matrix.
   * Automated tests in `tests/test_heading.js` (11/11 PASS) verifying mathematical rotation and compass angles.
+* **6.17 360-Degree Multi-Touch Map Rotation & Tesla Touch Gesture UX (v3.9.4):**
+  * **Driver Problem:** In Tesla's native map, drivers can put two fingers on the 15" touchscreen and twist to freely rotate the map 360 degrees to any angle. Standard Leaflet only supported pinch-to-zoom (scaling), completely ignoring finger rotation angle.
+  * **Solution:**
+    * Multi-Touch 2-finger twist gesture engine (`initMapTouchRotation`): captures incremental angular delta $\Delta \theta = \theta_t - \theta_{t-1}$ across wrap-around boundaries, accumulating continuous 360° and 720° rotation smoothly at 60 FPS without transition lag.
+    * Re-centers/follow-car smoothly un-hooks during manual rotation and re-engages when tapping Re-Center (`#btn-follow-car`).
+    * Direct drag interaction on the Compass Needle button (`#btn-map-orientation`), allowing circular/horizontal dragging to spin the map, plus 1-click snap back to North-Up ($0^\circ$).
+    * Desktop support: `Shift + Left Drag` / `Alt + Left Drag` rotates map 360 degrees.
+    * Removed blocking `body.orientation-north-up #map { transform: rotate(0deg) !important; }` CSS rule.
+    * Touch/click un-projection hook on `map.mouseEventToContainerPoint` generalized to all non-zero rotations (`currentMapRotation !== 0`).
+    * Automated tests in `tests/test_heading.js` (12/12 PASS) asserting incremental wrap-around math.
 
 ---
 
@@ -119,7 +129,7 @@ tesla-nav/
     ├── test_routing.js          # Navigation engine automated unit tests (9 assertions)
     ├── test_speed_limit.js      # Speed limit fallback & corridor unit tests (13 assertions)
     ├── test_speed_limit_osm.js  # OSM Overpass grid & road snapping unit tests (22 assertions)
-    ├── test_heading.js          # Automotive heading, COG & Heading-Up rotation tests (11 assertions)
+    ├── test_heading.js          # Automotive heading, COG & 360 rotation tests (12 assertions)
     ├── check_versions.js        # Version sync check across all manifests and HTML
     └── smoke_server.js          # 18-point server security & regression test suite
 ```
@@ -143,11 +153,11 @@ tesla-nav/
 To verify the application:
 1. Run automated test suite:
    ```bash
-   npm test          # 45/45 unit tests (Routing + Speed limits + OSM Overpass + Heading-Up)
+   npm test          # 46/46 unit tests (Routing + Speed limits + OSM Overpass + Heading-Up + 360)
    ```
 2. Verify version consistency:
    ```bash
-   npm run check     # Verifies v3.9.3 across package.json, index.html, sw.js
+   npm run check     # Verifies v3.9.4 across package.json, index.html, sw.js
    ```
 3. Run security and regression smoke tests:
    ```bash

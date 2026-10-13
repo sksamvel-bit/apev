@@ -134,7 +134,8 @@ function initMap() {
   const origMouseEventToContainerPoint = map.mouseEventToContainerPoint;
   map.mouseEventToContainerPoint = function(e) {
     const p = origMouseEventToContainerPoint.call(this, e);
-    if (currentMapOrientation === "heading-up" && currentMapRotation !== 0) {
+    // Un-project touches and clicks accurately whenever map has non-zero rotation (Heading-Up or Manual 360)
+    if (currentMapRotation !== 0) {
       const size = this.getSize();
       const cx = size.x / 2;
       const cy = size.y / 2;
@@ -212,6 +213,190 @@ function initMap() {
       L.DomEvent.disableScrollPropagation(el);
     }
   });
+
+  // Enable 360-Degree Multi-Touch Twist Gesture & Compass Drag (Native Tesla UX)
+  initMapTouchRotation();
+}
+
+// 360-Degree Map Rotation Engine (Touch Twist Gesture, Desktop Drag & Compass Interaction)
+function applyMapRotation(rotDeg, animated = false) {
+  currentMapRotation = rotDeg;
+  const mapEl = document.getElementById("map");
+  const needleEl = document.getElementById("compass-needle-svg");
+  const transitionVal = animated ? "transform 0.28s cubic-bezier(0.25, 0.9, 0.35, 1)" : "none";
+  if (mapEl) {
+    mapEl.style.transition = transitionVal;
+    mapEl.style.transform = `rotate(${rotDeg}deg)`;
+  }
+  if (needleEl) {
+    needleEl.style.transition = transitionVal;
+    needleEl.style.transform = `rotate(${rotDeg}deg)`;
+  }
+}
+
+let compassDragMoved = false;
+
+function initMapTouchRotation() {
+  const mapViewport = document.getElementById("map-viewport");
+  const mapEl = document.getElementById("map");
+  if (!mapViewport || !mapEl) return;
+
+  const touchState = {
+    active: false,
+    lastAngle: 0,
+    startRotation: 0,
+    accumulatedDelta: 0,
+    hasRotated: false
+  };
+
+  const getAngle = (t1, t2) => {
+    const dx = t2.clientX - t1.clientX;
+    const dy = t2.clientY - t1.clientY;
+    return (Math.atan2(dy, dx) * 180) / Math.PI;
+  };
+
+  const normDiff = (diff) => {
+    let d = diff % 360;
+    if (d > 180) d -= 360;
+    if (d < -180) d += 360;
+    return d;
+  };
+
+  // 1. Multi-Touch 2-Finger Twist-to-Rotate Gesture (Tesla Touchscreen Standard)
+  mapViewport.addEventListener("touchstart", (e) => {
+    if (e.touches.length === 2) {
+      const t1 = e.touches[0];
+      const t2 = e.touches[1];
+      touchState.active = true;
+      touchState.lastAngle = getAngle(t1, t2);
+      touchState.startRotation = currentMapRotation;
+      touchState.accumulatedDelta = 0;
+      touchState.hasRotated = false;
+    } else {
+      touchState.active = false;
+    }
+  }, { capture: true, passive: true });
+
+  window.addEventListener("touchmove", (e) => {
+    if (!touchState.active || e.touches.length !== 2) return;
+    const t1 = e.touches[0];
+    const t2 = e.touches[1];
+    const curAngle = getAngle(t1, t2);
+    const dAngle = normDiff(curAngle - touchState.lastAngle);
+    touchState.lastAngle = curAngle;
+    touchState.accumulatedDelta += dAngle;
+
+    // Minimum angular threshold (2.5 deg) before entering manual rotation mode
+    if (!touchState.hasRotated && Math.abs(touchState.accumulatedDelta) >= 2.5) {
+      touchState.hasRotated = true;
+      currentMapOrientation = "manual";
+      isFollowCar = false;
+      setFollowCarMode(false);
+      updateOrientationUI();
+    }
+
+    if (touchState.hasRotated) {
+      currentMapRotation = touchState.startRotation + touchState.accumulatedDelta;
+      applyMapRotation(currentMapRotation, false);
+    }
+  }, { capture: true, passive: true });
+
+  const endTouch = (e) => {
+    if (touchState.active && (!e.touches || e.touches.length < 2)) {
+      touchState.active = false;
+      if (touchState.hasRotated) {
+        touchState.hasRotated = false;
+        // Normalize rotation to [-180, 180]
+        currentMapRotation = ((currentMapRotation % 360) + 360) % 360;
+        if (currentMapRotation > 180) currentMapRotation -= 360;
+        applyMapRotation(currentMapRotation, true);
+        localStorage.setItem("tesla_nav_map_orientation", "manual");
+        updateOrientationUI();
+      }
+    }
+  };
+
+  window.addEventListener("touchend", endTouch, { capture: true, passive: true });
+  window.addEventListener("touchcancel", endTouch, { capture: true, passive: true });
+
+  // 2. Desktop Mouse Rotation Support: Shift + Left Drag or Alt + Left Drag
+  let mouseRotation = { active: false, startX: 0, startRotation: 0 };
+
+  mapViewport.addEventListener("mousedown", (e) => {
+    if (e.shiftKey || e.altKey || e.button === 1) {
+      mouseRotation.active = true;
+      mouseRotation.startX = e.clientX;
+      mouseRotation.startRotation = currentMapRotation;
+      currentMapOrientation = "manual";
+      isFollowCar = false;
+      setFollowCarMode(false);
+      updateOrientationUI();
+      e.preventDefault();
+    }
+  }, { capture: true });
+
+  window.addEventListener("mousemove", (e) => {
+    if (!mouseRotation.active) return;
+    const dx = e.clientX - mouseRotation.startX;
+    currentMapRotation = mouseRotation.startRotation + dx * 0.6;
+    applyMapRotation(currentMapRotation, false);
+    e.preventDefault();
+  }, { capture: true });
+
+  window.addEventListener("mouseup", () => {
+    if (mouseRotation.active) {
+      mouseRotation.active = false;
+      currentMapRotation = ((currentMapRotation % 360) + 360) % 360;
+      if (currentMapRotation > 180) currentMapRotation -= 360;
+      applyMapRotation(currentMapRotation, true);
+      localStorage.setItem("tesla_nav_map_orientation", "manual");
+      updateOrientationUI();
+    }
+  }, { capture: true });
+
+  // 3. Direct Drag Rotation on the Compass Needle Button (#btn-map-orientation)
+  const compassBtn = document.getElementById("btn-map-orientation");
+  if (compassBtn) {
+    let compassDrag = { active: false, startX: 0, startRot: 0, moved: false };
+
+    compassBtn.addEventListener("pointerdown", (e) => {
+      compassDrag.active = true;
+      compassDrag.startX = e.clientX;
+      compassDrag.startRot = currentMapRotation;
+      compassDrag.moved = false;
+    });
+
+    window.addEventListener("pointermove", (e) => {
+      if (!compassDrag.active) return;
+      const dx = e.clientX - compassDrag.startX;
+      if (Math.abs(dx) > 6) {
+        if (!compassDrag.moved) {
+          compassDrag.moved = true;
+          compassDragMoved = true;
+          currentMapOrientation = "manual";
+          isFollowCar = false;
+          setFollowCarMode(false);
+          updateOrientationUI();
+        }
+        currentMapRotation = compassDrag.startRot - dx * 1.2;
+        applyMapRotation(currentMapRotation, false);
+      }
+    });
+
+    window.addEventListener("pointerup", () => {
+      if (!compassDrag.active) return;
+      const wasMoved = compassDrag.moved;
+      compassDrag.active = false;
+      if (wasMoved) {
+        currentMapRotation = ((currentMapRotation % 360) + 360) % 360;
+        if (currentMapRotation > 180) currentMapRotation -= 360;
+        applyMapRotation(currentMapRotation, true);
+        localStorage.setItem("tesla_nav_map_orientation", "manual");
+        updateOrientationUI();
+        setTimeout(() => { compassDragMoved = false; }, 100);
+      }
+    }, { capture: true });
+  }
 }
 
 // Map Style Switcher: Google Roads, Google Satellite, Yandex Maps
@@ -850,13 +1035,18 @@ function updateVehicleMarker(lat, lng, headingDeg, speedKmh, accuracyMeters = nu
     if (cachedCompassNeedleEl) {
       cachedCompassNeedleEl.style.transform = `rotate(${currentMapRotation}deg)`;
     }
-  } else {
+  } else if (currentMapOrientation === "north-up") {
     currentMapRotation = 0;
     if (cachedMapEl) {
       cachedMapEl.style.transform = "rotate(0deg)";
     }
     if (cachedCompassNeedleEl) {
       cachedCompassNeedleEl.style.transform = "rotate(0deg)";
+    }
+  } else if (currentMapOrientation === "manual") {
+    // Preserve manual 360-degree rotation angle chosen by driver
+    if (cachedCompassNeedleEl) {
+      cachedCompassNeedleEl.style.transform = `rotate(${currentMapRotation}deg)`;
     }
   }
 
@@ -920,8 +1110,15 @@ function setFollowCarMode(enabled) {
   if (btn) {
     if (isFollowCar) {
       btn.classList.add("active");
+      // If user re-centers while in manual rotation, resume Heading-Up mode like Tesla
+      if (currentMapOrientation === "manual") {
+        currentMapOrientation = "heading-up";
+        localStorage.setItem("tesla_nav_map_orientation", "heading-up");
+        updateOrientationUI();
+      }
       if (map && currentPos) {
         map.panTo([currentPos.lat, currentPos.lng]);
+        updateVehicleMarker(currentPos.lat, currentPos.lng, currentHeading, currentSpeedKmh);
       }
     } else {
       btn.classList.remove("active");
@@ -930,26 +1127,53 @@ function setFollowCarMode(enabled) {
 }
 
 function toggleMapOrientation() {
-  if (currentMapOrientation === "heading-up") {
+  if (compassDragMoved) {
+    compassDragMoved = false;
+    return;
+  }
+  if (currentMapOrientation === "manual") {
+    // 1st click when manually rotated away from North:
+    // Smoothly resets rotation to True North (0 deg)!
     currentMapOrientation = "north-up";
-    showToast("⬆️ რუკის რეჟიმი: ჩრდილოეთზე (North-Up)", "info", 2000);
-  } else {
+    applyMapRotation(0, true);
+    showToast("⬆️ რუკა გასწორდა ჩრდილოეთზე (North-Up)", "info", 1800);
+  } else if (currentMapOrientation === "north-up") {
+    // 2nd click (or when at North): switches to dynamic Heading-Up
     currentMapOrientation = "heading-up";
-    showToast("🧭 რუკის რეჟიმი: კურსზე (Heading-Up)", "info", 2000);
+    showToast("🧭 რუკის რეჟიმი: კურსზე (Heading-Up)", "info", 1800);
+    if (currentPos) {
+      updateVehicleMarker(currentPos.lat, currentPos.lng, currentHeading, currentSpeedKmh);
+    }
+  } else {
+    // In Heading-Up: switches to North-Up
+    currentMapOrientation = "north-up";
+    applyMapRotation(0, true);
+    showToast("⬆️ რუკის რეჟიმი: ჩრდილოეთზე (North-Up)", "info", 1800);
   }
   localStorage.setItem("tesla_nav_map_orientation", currentMapOrientation);
   updateOrientationUI();
-  if (currentPos) {
-    updateVehicleMarker(currentPos.lat, currentPos.lng, currentHeading, currentSpeedKmh);
-  }
 }
 
 function updateOrientationUI() {
   const btn = document.getElementById("btn-map-orientation");
   const tip = document.getElementById("orientation-tooltip");
-  if (btn) btn.classList.toggle("active", currentMapOrientation === "heading-up");
-  if (tip) tip.textContent = currentMapOrientation === "heading-up" ? "კურსის რეჟიმი (Heading-Up)" : "ჩრდილოეთის რეჟიმი (North-Up)";
-  document.body.classList.toggle("orientation-north-up", currentMapOrientation === "north-up");
+  if (!btn) return;
+
+  btn.classList.remove("active", "manual-active");
+  document.body.classList.remove("orientation-north-up", "orientation-heading-up", "orientation-manual");
+
+  if (currentMapOrientation === "heading-up") {
+    btn.classList.add("active");
+    document.body.classList.add("orientation-heading-up");
+    if (tip) tip.textContent = "კურსის რეჟიმი (Heading-Up)";
+  } else if (currentMapOrientation === "manual") {
+    btn.classList.add("manual-active");
+    document.body.classList.add("orientation-manual");
+    if (tip) tip.textContent = "დააჭირეთ ჩრდილოეთზე (North) დასაბრუნებლად";
+  } else {
+    document.body.classList.add("orientation-north-up");
+    if (tip) tip.textContent = "ჩრდილოეთი (North-Up)";
+  }
 }
 
 // Map Click to Set Destination
