@@ -534,6 +534,21 @@ class RoutingEngine {
     this.steps = [];
   }
 
+  getCurrentSegmentBearing() {
+    if (!this.isNavigating || !this.activeRoute || !this.activeRoute.coordinates) return null;
+    const coords = this.activeRoute.coordinates;
+    const idx = Math.max(0, this.lastClosestIndex || 0);
+    for (let i = idx; i < Math.min(coords.length - 1, idx + 10); i++) {
+      const p1 = coords[i];
+      const p2 = coords[i + 1];
+      const d = this.haversineMeters(p1[0], p1[1], p2[0], p2[1]);
+      if (d >= 2) {
+        return Math.round(this.calculateBearing(p1[0], p1[1], p2[0], p2[1]));
+      }
+    }
+    return null;
+  }
+
   calculateBearing(lat1, lon1, lat2, lon2) {
     const toRad = deg => deg * Math.PI / 180;
     const toDeg = rad => rad * 180 / Math.PI;

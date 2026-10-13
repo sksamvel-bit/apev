@@ -493,17 +493,16 @@ function initGeolocation() {
       const lat = coords.latitude;
       const lng = coords.longitude;
       const speed = coords.speed ? Math.round(coords.speed * 3.6) : 0;
-      const heading = coords.heading || currentHeading;
+      const rawHeading = coords.heading;
 
       currentPos = { lat, lng };
-      currentHeading = heading;
       currentSpeedKmh = speed;
 
-      updateVehicleMarker(lat, lng, heading, speed, coords.accuracy);
+      updateVehicleMarker(lat, lng, rawHeading, speed, coords.accuracy);
       fetchWeatherForPos(lat, lng);
 
       if (routingEngine && routingEngine.isNavigating) {
-        const signalAhead = routingEngine.updateVehiclePosition(currentPos, speed, heading);
+        const signalAhead = routingEngine.updateVehiclePosition(currentPos, speed, currentHeading);
         const alertBanner = document.getElementById("traffic-signal-alert");
         if (signalAhead) {
           alertBanner.classList.add("active");
@@ -543,6 +542,27 @@ let cachedSpeedValEl = null;
 let cachedCarIconEl = null;
 let lastGpsPos = null;
 let lastGpsTime = 0;
+let lastHeadingFixPos = null;
+let lastKnownValidHeading = 0;
+let continuousHeading = 0; // Continuous rotation angle (prevents 359->0 360-spin glitch)
+
+function calculateBearing(lat1, lon1, lat2, lon2) {
+  const toRad = deg => (deg * Math.PI) / 180;
+  const toDeg = rad => (rad * 180) / Math.PI;
+  const dLon = toRad(lon2 - lon1);
+  const y = Math.sin(dLon) * Math.cos(toRad(lat2));
+  const x = Math.cos(toRad(lat1)) * Math.sin(toRad(lat2)) -
+            Math.sin(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.cos(dLon);
+  let brng = toDeg(Math.atan2(y, x));
+  return (brng + 360) % 360;
+}
+
+function shortestAngleDiff(targetDeg, currentDeg) {
+  let diff = (targetDeg - currentDeg) % 360;
+  if (diff > 180) diff -= 360;
+  if (diff < -180) diff += 360;
+  return diff;
+}
 
 function updateVehicleMarker(lat, lng, headingDeg, speedKmh, accuracyMeters = null) {
   const now = performance.now();
@@ -562,11 +582,63 @@ function updateVehicleMarker(lat, lng, headingDeg, speedKmh, accuracyMeters = nu
     }
   }
 
+  // --- AUTOMOTIVE HEADING & COURSE OVER GROUND (COG) DETERMINATION ---
+  const isMoving = speedKmh >= 3;
+  let targetHeading = null;
+
+  if (isMoving) {
+    if (!lastHeadingFixPos) {
+      lastHeadingFixPos = { lat, lng, time: now };
+    } else {
+      const dMetersFromFix = routingEngine
+        ? routingEngine.haversineMeters(lastHeadingFixPos.lat, lastHeadingFixPos.lng, lat, lng)
+        : 0;
+      // When vehicle moves at least 2.5m, calculate true Course Over Ground vector
+      if (dMetersFromFix >= 2.5) {
+        targetHeading = calculateBearing(lastHeadingFixPos.lat, lastHeadingFixPos.lng, lat, lng);
+        lastHeadingFixPos = { lat, lng, time: now };
+      }
+    }
+  } else {
+    // Stationary mode (< 3 km/h):
+    // LOCK & FREEZE heading completely! Never recalculate on stationary GPS jitter noise.
+  }
+
+  // Snap to route segment when navigating (keeps arrow pointing cleanly down the road lane)
+  if (routingEngine && routingEngine.isNavigating && !routingEngine.isRerouting) {
+    const routeBearing = routingEngine.getCurrentSegmentBearing ? routingEngine.getCurrentSegmentBearing() : null;
+    if (routeBearing !== null) {
+      if (isMoving) {
+        targetHeading = routeBearing;
+      } else if (lastKnownValidHeading === 0) {
+        targetHeading = routeBearing;
+      }
+    }
+  }
+
+  // If Course Over Ground wasn't computed this tick, use GPS compass heading if valid
+  if (targetHeading === null && typeof headingDeg === "number" && !isNaN(headingDeg) && headingDeg >= 0 && headingDeg <= 360) {
+    targetHeading = headingDeg;
+  }
+
+  // Angular interpolation with shortest-angular-path smoothing
+  if (targetHeading !== null) {
+    lastKnownValidHeading = targetHeading;
+  }
+  if (isMoving && lastKnownValidHeading !== null) {
+    const diff = shortestAngleDiff(lastKnownValidHeading, continuousHeading % 360);
+    // Smooth factor: snappy response while driving
+    continuousHeading += diff * 0.45;
+  } else if (!isMoving && lastKnownValidHeading !== 0 && continuousHeading === 0) {
+    continuousHeading = lastKnownValidHeading;
+  }
+
+  currentHeading = Math.round(((continuousHeading % 360) + 360) % 360);
+
   lastGpsPos = { lat, lng };
   lastGpsTime = now;
   currentPos = { lat, lng };
   window.currentPos = currentPos;
-  currentHeading = headingDeg;
   currentSpeedKmh = speedKmh;
   window.currentSpeedKmhForLock = speedKmh;
   window.hasRealFix = true;
@@ -590,10 +662,10 @@ function updateVehicleMarker(lat, lng, headingDeg, speedKmh, accuracyMeters = nu
       const markerEl = carMarker.getElement();
       cachedCarIconEl = markerEl ? markerEl.querySelector(".tesla-car-icon-body") : document.getElementById("car-svg-icon");
     }
-    // Only update transform if heading changed by at least 1 degree
-    if (cachedCarIconEl && (Math.abs(headingDeg - lastRenderedHeading) >= 1 || lastRenderedHeading === -999)) {
-      cachedCarIconEl.style.transform = `rotate(${headingDeg}deg)`;
-      lastRenderedHeading = headingDeg;
+    const renderHeading = Math.round(continuousHeading);
+    if (cachedCarIconEl && (Math.abs(renderHeading - lastRenderedHeading) >= 1 || lastRenderedHeading === -999)) {
+      cachedCarIconEl.style.transform = `rotate(${renderHeading}deg)`;
+      lastRenderedHeading = renderHeading;
     }
   }
 
@@ -613,10 +685,10 @@ function updateVehicleMarker(lat, lng, headingDeg, speedKmh, accuracyMeters = nu
   if (isFollowCar && map) {
     let targetLat = lat;
     let targetLng = lng;
-    if (headingDeg != null && (speedKmh > 5 || (routingEngine && routingEngine.isNavigating))) {
+    if (currentHeading != null && (speedKmh > 5 || (routingEngine && routingEngine.isNavigating))) {
       const R = 6378137;
       const offsetDist = 70; // 70 meters forward offset
-      const rad = headingDeg * (Math.PI / 180);
+      const rad = currentHeading * (Math.PI / 180);
       const dLat = (offsetDist * Math.cos(rad)) / R;
       const dLng = (offsetDist * Math.sin(rad)) / (R * Math.cos(lat * (Math.PI / 180)));
       targetLat = lat + dLat * (180 / Math.PI);
@@ -1118,15 +1190,42 @@ async function requestWakeLock() {
 }
 
 function toggleFullscreen() {
+  const isTesla = /Tesla/i.test(navigator.userAgent);
+  let liveUrl = window.location.href;
+  if (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1") {
+    liveUrl = "https://apev.onrender.com";
+  }
+  const theaterUrl = `https://www.youtube.com/redirect?q=${encodeURIComponent(liveUrl)}`;
+
+  // If running on Tesla browser, invoke Tesla Theater Mode redirect for true 100% borderless fullscreen
+  if (isTesla) {
+    showToast("გადადის Tesla Theater სრულ ეკრანზე...", "info", 3000);
+    setTimeout(() => {
+      window.location.href = theaterUrl;
+    }, 600);
+    return;
+  }
+
+  // On standard desktop/tablet browsers, attempt HTML5 requestFullscreen first
   const doc = document;
   const docEl = document.documentElement;
-
   const isFs = doc.fullscreenElement || doc.webkitFullscreenElement || doc.mozFullScreenElement || doc.msFullscreenElement;
 
   if (!isFs) {
     const requestFs = docEl.requestFullscreen || docEl.webkitRequestFullscreen || docEl.mozRequestFullScreen || docEl.msRequestFullscreen;
     if (requestFs) {
-      requestFs.call(docEl).catch(err => console.warn("Fullscreen request notice:", err));
+      requestFs.call(docEl).catch((err) => {
+        console.warn("Standard fullscreen rejected, falling back to Tesla Theater redirect:", err);
+        showToast("გადადის Tesla Theater სრულ ეკრანზე...", "info", 3000);
+        setTimeout(() => {
+          window.location.href = theaterUrl;
+        }, 600);
+      });
+    } else {
+      showToast("გადადის Tesla Theater სრულ ეკრანზე...", "info", 3000);
+      setTimeout(() => {
+        window.location.href = theaterUrl;
+      }, 600);
     }
   } else {
     const exitFs = doc.exitFullscreen || doc.webkitExitFullscreen || doc.mozCancelFullScreen || doc.msExitFullscreen;

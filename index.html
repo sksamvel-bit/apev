@@ -12,7 +12,7 @@
   <!-- Leaflet CSS (Local Offline) -->
   <link rel="stylesheet" href="leaflet.css">
   <!-- Custom Stylesheet -->
-  <link rel="stylesheet" href="style.css?v=3.8.1">
+  <link rel="stylesheet" href="style.css?v=3.8.2">
 </head>
 <body>
 
@@ -303,11 +303,11 @@
       <span class="dock-tooltip">ხმა (Voice)</span>
     </button>
 
-    <button id="btn-fullscreen" class="dock-btn" title="სრული ეკრანი">
+    <button id="btn-fullscreen" class="dock-btn" title="სრული ეკრანი (Tesla Theater)">
       <svg viewBox="0 0 24 24">
         <path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"></path>
       </svg>
-      <span class="dock-tooltip">სრული ეკრანი</span>
+      <span class="dock-tooltip">სრული ეკრანი (Theater)</span>
     </button>
 
     <button id="btn-remote-phone" class="dock-btn" title="ტელეფონით მართვა (QR Remote)">
@@ -392,80 +392,88 @@
 
   <!-- SETTINGS MODAL -->
   <div id="settings-modal" class="modal-overlay">
-    <div class="modal-window">
+    <div class="modal-window settings-modal-window">
       <div class="modal-header">
         <h2 class="modal-title">⚙️ Tesla პარამეტრები (Model 3 & Model Y)</h2>
         <button id="modal-close-btn" class="modal-close-btn">✕</button>
       </div>
-      <div class="modal-body">
-        <div class="setting-group">
-          <label class="setting-label">🚗 ავტომობილის მოდელი (Model 3 / Model Y 2018–2023):</label>
-          <select id="select-tesla-model" class="setting-select">
-            <optgroup label="─── Tesla Model 3 (2018–2023) ───">
-              <option value="m3_rwd_lfp">Model 3 RWD (2021–2023) • 60 kWh LFP (491 კმ)</option>
-              <option value="m3_sr_plus">Model 3 Standard Range+ (2018–2020) • 54 kWh NCA (409 კმ)</option>
-              <option value="m3_lr_awd">Model 3 Long Range AWD (2021–2023) • 82 kWh NMC (602 კმ)</option>
-              <option value="m3_lr_awd_pre">Model 3 Long Range AWD (2018–2020) • 75 kWh NCA (560 კმ)</option>
-              <option value="m3_perf">Model 3 Performance AWD (2021–2023) • 82 kWh NMC (547 კმ)</option>
-              <option value="m3_perf_pre">Model 3 Performance AWD (2018–2020) • 75 kWh NCA (530 კმ)</option>
-            </optgroup>
-            <optgroup label="─── Tesla Model Y (2020–2023) ───">
-              <option value="my_rwd_lfp">Model Y RWD (2022–2023) • 60 kWh LFP (455 კმ)</option>
-              <option value="my_lr_awd">Model Y Long Range AWD (2020–2023) • 82 kWh NMC (533 კმ)</option>
-              <option value="my_perf">Model Y Performance AWD (2020–2023) • 82 kWh NMC (514 კმ)</option>
-            </optgroup>
-          </select>
-        </div>
+      <div class="modal-body settings-modal-body">
+        <div class="settings-grid-2col">
+          <!-- Left Column: Vehicle & Battery -->
+          <div class="settings-col">
+            <div class="setting-group">
+              <label class="setting-label">🚗 ავტომობილის მოდელი (Model 3 / Model Y):</label>
+              <select id="select-tesla-model" class="setting-select">
+                <optgroup label="─── Tesla Model 3 (2018–2023) ───">
+                  <option value="m3_rwd_lfp">Model 3 RWD (2021–2023) • 60 kWh LFP (491 კმ)</option>
+                  <option value="m3_sr_plus">Model 3 Standard Range+ (2018–2020) • 54 kWh NCA (409 კმ)</option>
+                  <option value="m3_lr_awd">Model 3 Long Range AWD (2021–2023) • 82 kWh NMC (602 კმ)</option>
+                  <option value="m3_lr_awd_pre">Model 3 Long Range AWD (2018–2020) • 75 kWh NCA (560 კმ)</option>
+                  <option value="m3_perf">Model 3 Performance AWD (2021–2023) • 82 kWh NMC (547 კმ)</option>
+                  <option value="m3_perf_pre">Model 3 Performance AWD (2018–2020) • 75 kWh NCA (530 კმ)</option>
+                </optgroup>
+                <optgroup label="─── Tesla Model Y (2020–2023) ───">
+                  <option value="my_rwd_lfp">Model Y RWD (2022–2023) • 60 kWh LFP (455 კმ)</option>
+                  <option value="my_lr_awd">Model Y Long Range AWD (2020–2023) • 82 kWh NMC (533 კმ)</option>
+                  <option value="my_perf">Model Y Performance AWD (2020–2023) • 82 kWh NMC (514 კმ)</option>
+                </optgroup>
+              </select>
+            </div>
 
-        <!-- Dynamic Vehicle Specs Card inside Modal -->
-        <div id="model-specs-card" class="model-specs-card">
-          <div class="specs-grid">
-            <div class="spec-item">
-              <span class="spec-label">ბატარეა (Net / Gross):</span>
-              <span id="spec-battery-val" class="spec-val">-- kWh</span>
+            <!-- Dynamic Vehicle Specs Card inside Modal -->
+            <div id="model-specs-card" class="model-specs-card">
+              <div class="specs-grid">
+                <div class="spec-item">
+                  <span class="spec-label">ბატარეა:</span>
+                  <span id="spec-battery-val" class="spec-val">-- kWh</span>
+                </div>
+                <div class="spec-item">
+                  <span class="spec-label">საშ. მოხმარება:</span>
+                  <span id="spec-consumption-val" class="spec-val">-- kWh/100კმ</span>
+                </div>
+                <div class="spec-item">
+                  <span class="spec-label">ქარხნული გარბენი:</span>
+                  <span id="spec-range-val" class="spec-val">-- კმ (WLTP)</span>
+                </div>
+                <div class="spec-item">
+                  <span class="spec-label">წამყვანი თვლები:</span>
+                  <span id="spec-drive-val" class="spec-val">--</span>
+                </div>
+              </div>
+              <div id="spec-charge-tip" class="spec-tip-badge">--</div>
             </div>
-            <div class="spec-item">
-              <span class="spec-label">საშ. მოხმარება:</span>
-              <span id="spec-consumption-val" class="spec-val">-- kWh/100კმ</span>
-            </div>
-            <div class="spec-item">
-              <span class="spec-label">ქარხნული გარბენი:</span>
-              <span id="spec-range-val" class="spec-val">-- კმ (WLTP)</span>
-            </div>
-            <div class="spec-item">
-              <span class="spec-label">წამყვანი თვლები:</span>
-              <span id="spec-drive-val" class="spec-val">--</span>
+
+            <div class="setting-group">
+              <label class="setting-label">🔋 ბატარეის მუხტი (%):</label>
+              <input type="number" id="input-initial-soc" class="setting-input" min="1" max="100" placeholder="80">
             </div>
           </div>
-          <div id="spec-charge-tip" class="spec-tip-badge">--</div>
-        </div>
 
-        <div class="setting-group">
-          <label class="setting-label">მიმდინარე ბატარეის მუხტი (%):</label>
-          <input type="number" id="input-initial-soc" class="setting-input" min="1" max="100" placeholder="80">
-        </div>
+          <!-- Right Column: Navigation & Services -->
+          <div class="settings-col">
+            <div class="setting-group">
+              <label class="setting-label">🏠 სახლის მისამართი (Home):</label>
+              <input type="text" id="input-home-addr" class="setting-input" placeholder="მაგ. რუსთაველის გამზირი 12, თბილისი">
+            </div>
 
-        <div class="setting-group" style="display: flex; align-items: center; justify-content: space-between; gap: 12px;">
-          <div>
-            <label class="setting-label" style="margin-bottom: 2px;">🛣️ გრუნტის / უასფალტო გზების არიდება:</label>
-            <span style="font-size: 0.78rem; color: #fbbf24;">(დამუშავების პროცესშია / Coming Soon)</span>
+            <div class="setting-group">
+              <label class="setting-label">🏢 სამსახურის მისამართი (Work):</label>
+              <input type="text" id="input-work-addr" class="setting-input" placeholder="მაგ. ჭავჭავაძის გამზირი 37, თბილისი">
+            </div>
+
+            <div class="setting-group">
+              <label class="setting-label">🚦 TomTom Traffic API Key (სურვილისამებრ):</label>
+              <input type="text" id="input-tomtom-key" class="setting-input" placeholder="ჩასვით TomTom გასაღები...">
+            </div>
+
+            <div class="setting-group unpaved-toggle-row">
+              <div>
+                <label class="setting-label" style="margin-bottom: 2px;">🛣️ გრუნტის გზების არიდება:</label>
+                <span class="coming-soon-badge">(დამუშავების პროცესშია)</span>
+              </div>
+              <input type="checkbox" id="input-avoid-unpaved" class="setting-checkbox">
+            </div>
           </div>
-          <input type="checkbox" id="input-avoid-unpaved" style="width: 22px; height: 22px; cursor: pointer; accent-color: var(--accent-cyan);">
-        </div>
-
-        <div class="setting-group">
-          <label class="setting-label">TomTom Traffic API Key (სურვილისამებრ, ლაივ საცობებისთვის):</label>
-          <input type="text" id="input-tomtom-key" class="setting-input" placeholder="ჩასვით TomTom გასაღები...">
-        </div>
-
-        <div class="setting-group">
-          <label class="setting-label">🏠 სახლის მისამართი (Home):</label>
-          <input type="text" id="input-home-addr" class="setting-input" placeholder="მაგ. რუსთაველის გამზირი 12, თბილისი">
-        </div>
-
-        <div class="setting-group">
-          <label class="setting-label">🏢 სამსახურის მისამართი (Work):</label>
-          <input type="text" id="input-work-addr" class="setting-input" placeholder="მაგ. ჭავჭავაძის გამზირი 37, თბილისი">
         </div>
       </div>
       <div class="modal-footer">
@@ -480,15 +488,15 @@
   <!-- QR Code Generator -->
   <script src="qrcode.min.js"></script>
   <!-- Application Engines -->
-  <script src="speech.js?v=3.8.1"></script>
-  <script src="weather.js?v=3.8.1"></script>
-  <script src="battery.js?v=3.8.1"></script>
-  <script src="chargers.js?v=3.8.1"></script>
-  <script src="traffic-signals.js?v=3.8.1"></script>
-  <script src="traffic.js?v=3.8.1"></script>
-  <script src="media-player.js?v=3.8.1"></script>
-  <script src="yandex.js?v=3.8.1"></script>
-  <script src="routing.js?v=3.8.1"></script>
-  <script src="app.js?v=3.8.1"></script>
+  <script src="speech.js?v=3.8.2"></script>
+  <script src="weather.js?v=3.8.2"></script>
+  <script src="battery.js?v=3.8.2"></script>
+  <script src="chargers.js?v=3.8.2"></script>
+  <script src="traffic-signals.js?v=3.8.2"></script>
+  <script src="traffic.js?v=3.8.2"></script>
+  <script src="media-player.js?v=3.8.2"></script>
+  <script src="yandex.js?v=3.8.2"></script>
+  <script src="routing.js?v=3.8.2"></script>
+  <script src="app.js?v=3.8.2"></script>
 </body>
 </html>
