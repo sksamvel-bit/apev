@@ -12,7 +12,7 @@
   <!-- Leaflet CSS (Local Offline) -->
   <link rel="stylesheet" href="leaflet.css">
   <!-- Custom Stylesheet -->
-  <link rel="stylesheet" href="style.css?v=3.8.3">
+  <link rel="stylesheet" href="style.css?v=3.8.4">
 </head>
 <body>
 
@@ -68,18 +68,27 @@
     </div>
   </header>
 
-  <!-- NAVIGATION HUD CARD (Turn-by-Turn Maneuver Guide) -->
+  <!-- NAVIGATION HUD CARD (Compact Automotive Turn-by-Turn Guide) -->
   <aside id="nav-hud" class="nav-hud-card">
-    <!-- Next Maneuver Info -->
+    <!-- Top Maneuver Row: Icon + Dist/Instruction/Street + Compact Cancel Button -->
     <div class="maneuver-row">
       <div id="maneuver-icon-container" class="maneuver-icon-box">
         <svg viewBox="0 0 24 24"><path d="M12 2L6 8h4v12h4V8h4L12 2z"/></svg>
       </div>
       <div class="maneuver-text-box">
-        <div id="maneuver-dist" class="maneuver-distance">300 მ</div>
-        <div id="maneuver-instruction" class="maneuver-instruction">მოუხვიეთ მარჯვნივ</div>
+        <div class="maneuver-dist-line">
+          <span id="maneuver-dist" class="maneuver-distance">300 მ</span>
+          <span id="maneuver-instruction" class="maneuver-instruction">მოუხვიეთ მარჯვნივ</span>
+        </div>
         <div id="maneuver-street" class="maneuver-road-name">ილია ჭავჭავაძის გამზირი</div>
       </div>
+      <!-- Touch-friendly compact cancel button in top-right -->
+      <button id="btn-cancel-route" class="cancel-route-btn-compact" title="მარშრუტის დასრულება">
+        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.6">
+          <line x1="18" y1="6" x2="6" y2="18"></line>
+          <line x1="6" y1="6" x2="18" y2="18"></line>
+        </svg>
+      </button>
     </div>
 
     <!-- Traffic Signal Alert Banner -->
@@ -96,40 +105,21 @@
     <!-- Lane Guidance Row (ზოლების ასისტენტი) -->
     <div id="hud-lane-guidance" class="hud-lane-guidance" style="display:none;"></div>
 
-    <!-- Battery Consumption & Arrival SoC Row -->
-    <div id="hud-battery-row" class="hud-battery-row" style="display:none;">
-      <div class="hud-battery-stat">
-        <span id="hud-battery-kwh">⚡ ~3.4 kWh</span>
+    <!-- Sleek Inline Summary Bar (Distance • Time • ETA | Battery) -->
+    <div class="route-summary-compact">
+      <div class="summary-inline-stats">
+        <strong id="summary-dist" class="summary-inline-val">8.4 კმ</strong>
+        <span class="summary-dot">•</span>
+        <strong id="summary-time" class="summary-inline-val">16 წთ</strong>
+        <span class="summary-dot">•</span>
+        <span class="summary-eta-label">ETA</span>
+        <strong id="summary-eta" class="summary-inline-val">16:45</strong>
       </div>
-      <div class="hud-battery-stat">
-        <span id="hud-battery-arrival">🔋 ჩასვლა: 76%</span>
-      </div>
-    </div>
-
-    <!-- Route Summary: Remaining Distance, Time, ETA -->
-    <div class="route-summary-box">
-      <div class="summary-col">
-        <span id="summary-dist" class="summary-val">8.4 კმ</span>
-        <span class="summary-lbl">მანძილი</span>
-      </div>
-      <div class="summary-col">
-        <span id="summary-time" class="summary-val">16 წთ</span>
-        <span class="summary-lbl">დრო</span>
-      </div>
-      <div class="summary-col">
-        <span id="summary-eta" class="summary-val">16:45</span>
-        <span class="summary-lbl">ჩასვლა (ETA)</span>
+      <div id="hud-battery-row" class="hud-battery-row" style="display:none;">
+        <span id="hud-battery-kwh" style="display:none;"></span>
+        <span id="hud-battery-arrival">🔋 76%</span>
       </div>
     </div>
-
-    <!-- Cancel Route Button -->
-    <button id="btn-cancel-route" class="cancel-route-btn">
-      <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2">
-        <line x1="18" y1="6" x2="6" y2="18"></line>
-        <line x1="6" y1="6" x2="18" y2="18"></line>
-      </svg>
-      მარშრუტის დასრულება
-    </button>
   </aside>
 
   <!-- ROUTE PREVIEW CARD (Tesla Model 3 Preview before GO) -->
@@ -490,16 +480,16 @@
   <!-- QR Code Generator -->
   <script src="qrcode.min.js"></script>
   <!-- Application Engines -->
-  <script src="speech.js?v=3.8.3"></script>
-  <script src="weather.js?v=3.8.3"></script>
-  <script src="battery.js?v=3.8.3"></script>
-  <script src="chargers.js?v=3.8.3"></script>
-  <script src="traffic-signals.js?v=3.8.3"></script>
-  <script src="traffic.js?v=3.8.3"></script>
-  <script src="media-player.js?v=3.8.3"></script>
-  <script src="yandex.js?v=3.8.3"></script>
-  <script src="routing.js?v=3.8.3"></script>
-  <script src="speed-limit.js?v=3.8.3"></script>
-  <script src="app.js?v=3.8.3"></script>
+  <script src="speech.js?v=3.8.4"></script>
+  <script src="weather.js?v=3.8.4"></script>
+  <script src="battery.js?v=3.8.4"></script>
+  <script src="chargers.js?v=3.8.4"></script>
+  <script src="traffic-signals.js?v=3.8.4"></script>
+  <script src="traffic.js?v=3.8.4"></script>
+  <script src="media-player.js?v=3.8.4"></script>
+  <script src="yandex.js?v=3.8.4"></script>
+  <script src="routing.js?v=3.8.4"></script>
+  <script src="speed-limit.js?v=3.8.4"></script>
+  <script src="app.js?v=3.8.4"></script>
 </body>
 </html>
