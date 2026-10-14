@@ -20,6 +20,7 @@ const STATIC_WHITELIST = new Set([
   'maplibre-gl.js','maplibre-gl.css','map-gl.js',
   'app.js','routing.js','traffic.js','traffic-signals.js','chargers.js',
   'battery.js','weather.js','speech.js','media-player.js','speed-limit.js',
+  'sim-drive.js',
   'manifest.json','icon.svg','icon-192.png','icon-512.png','sw.js'
 ]);
 
