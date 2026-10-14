@@ -132,30 +132,45 @@ class RoutingEngine {
     this.offRouteStrikes = 0;
     this.arrivalFired = false;
 
-    // Passed path (subtle slate gray behind vehicle)
-    this.routeLinePassed = L.polyline([], {
-      color: "#64748b",
-      weight: 6,
-      opacity: 0.5,
-      lineCap: "round",
-      lineJoin: "round"
-    }).addTo(this.map);
+    // Render route on map
+    if (this.map && typeof this.map.getSource === "function") {
+      this.updateMapLibreRoute(latlngs, []);
+    } else if (typeof L !== "undefined" && typeof L.polyline === "function") {
+      // Passed path (subtle slate gray behind vehicle)
+      this.routeLinePassed = L.polyline([], {
+        color: "#64748b",
+        weight: 6,
+        opacity: 0.5,
+        lineCap: "round",
+        lineJoin: "round"
+      }).addTo(this.map);
 
-    // Upcoming glowing guide path
-    this.routeLine = L.polyline(latlngs, {
-      color: "#00d2ff",
-      weight: 6,
-      opacity: 0.9,
-      lineCap: "round",
-      lineJoin: "round"
-    }).addTo(this.map);
+      // Upcoming glowing guide path
+      this.routeLine = L.polyline(latlngs, {
+        color: "#00d2ff",
+        weight: 6,
+        opacity: 0.9,
+        lineCap: "round",
+        lineJoin: "round"
+      }).addTo(this.map);
+    }
 
     // Fit bounds nicely with padding for HUD card
-    if (opts.fit !== false) { // reroute passes fit:false so driving zoom is kept
-      this.map.fitBounds(this.routeLine.getBounds(), {
-        paddingTopLeft: [420, 40],
-        paddingBottomRight: [40, 40]
-      });
+    if (opts.fit !== false && this.map) { // reroute passes fit:false so driving zoom is kept
+      if (typeof this.map.getSource === "function") {
+        const bounds = this.getLngLatBounds(geojsonCoords);
+        if (bounds && typeof this.map.fitBounds === "function") {
+          this.map.fitBounds(bounds, {
+            padding: { top: 40, bottom: 40, left: 420, right: 40 },
+            duration: 1000
+          });
+        }
+      } else if (this.routeLine && typeof this.map.fitBounds === "function") {
+        this.map.fitBounds(this.routeLine.getBounds(), {
+          paddingTopLeft: [420, 40],
+          paddingBottomRight: [40, 40]
+        });
+      }
     }
 
     // Parse Turn-by-Turn Steps
@@ -344,7 +359,10 @@ class RoutingEngine {
       // Dynamically trim polylines: passed part is gray, upcoming part is cyan
       // OPTIMIZATION: only rebuild and redraw if segment advanced or vehicle moved > 15m
       // Prevents 10,000 throwaway array objects/sec and continuous canvas repaints on Intel Atom
-      if (this.routeLine && this.routeLinePassed) {
+      const isMapLibre = this.map && typeof this.map.getSource === "function";
+      const hasLeafletLines = this.routeLine && this.routeLinePassed;
+
+      if (isMapLibre || hasLeafletLines) {
         const segChanged = bestSegIndex !== this.lastTrimSegIndex;
         let movedEnough = true;
         if (!segChanged && this.lastTrimPos) {
@@ -361,8 +379,16 @@ class RoutingEngine {
           passedPart.push([currentLatLng.lat, currentLatLng.lng]);
           const upcomingPart = [[currentLatLng.lat, currentLatLng.lng], ...coords.slice(bestSegIndex + 1)];
 
-          this.routeLinePassed.setLatLngs(passedPart);
-          this.routeLine.setLatLngs(upcomingPart);
+          if (isMapLibre) {
+            this.updateMapLibreRoute(upcomingPart, passedPart);
+          } else {
+            if (this.routeLinePassed && typeof this.routeLinePassed.setLatLngs === "function") {
+              this.routeLinePassed.setLatLngs(passedPart);
+            }
+            if (this.routeLine && typeof this.routeLine.setLatLngs === "function") {
+              this.routeLine.setLatLngs(upcomingPart);
+            }
+          }
         }
       }
 
@@ -523,11 +549,14 @@ class RoutingEngine {
     this.offRouteStrikes = 0;
     this.isRerouting = false;
     this.lastClosestIndex = 0;
-    if (this.routeLine) {
+    if (this.map && typeof this.map.getSource === "function") {
+      this.clearMapLibreRoute();
+    }
+    if (this.routeLine && this.map && typeof this.map.removeLayer === "function") {
       this.map.removeLayer(this.routeLine);
       this.routeLine = null;
     }
-    if (this.routeLinePassed) {
+    if (this.routeLinePassed && this.map && typeof this.map.removeLayer === "function") {
       this.map.removeLayer(this.routeLinePassed);
       this.routeLinePassed = null;
     }
@@ -536,6 +565,56 @@ class RoutingEngine {
     }
     this.activeRoute = null;
     this.steps = [];
+  }
+
+  updateMapLibreRoute(upcomingLatLngs, passedLatLngs) {
+    if (!this.map || typeof this.map.getSource !== "function") return;
+    const upcomingSource = this.map.getSource("route-source");
+    const passedSource = this.map.getSource("route-passed-source");
+
+    const upcomingGeo = {
+      type: "Feature",
+      geometry: {
+        type: "LineString",
+        coordinates: (upcomingLatLngs || []).map(p => [p[1], p[0]])
+      }
+    };
+    const passedGeo = {
+      type: "Feature",
+      geometry: {
+        type: "LineString",
+        coordinates: (passedLatLngs || []).map(p => [p[1], p[0]])
+      }
+    };
+
+    if (upcomingSource && typeof upcomingSource.setData === "function") {
+      upcomingSource.setData(upcomingGeo);
+    }
+    if (passedSource && typeof passedSource.setData === "function") {
+      passedSource.setData(passedGeo);
+    }
+  }
+
+  clearMapLibreRoute() {
+    if (!this.map || typeof this.map.getSource !== "function") return;
+    const emptyGeo = { type: "FeatureCollection", features: [] };
+    const upcomingSource = this.map.getSource("route-source");
+    const passedSource = this.map.getSource("route-passed-source");
+    if (upcomingSource && typeof upcomingSource.setData === "function") upcomingSource.setData(emptyGeo);
+    if (passedSource && typeof passedSource.setData === "function") passedSource.setData(emptyGeo);
+  }
+
+  getLngLatBounds(coords) {
+    if (!coords || coords.length === 0) return null;
+    let minLng = Infinity, maxLng = -Infinity, minLat = Infinity, maxLat = -Infinity;
+    for (const c of coords) {
+      const lng = c[0], lat = c[1];
+      if (lng < minLng) minLng = lng;
+      if (lng > maxLng) maxLng = lng;
+      if (lat < minLat) minLat = lat;
+      if (lat > maxLat) maxLat = lat;
+    }
+    return [[minLng, minLat], [maxLng, maxLat]];
   }
 
   getCurrentSegmentBearing() {

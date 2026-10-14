@@ -16,8 +16,10 @@ class ChargersEngine {
   constructor(map, onRouteToCharger, startEnabled = false) {
     this.map = map;
     this.onRouteToCharger = onRouteToCharger;
-    this.layerGroup = L.layerGroup();
-    if (startEnabled && map) {
+    this.layerGroup = (typeof L !== "undefined" && typeof L.layerGroup === "function")
+      ? L.layerGroup()
+      : { addTo() { return this; }, addLayer() {}, removeLayer() {}, clearLayers() {} };
+    if (startEnabled && map && typeof this.layerGroup.addTo === "function") {
       this.layerGroup.addTo(map);
     }
     this.chargers = [];

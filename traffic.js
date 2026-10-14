@@ -17,7 +17,7 @@ class TrafficEngine {
 
   initLayer() {
     // If a TomTom key is provided, we can add the real-time raster flow layer
-    if (this.tomtomKey) {
+    if (this.tomtomKey && typeof L !== "undefined" && typeof L.tileLayer === "function") {
       this.trafficTileLayer = L.tileLayer(
         `https://{s}.api.tomtom.com/traffic/map/4/tile/flow/relative0/{z}/{x}/{y}.png?key=${this.tomtomKey}`,
         {
@@ -27,7 +27,7 @@ class TrafficEngine {
           zIndex: 10
         }
       );
-      if (this.isEnabled) {
+      if (this.isEnabled && this.map && typeof this.trafficTileLayer.addTo === "function") {
         this.trafficTileLayer.addTo(this.map);
       }
     }

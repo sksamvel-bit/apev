@@ -19,9 +19,11 @@ const SIGNALS_STORAGE_KEY = "sig_tiles_v1";
 class TrafficSignalsEngine {
   constructor(map, startEnabled = true) {
     this.map = map;
-    this.layerGroup = L.layerGroup();
+    this.layerGroup = (typeof L !== "undefined" && typeof L.layerGroup === "function")
+      ? L.layerGroup()
+      : { addTo() { return this; }, addLayer() {}, removeLayer() {}, clearLayers() {} };
     this.isEnabled = !!startEnabled;
-    if (this.isEnabled && map) {
+    if (this.isEnabled && map && typeof this.layerGroup.addTo === "function") {
       this.layerGroup.addTo(map);
     }
 
