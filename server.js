@@ -453,7 +453,7 @@ function searchNominatimProxy(query) {
     lastNominatimRequestTime = now + waitMs;
 
     setTimeout(() => {
-      const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&countrycodes=ge&limit=6&addressdetails=1&accept-language=ka,en`;
+      const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&countrycodes=ge,am,tr,az&limit=6&addressdetails=1&accept-language=ka,en`;
       const req = https.get(url, {
         headers: {
           'User-Agent': 'TeslaNav/3.9 (+https://apev.onrender.com; automotive navigation client)'
