@@ -214,3 +214,10 @@ To verify the application:
 - **YouTube Media Player:** Fully preserved `.media-playback-bar`, `.media-ctrl-btn`, `.media-track-badge`, and Auto-Advance queue (`tests/test_media_player.js` 7/7 passing).
 - **All 16 Test Suites & 18 Smoke Tests Pass 100%.**
 
+### 6.22 Version 3.10.2 Test Drive Simulation Engine (`sim-drive.js`)
+- **Interactive Drive Simulation:** Re-introduced dock button `#btn-sim-drive` allowing driver to test MapLibre heading-up continuous rotation, 45° pitch, turn-by-turn maneuver countdowns, and upcoming traffic signals while parked.
+- **Modular Isolation:** Implemented cleanly in `sim-drive.js` without altering Claude's core map files.
+- **GPS Interception:** Safely wraps `navigator.geolocation.watchPosition` while simulation is active so stationary GPS does not clash with the simulated drive.
+- **Unit Testing:** Created `tests/test_sim_drive.js` (5/5 PASS, 28/28 total test suite).
+
+

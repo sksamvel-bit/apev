@@ -30,6 +30,7 @@ const PRECACHE_ASSETS = [
   '/map-gl.js?v=3.10.2',
   '/maplibre-gl.css',
   '/qrcode.min.js',
+  '/sim-drive.js?v=3.10.2',
   '/manifest.json',
   '/icon.svg',
   '/icon-192.png',
