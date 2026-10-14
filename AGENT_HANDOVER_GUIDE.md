@@ -201,3 +201,16 @@ To verify the application:
    ```bash
    node --check app.js map-gl.js routing.js chargers.js battery.js server.js media-player.js speed-limit.js traffic-signals.js traffic.js
    ```
+
+---
+
+## 6. Recent Version Changelog
+
+### 6.21 Version 3.10.2 Full Tandem Harmonization (Claude + Antigravity)
+- **File Ownership & Collaboration:** Documented in `TEAM_NOTES.md`.
+- **GPS Dot Status Styles:** Added `.gps-dot.gps-exact` (#00e676), `.gps-dot.gps-good` (#00d2ff), and `.gps-dot.gps-weak` (#ffab00) to `style.css`.
+- **Test Map GL:** Expanded to 16/16 tests including the new far-jump test (`test("a far jump (GPS just locked) snaps instead of crawling")`).
+- **Gesture Filter in app.js:** `if (e && e.originalEvent && !e.followCamera)` prevents internal MapLibre `jumpTo` camera events from dropping FollowCamera mode.
+- **YouTube Media Player:** Fully preserved `.media-playback-bar`, `.media-ctrl-btn`, `.media-track-badge`, and Auto-Advance queue (`tests/test_media_player.js` 7/7 passing).
+- **All 16 Test Suites & 18 Smoke Tests Pass 100%.**
+
