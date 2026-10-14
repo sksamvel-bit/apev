@@ -134,7 +134,7 @@ function initClock() {
 // ---------------------------------------------------------------------------------------------------------------
 const OFM_STYLE_URL = "https://tiles.openfreemap.org/styles/liberty";
 const OFM_STYLE_CACHE_KEY = "tesla_nav_ofm_style_v1";
-const MAP_STYLE_KEYS = ["openfreemap", "google-roads", "google-sat"];
+const MAP_STYLE_KEYS = ["openfreemap", "google-roads"];
 const MAP_DEFAULT_ZOOM = 16;      // MapLibre zoom (Leaflet-equivalent 17)
 const MAP_HEADING_PITCH = 45;
 
@@ -179,7 +179,6 @@ function tuneVectorStyle(style) {
 
 async function loadStyleJson(styleKey) {
   if (styleKey === "google-roads") return googleRasterStyle("m", "google-roads");
-  if (styleKey === "google-sat") return googleRasterStyle("y", "google-sat");
   const ctrl = new AbortController();
   const timer = setTimeout(() => ctrl.abort(), 7000);
   try {
@@ -228,8 +227,8 @@ function fallbackToGoogleRoads(reason) {
 }
 
 function initMap() {
-  const saved = localStorage.getItem("tesla_nav_map_style");
-  currentMapStyle = MAP_STYLE_KEYS.includes(saved) ? saved : "openfreemap";
+  try { localStorage.removeItem("tesla_nav_map_style"); } catch (_) {}
+  currentMapStyle = "openfreemap";
 
   if (typeof maplibregl === "undefined") {
     console.error("MapLibre GL JS not loaded");
@@ -387,7 +386,7 @@ function setMapStyle(styleKey, opts = {}) {
 
   applyMapStyle(styleKey);
 
-  document.body.classList.remove("map-style-openfreemap", "map-style-google-roads", "map-style-google-sat");
+  document.body.classList.remove("map-style-openfreemap", "map-style-google-roads");
   document.body.classList.add(`map-style-${styleKey}`);
   document.querySelectorAll(".map-style-opt").forEach(opt => {
     opt.classList.toggle("active", opt.dataset.style === styleKey);
@@ -1588,7 +1587,7 @@ function initEventListeners() {
         const style = opt.dataset.style;
         setMapStyle(style);
         mapStyleMenu.classList.remove("open");
-        const styleName = style === "google-sat" ? "🛰️ Google Satellite (ჰიბრიდი)" : style === "google-roads" ? "🗺️ Google Maps (წარწერები ბრუნავს)" : "⚡ 3D ვექტორული რუკა";
+        const styleName = style === "google-roads" ? "🗺️ Google Maps (საგანგებო)" : "⚡ 3D ვექტორული რუკა";
         showToast(styleName + " ჩაირთო ✅", "success", 2500);
       });
     });
