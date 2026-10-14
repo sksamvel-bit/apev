@@ -211,4 +211,13 @@ test("recenter immediately positions the camera on the vehicle", () => {
   near(last.center[1], 41.70, 1e-6);
 });
 
+test("a far jump (GPS just locked) snaps instead of crawling", () => {
+  const { cam, step } = makeCam();
+  cam.setFix({ lng: 44.70, lat: 41.60, headingDeg: 0, speedMs: 0 });
+  step(33);
+  cam.setFix({ lng: 44.79, lat: 41.69, headingDeg: 0, speedMs: 0 });
+  step(33);
+  near(cam.pos.lng, 44.79, 1e-6);
+});
+
 console.log("\n" + passed + " tests passed" + (process.exitCode ? " - WITH FAILURES" : ""));

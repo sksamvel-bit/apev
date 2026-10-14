@@ -134,7 +134,7 @@ function initClock() {
 // ---------------------------------------------------------------------------------------------------------------
 const OFM_STYLE_URL = "https://tiles.openfreemap.org/styles/liberty";
 const OFM_STYLE_CACHE_KEY = "tesla_nav_ofm_style_v1";
-const MAP_STYLE_KEYS = ["openfreemap", "google-roads", "google-sat"];
+const MAP_STYLE_KEYS = ["openfreemap", "google-roads"];
 const MAP_DEFAULT_ZOOM = 16;      // MapLibre zoom (Leaflet-equivalent 17)
 const MAP_HEADING_PITCH = 45;
 
@@ -272,10 +272,16 @@ function initMap() {
     handleMapClick({ lat: e.lngLat.lat, lng: e.lngLat.lng });
   });
 
-  // Only gestures of the driver switch to manual mode (programmatic camera moves have no originalEvent)
-  map.on("dragstart", (e) => { if (e.originalEvent) { setFollowCarMode(false); scheduleFollowResume(); } });
-  map.on("dragend", (e) => { if (e.originalEvent) scheduleFollowResume(); });
-  const manualGesture = (e) => { if (e.originalEvent && currentMapOrientation !== "manual") { setMapOrientation("manual"); setFollowCarMode(false); } };
+  // Only genuine gestures of the driver switch to manual mode (programmatic camera moves have no originalEvent and pass followCamera: true)
+  map.on("dragstart", (e) => { if (e && e.originalEvent) { setFollowCarMode(false); scheduleFollowResume(); } });
+  map.on("dragend", (e) => { if (e && e.originalEvent) scheduleFollowResume(); });
+  const manualGesture = (e) => {
+    if (e && e.originalEvent && !e.followCamera && currentMapOrientation !== "manual") {
+      setMapOrientation("manual");
+      setFollowCarMode(false);
+      scheduleFollowResume();
+    }
+  };
   map.on("rotatestart", manualGesture);
   map.on("pitchstart", manualGesture);
 
@@ -1647,7 +1653,7 @@ function initEventListeners() {
         const style = opt.dataset.style;
         setMapStyle(style);
         mapStyleMenu.classList.remove("open");
-        const styleName = style === "google-sat" ? "🛰️ Google Satellite (ჰიბრიდი)" : style === "google-roads" ? "🗺️ Google Maps (წარწერები ბრუნავს)" : "⚡ 3D ვექტორული რუკა";
+        const styleName = style === "google-roads" ? "🗺️ Google Maps (საგანგებო)" : "⚡ 3D ვექტორული რუკა";
         showToast(styleName + " ჩაირთო ✅", "success", 2500);
       });
     });

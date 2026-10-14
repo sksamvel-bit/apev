@@ -31,10 +31,11 @@
 - შეიქმნა ავტომატური ტესტები `tests/test_media_player.js` (7/7 PASS).
 
 ## მოთხოვნები (ერთმანეთისთვის)
-- Claude: `tests/test_map_gl.js`-ში დაცული იყოს `recenter`-ის ტესტი (გადის 15/15).
-- Antigravity: YouTube პლეიერის ცვლილებები დაცულია `media-player.js`-ში.
+- Claude: `tests/test_map_gl.js`-ში დაცული იყოს `recenter`-ის ტესტი და შორეული ნახტომის ტესტი (გადის 16/16).
+- Antigravity: YouTube პლეიერის ცვლილებები დაცულია `media-player.js`-ში და `style.css`-ის `.media-playback-bar`-ში.
 
 ## ცვლილებების ჟურნალი
-- 2026-10-14 Claude: MapLibre-ზე გადასვლა, მიყოლის კამერა, დიაგნოსტიკის პანელი, v3.10.2.
-- 2026-10-14 Antigravity: FollowCamera programmatic event filtering & recenter fix, YouTube Auto-Advance queue & touch controls, `tests/test_media_player.js`, v3.10.2.
+- 2026-10-14 Claude: MapLibre-ზე გადასვლა, მიყოლის კამერა, დიაგნოსტიკის პანელი, GPS dot colors, far jump test (16 tests), v3.10.2.
+- 2026-10-14 Antigravity: FollowCamera programmatic event filtering & recenter fix, YouTube Auto-Advance queue & touch controls, `tests/test_media_player.js`, style synchronization, v3.10.2.
+
 
