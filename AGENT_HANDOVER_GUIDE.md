@@ -218,6 +218,19 @@ To verify the application:
 - **Interactive Drive Simulation:** Re-introduced dock button `#btn-sim-drive` allowing driver to test MapLibre heading-up continuous rotation, 45° pitch, turn-by-turn maneuver countdowns, and upcoming traffic signals while parked.
 - **Modular Isolation:** Implemented cleanly in `sim-drive.js` without altering Claude's core map files.
 - **GPS Interception:** Safely wraps `navigator.geolocation.watchPosition` while simulation is active so stationary GPS does not clash with the simulated drive.
-- **Unit Testing:** Created `tests/test_sim_drive.js` (5/5 PASS, 28/28 total test suite).
+- **Unit Testing:** Created `tests/test_sim_drive.js` (6/6 PASS).
+
+### 6.23 Version 3.10.2 Smooth Lookahead Steering & Authentic Georgian Audio Navigation (`speech.js` & `sim-drive.js`)
+- **Pure Pursuit Lookahead Steering:** In `sim-drive.js`, vehicle heading is computed via lookahead interpolation along the route polyline (14m–24m ahead based on speed) with rate-limited exponential smoothing (~18°/step = 36°/s max turn rate). Eliminates jerky discrete 90° angle snaps at route vertices.
+- **Simulation Route Snap Bypass:** Updated `app.js` line 845 with `!window.isSimulatingDrive` so the discrete road segment bearing does not override the continuous curved lookahead steering.
+- **Authentic Georgian Voice Navigation (Zero English Fallback):** Completely removed `enVoice` fallback from `speech.js`. Forced `utterance.lang = "ka-GE"`.
+- **Tesla-Grade Directional Acoustic Chimes (Web Audio API):**
+  - **Right Turn:** Ascending harmonic chime (A4 440Hz -> D5 587.3Hz).
+  - **Left Turn:** Descending harmonic chime (D5 587.3Hz -> A4 440Hz).
+  - **Arrival:** Celebratory triad arpeggio (C5 523Hz -> E5 659Hz -> G5 784Hz).
+  - **Alert/Traffic Signal:** Dual caution ping (F#5 740Hz).
+  - 100% autonomous, offline, zero-latency Web Audio API generation on any browser or Tesla MCU.
+- **Unit Testing:** Created `tests/test_speech.js` (6/6 PASS, 35/35 total suite PASS, 18/18 smoke PASS).
+
 
 
