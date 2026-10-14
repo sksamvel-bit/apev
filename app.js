@@ -179,6 +179,7 @@ function tuneVectorStyle(style) {
 
 async function loadStyleJson(styleKey) {
   if (styleKey === "google-roads") return googleRasterStyle("m", "google-roads");
+  if (styleKey === "google-sat") return googleRasterStyle("y", "google-sat");
   const ctrl = new AbortController();
   const timer = setTimeout(() => ctrl.abort(), 7000);
   try {
@@ -227,7 +228,8 @@ function fallbackToGoogleRoads(reason) {
 }
 
 function initMap() {
-  try { localStorage.removeItem("tesla_nav_map_style"); } catch (_) {}
+  const saved = localStorage.getItem("tesla_nav_map_style");
+  // Only the vector map is offered in the menu; Google raster is an emergency fallback (never restored from storage)
   currentMapStyle = "openfreemap";
 
   if (typeof maplibregl === "undefined") {
@@ -248,9 +250,10 @@ function initMap() {
     antialias: false,               // saves GPU on the Tesla MCU
     fadeDuration: 0,
     crossSourceCollisions: false,
-    dragRotate: true,
-    pitchWithRotate: true,
-    touchPitch: true,
+    dragRotate: false,              // car screen: an accidental rotate/pitch must never take the camera away from the car
+    pitchWithRotate: false,
+    touchPitch: false,
+    clickTolerance: 12,             // touch jitter below 12 px is a tap, not a drag
     pixelRatio: Math.min(window.devicePixelRatio || 1, 1.25)
   });
   window.map = map;
@@ -259,6 +262,7 @@ function initMap() {
   try {
     map.scrollZoom.enable({ around: "center" });
     map.touchZoomRotate.enable({ around: "center" });
+    map.touchZoomRotate.disableRotation();
   } catch (_) {}
 
   map.on("click", (e) => {
@@ -268,11 +272,15 @@ function initMap() {
     handleMapClick({ lat: e.lngLat.lat, lng: e.lngLat.lng });
   });
 
-  // User gestures switch off follow mode
-  map.on("dragstart", () => setFollowCarMode(false));
-  const manualGesture = () => {
-    if (currentMapOrientation !== "manual") setMapOrientation("manual");
-    setFollowCarMode(false);
+  // Only genuine gestures of the driver switch to manual mode (programmatic camera moves have no originalEvent and pass followCamera: true)
+  map.on("dragstart", (e) => { if (e && e.originalEvent) { setFollowCarMode(false); scheduleFollowResume(); } });
+  map.on("dragend", (e) => { if (e && e.originalEvent) scheduleFollowResume(); });
+  const manualGesture = (e) => {
+    if (e && e.originalEvent && !e.followCamera && currentMapOrientation !== "manual") {
+      setMapOrientation("manual");
+      setFollowCarMode(false);
+      scheduleFollowResume();
+    }
   };
   map.on("rotatestart", manualGesture);
   map.on("pitchstart", manualGesture);
@@ -303,6 +311,18 @@ function initMap() {
   window.onBeforeRouteFit = () => { setFollowCarMode(false); mapCamera.clearPadding(); };
 
   updateOrientationUI();
+}
+
+// After the driver pans the map and lets go, the camera returns to the car by itself (Waze/Google behaviour).
+// Not while a route preview is open (the driver is looking at the whole route).
+const FOLLOW_RESUME_MS = 8000;
+let followResumeTimer = null;
+function scheduleFollowResume() {
+  clearTimeout(followResumeTimer);
+  followResumeTimer = setTimeout(() => {
+    followResumeTimer = null;
+    if (!isFollowCar && !pendingDestination) recenterOnCar();
+  }, FOLLOW_RESUME_MS);
 }
 
 function createVehiclePuck() {
@@ -396,7 +416,7 @@ function setMapStyle(styleKey, opts = {}) {
 
   applyMapStyle(styleKey);
 
-  document.body.classList.remove("map-style-openfreemap", "map-style-google-roads");
+  document.body.classList.remove("map-style-openfreemap", "map-style-google-roads", "map-style-google-sat");
   document.body.classList.add(`map-style-${styleKey}`);
   document.querySelectorAll(".map-style-opt").forEach(opt => {
     opt.classList.toggle("active", opt.dataset.style === styleKey);
@@ -932,6 +952,7 @@ function updateGpsStatusQuality(accuracyMeters) {
 
 function setFollowCarMode(enabled) {
   isFollowCar = !!enabled;
+  if (isFollowCar) { clearTimeout(followResumeTimer); followResumeTimer = null; }
   const btn = document.getElementById("btn-follow-car");
   if (btn) btn.classList.toggle("active", isFollowCar);
   if (mapCamera) {
@@ -940,6 +961,8 @@ function setFollowCarMode(enabled) {
 }
 
 function recenterOnCar() {
+  clearTimeout(followResumeTimer);
+  followResumeTimer = null;
   setFollowCarMode(true);
   if (currentMapOrientation === "manual") {
     setMapOrientation("heading-up");
@@ -961,8 +984,13 @@ function recenterOnCar() {
         padding: { top: padTop, bottom: 0, left: 0, right: 0 },
         duration: 400
       });
-    } else if (map.panTo) {
-      map.panTo([currentPos.lat, currentPos.lng]);
+    } else if (map.jumpTo) {
+      map.jumpTo({
+        center: [currentPos.lng, currentPos.lat],
+        bearing: targetBearing,
+        pitch: targetPitch,
+        padding: { top: padTop, bottom: 0, left: 0, right: 0 }
+      }, { followCamera: true });
     }
   }
 

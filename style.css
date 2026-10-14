@@ -439,6 +439,21 @@ html, body {
   box-shadow: 0 0 8px var(--accent-amber);
 }
 
+.gps-dot.gps-exact {
+  background: #00e676;
+  box-shadow: 0 0 10px #00e676;
+}
+
+.gps-dot.gps-good {
+  background: #00d2ff;
+  box-shadow: 0 0 8px #00d2ff;
+}
+
+.gps-dot.gps-weak {
+  background: #ffab00;
+  box-shadow: 0 0 8px #ffab00;
+}
+
 @keyframes pulse-dot {
   0%, 100% { opacity: 1; transform: scale(1); }
   50% { opacity: 0.5; transform: scale(0.85); }

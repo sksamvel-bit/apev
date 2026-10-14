@@ -291,7 +291,7 @@
           this.pitch = this.map.getPitch();
         }
         const h = this.map.getContainer ? this.map.getContainer().clientHeight : 0;
-        const tpad = Math.round(h * this.padTopFraction);
+        const tpad = this.mode === "heading-up" ? Math.round(h * this.padTopFraction) : 0;
         if (Math.abs(tpad - this.padTop) > 0.5) {
           this.padTop += (tpad - this.padTop) * (1 - Math.exp(-dt / this.padTauMs));
           changed = true;
