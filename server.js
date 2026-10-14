@@ -16,9 +16,9 @@ process.on('unhandledRejection', e => console.error('[unhandled]', e && e.messag
 
 // AUDIT FIX: serve ONLY these files (no server.js, *.md, cache json)
 const STATIC_WHITELIST = new Set([
-  'index.html','remote.html','style.css','leaflet.css','leaflet.js','qrcode.min.js',
-  'maplibre-gl.js','maplibre-gl.css',
-  'app.js','routing.js','yandex.js','traffic.js','traffic-signals.js','chargers.js',
+  'index.html','remote.html','style.css','qrcode.min.js',
+  'maplibre-gl.js','maplibre-gl.css','map-gl.js',
+  'app.js','routing.js','traffic.js','traffic-signals.js','chargers.js',
   'battery.js','weather.js','speech.js','media-player.js','speed-limit.js',
   'manifest.json','icon.svg','icon-192.png','icon-512.png','sw.js'
 ]);

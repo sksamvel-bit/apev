@@ -1,6 +1,6 @@
 /**
  * Automotive Service Worker for Tesla Model 3 / Y Navigation
- * Cache Name tied directly to version: v3.9.0
+ * Cache Name tied directly to the app version (see CACHE_NAME below)
  * 
  * Automotive Strategies:
  * 1. Network-First for Navigation / HTML pages (index.html):
@@ -10,24 +10,24 @@
  * 4. skipWaiting + clients.claim for atomic instant updates without stale caches.
  */
 
-const CACHE_NAME = 'tesla-nav-v3.10.0';
+const CACHE_NAME = 'tesla-nav-v3.10.1';
 
 const PRECACHE_ASSETS = [
   '/',
   '/index.html',
-  '/style.css?v=3.10.0',
-  '/app.js?v=3.10.0',
-  '/speed-limit.js?v=3.10.0',
-  '/routing.js?v=3.10.0',
-  '/chargers.js?v=3.10.0',
-  '/traffic-signals.js?v=3.10.0',
-  '/traffic.js?v=3.10.0',
-  '/yandex.js?v=3.10.0',
-  '/weather.js?v=3.10.0',
-  '/battery.js?v=3.10.0',
-  '/media-player.js?v=3.10.0',
-  '/speech.js?v=3.10.0',
+  '/style.css?v=3.10.1',
+  '/app.js?v=3.10.1',
+  '/speed-limit.js?v=3.10.1',
+  '/routing.js?v=3.10.1',
+  '/chargers.js?v=3.10.1',
+  '/traffic-signals.js?v=3.10.1',
+  '/traffic.js?v=3.10.1',
+  '/weather.js?v=3.10.1',
+  '/battery.js?v=3.10.1',
+  '/media-player.js?v=3.10.1',
+  '/speech.js?v=3.10.1',
   '/maplibre-gl.js',
+  '/map-gl.js?v=3.10.1',
   '/maplibre-gl.css',
   '/qrcode.min.js',
   '/manifest.json',
@@ -71,6 +71,10 @@ self.addEventListener('fetch', (event) => {
   if (url.pathname.startsWith('/api/') || url.pathname.startsWith('/healthz')) {
     return;
   }
+
+  // Cross-origin (map style, vector/raster tiles, fonts, Overpass...): let the browser handle it natively.
+  // Routing hundreds of tile requests per minute through the service worker only adds latency and memory.
+  if (url.origin !== location.origin) return;
 
   // 1. Network-First strategy for HTML documents & navigation
   // Ensures user always gets the latest deployed index.html when online,

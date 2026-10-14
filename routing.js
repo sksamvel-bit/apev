@@ -13,8 +13,8 @@ class RoutingEngine {
     this.batteryEngine = batteryEngine;
 
     this.activeRoute = null;
-    this.routeLine = null;
-    this.routeLinePassed = null;
+    // Route geometry lives here (not only inside the map) so that it survives a map style switch
+    this.routeGeo = { upcoming: RoutingEngine.emptyGeo(), passed: RoutingEngine.emptyGeo() };
     this.steps = [];
     this.currentStepIndex = 0;
     this.isNavigating = false;
@@ -28,6 +28,43 @@ class RoutingEngine {
     this.avoidUnpaved = false;
     this.onArrival = null;
     this.onPositionUpdate = null;
+
+    this.registerMapLayers();
+  }
+
+  static emptyGeo() {
+    return { type: "FeatureCollection", features: [] };
+  }
+
+  static lineGeo(latlngs) {
+    if (!latlngs || latlngs.length < 2) return RoutingEngine.emptyGeo();
+    return {
+      type: "Feature",
+      properties: {},
+      geometry: { type: "LineString", coordinates: latlngs.map(p => [p[1], p[0]]) }
+    };
+  }
+
+  /** Route line layers (MapLibre). Registered once; re-injected by the layer registry after every style switch. */
+  registerMapLayers() {
+    const reg = typeof window !== "undefined" ? window.layerRegistry : null;
+    if (!reg) return;
+    const round = { "line-cap": "round", "line-join": "round" };
+    reg.register("route", {
+      where: "labels",
+      sources: () => ({
+        "route-passed-source": { type: "geojson", data: this.routeGeo.passed },
+        "route-source": { type: "geojson", data: this.routeGeo.upcoming }
+      }),
+      layers: () => [
+        { id: "route-passed-line", type: "line", source: "route-passed-source", layout: round,
+          paint: { "line-color": "#64748b", "line-width": 5, "line-opacity": 0.6 } },
+        { id: "route-casing", type: "line", source: "route-source", layout: round,
+          paint: { "line-color": "#003b66", "line-width": 10, "line-opacity": 0.75 } },
+        { id: "route-line", type: "line", source: "route-source", layout: round,
+          paint: { "line-color": "#00d2ff", "line-width": 6, "line-opacity": 0.95 } }
+      ]
+    });
   }
 
   setAvoidUnpaved(avoid) {
@@ -133,42 +170,18 @@ class RoutingEngine {
     this.arrivalFired = false;
 
     // Render route on map
-    if (this.map && typeof this.map.getSource === "function") {
-      this.updateMapLibreRoute(latlngs, []);
-    } else if (typeof L !== "undefined" && typeof L.polyline === "function") {
-      // Passed path (subtle slate gray behind vehicle)
-      this.routeLinePassed = L.polyline([], {
-        color: "#64748b",
-        weight: 6,
-        opacity: 0.5,
-        lineCap: "round",
-        lineJoin: "round"
-      }).addTo(this.map);
+    this.setRouteData(latlngs, []);
 
-      // Upcoming glowing guide path
-      this.routeLine = L.polyline(latlngs, {
-        color: "#00d2ff",
-        weight: 6,
-        opacity: 0.9,
-        lineCap: "round",
-        lineJoin: "round"
-      }).addTo(this.map);
-    }
-
-    // Fit bounds nicely with padding for HUD card
-    if (opts.fit !== false && this.map) { // reroute passes fit:false so driving zoom is kept
-      if (typeof this.map.getSource === "function") {
-        const bounds = this.getLngLatBounds(geojsonCoords);
-        if (bounds && typeof this.map.fitBounds === "function") {
-          this.map.fitBounds(bounds, {
-            padding: { top: 40, bottom: 40, left: 420, right: 40 },
-            duration: 1000
-          });
-        }
-      } else if (this.routeLine && typeof this.map.fitBounds === "function") {
-        this.map.fitBounds(this.routeLine.getBounds(), {
-          paddingTopLeft: [420, 40],
-          paddingBottomRight: [40, 40]
+    // Fit bounds nicely with padding for the preview card. Not when navigation starts right away
+    // (the camera follows the car) and not for a reroute (opts.fit === false keeps the driving zoom).
+    if (opts.fit !== false && !autoStart && this.map && typeof this.map.fitBounds === "function") {
+      if (typeof window !== "undefined" && typeof window.onBeforeRouteFit === "function") window.onBeforeRouteFit();
+      const bounds = this.getLngLatBounds(geojsonCoords);
+      if (bounds) {
+        this.map.fitBounds(bounds, {
+          padding: { top: 40, bottom: 40, left: 420, right: 40 },
+          duration: 800,
+          maxZoom: 17
         });
       }
     }
@@ -182,12 +195,8 @@ class RoutingEngine {
     this.updateRouteSummary({ lat: start.lat, lng: start.lng });
 
     // Fetch additional traffic signals along route bounds
-    if (this.trafficSignalsEngine) {
-      if (typeof this.trafficSignalsEngine.fetchSignalsAlongRoute === "function") {
-        this.trafficSignalsEngine.fetchSignalsAlongRoute(latlngs);
-      } else {
-        this.trafficSignalsEngine.fetchSignalsForBounds(this.routeLine.getBounds());
-      }
+    if (this.trafficSignalsEngine && typeof this.trafficSignalsEngine.fetchSignalsAlongRoute === "function") {
+      this.trafficSignalsEngine.fetchSignalsAlongRoute(latlngs);
     }
 
     if (autoStart) {
@@ -359,37 +368,22 @@ class RoutingEngine {
       // Dynamically trim polylines: passed part is gray, upcoming part is cyan
       // OPTIMIZATION: only rebuild and redraw if segment advanced or vehicle moved > 15m
       // Prevents 10,000 throwaway array objects/sec and continuous canvas repaints on Intel Atom
-      const isMapLibre = this.map && typeof this.map.getSource === "function";
-      const hasLeafletLines = this.routeLine && this.routeLinePassed;
+      const segChanged = bestSegIndex !== this.lastTrimSegIndex;
+      let movedEnough = true;
+      if (!segChanged && this.lastTrimPos) {
+        const dLat = Math.abs(currentLatLng.lat - this.lastTrimPos.lat);
+        const dLng = Math.abs(currentLatLng.lng - this.lastTrimPos.lng);
+        if (dLat < 0.00012 && dLng < 0.00015) movedEnough = false; // ~15m
+      }
 
-      if (isMapLibre || hasLeafletLines) {
-        const segChanged = bestSegIndex !== this.lastTrimSegIndex;
-        let movedEnough = true;
-        if (!segChanged && this.lastTrimPos) {
-          const dLat = Math.abs(currentLatLng.lat - this.lastTrimPos.lat);
-          const dLng = Math.abs(currentLatLng.lng - this.lastTrimPos.lng);
-          if (dLat < 0.00012 && dLng < 0.00015) movedEnough = false; // ~15m
-        }
+      if (segChanged || movedEnough) {
+        this.lastTrimSegIndex = bestSegIndex;
+        this.lastTrimPos = { lat: currentLatLng.lat, lng: currentLatLng.lng };
 
-        if (segChanged || movedEnough) {
-          this.lastTrimSegIndex = bestSegIndex;
-          this.lastTrimPos = { lat: currentLatLng.lat, lng: currentLatLng.lng };
-
-          const passedPart = coords.slice(0, bestSegIndex + 1);
-          passedPart.push([currentLatLng.lat, currentLatLng.lng]);
-          const upcomingPart = [[currentLatLng.lat, currentLatLng.lng], ...coords.slice(bestSegIndex + 1)];
-
-          if (isMapLibre) {
-            this.updateMapLibreRoute(upcomingPart, passedPart);
-          } else {
-            if (this.routeLinePassed && typeof this.routeLinePassed.setLatLngs === "function") {
-              this.routeLinePassed.setLatLngs(passedPart);
-            }
-            if (this.routeLine && typeof this.routeLine.setLatLngs === "function") {
-              this.routeLine.setLatLngs(upcomingPart);
-            }
-          }
-        }
+        const passedPart = coords.slice(0, bestSegIndex + 1);
+        passedPart.push([currentLatLng.lat, currentLatLng.lng]);
+        const upcomingPart = [[currentLatLng.lat, currentLatLng.lng], ...coords.slice(bestSegIndex + 1)];
+        this.setRouteData(upcomingPart, passedPart);
       }
 
       // Off-route check: > 38 meters deviation for 3 consecutive GPS updates
@@ -549,17 +543,7 @@ class RoutingEngine {
     this.offRouteStrikes = 0;
     this.isRerouting = false;
     this.lastClosestIndex = 0;
-    if (this.map && typeof this.map.getSource === "function") {
-      this.clearMapLibreRoute();
-    }
-    if (this.routeLine && this.map && typeof this.map.removeLayer === "function") {
-      this.map.removeLayer(this.routeLine);
-      this.routeLine = null;
-    }
-    if (this.routeLinePassed && this.map && typeof this.map.removeLayer === "function") {
-      this.map.removeLayer(this.routeLinePassed);
-      this.routeLinePassed = null;
-    }
+    this.setRouteData([], []);
     if (this.trafficEngine) {
       this.trafficEngine.clearRouteTraffic();
     }
@@ -567,41 +551,15 @@ class RoutingEngine {
     this.steps = [];
   }
 
-  updateMapLibreRoute(upcomingLatLngs, passedLatLngs) {
+  /** Store the route geometry and push it to the map when the sources exist (they do not during a style switch). */
+  setRouteData(upcomingLatLngs, passedLatLngs) {
+    this.routeGeo.upcoming = RoutingEngine.lineGeo(upcomingLatLngs);
+    this.routeGeo.passed = RoutingEngine.lineGeo(passedLatLngs);
     if (!this.map || typeof this.map.getSource !== "function") return;
-    const upcomingSource = this.map.getSource("route-source");
-    const passedSource = this.map.getSource("route-passed-source");
-
-    const upcomingGeo = {
-      type: "Feature",
-      geometry: {
-        type: "LineString",
-        coordinates: (upcomingLatLngs || []).map(p => [p[1], p[0]])
-      }
-    };
-    const passedGeo = {
-      type: "Feature",
-      geometry: {
-        type: "LineString",
-        coordinates: (passedLatLngs || []).map(p => [p[1], p[0]])
-      }
-    };
-
-    if (upcomingSource && typeof upcomingSource.setData === "function") {
-      upcomingSource.setData(upcomingGeo);
-    }
-    if (passedSource && typeof passedSource.setData === "function") {
-      passedSource.setData(passedGeo);
-    }
-  }
-
-  clearMapLibreRoute() {
-    if (!this.map || typeof this.map.getSource !== "function") return;
-    const emptyGeo = { type: "FeatureCollection", features: [] };
-    const upcomingSource = this.map.getSource("route-source");
-    const passedSource = this.map.getSource("route-passed-source");
-    if (upcomingSource && typeof upcomingSource.setData === "function") upcomingSource.setData(emptyGeo);
-    if (passedSource && typeof passedSource.setData === "function") passedSource.setData(emptyGeo);
+    const up = this.map.getSource("route-source");
+    const pa = this.map.getSource("route-passed-source");
+    if (up && typeof up.setData === "function") up.setData(this.routeGeo.upcoming);
+    if (pa && typeof pa.setData === "function") pa.setData(this.routeGeo.passed);
   }
 
   getLngLatBounds(coords) {

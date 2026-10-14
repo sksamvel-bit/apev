@@ -1,7 +1,7 @@
 # 🚀 Tesla In-Car Navigation (Georgia) — Master Agent Handover Guide
 
 > **Target Audience:** Future AI Agents, Engineers, and Auditors.  
-> **Status as of October 13, 2026:** Production Ready, Optimized for Tesla MCU Chromium Browser, Version **v3.9.7**.  
+> **Status as of October 14, 2026:** Production Ready, Optimized for Tesla MCU Chromium Browser, Version **v3.10.1**.  
 > **Primary URL:** `http://localhost:3000` (Local) / `http://192.168.111.25:3000` (In-car WiFi/Hotspot) / `https://apev.onrender.com` (Cloud).  
 > **Repository Location:** `D:\Projects\Tesla Model 3\tesla-nav`  
 > **Backup Directory:** `D:\Projects\Tesla Model 3\tesla-nav-backup`  
@@ -100,6 +100,15 @@ This application provides a native-feeling, zero-lag, 60 FPS web navigation syst
     * Removed blocking `body.orientation-north-up #map { transform: rotate(0deg) !important; }` CSS rule.
     * Touch/click un-projection hook on `map.mouseEventToContainerPoint` generalized to all non-zero rotations (`currentMapRotation !== 0`).
     * Automated tests in `tests/test_heading.js` (12/12 PASS) asserting incremental wrap-around math.
+* **6.18 Migration to MapLibre GL JS & OpenFreeMap 3D Vector Engine (v3.10.1):**
+  * **Driver Problem:** Raster tiles (Google Maps / Leaflet) have street names baked into fixed PNG pixels. When the camera rotates in Heading-Up mode, text appears upside-down or diagonally unreadable. Tilting and rotating heavy raster DOM elements also choked the Tesla MCU2 Intel Atom GPU.
+  * **Solution:**
+    * Completely migrated map engine from Leaflet to **MapLibre GL JS (v3.10.1)** and OpenFreeMap 3D vector tiles (`liberty` style) via `map-gl.js`.
+    * **Dynamic Vector Text Rotation:** Vector symbol layers render street labels with `text-rotation-alignment: viewport` and line placement, ensuring Georgian street names (`name:ka` > `name`) always remain perfectly upright, horizontal, and legible at any camera rotation angle.
+    * **Automotive 3D Heading-Up Navigation:** Smooth 45° camera pitch, vehicle positioned in the lower third (`padding: { top: 120 }`), dead-reckoning extrapolation (60 FPS vehicle glide between 1Hz GPS updates), and shortest-arc bearing smoothing.
+    * **Layer & Subsystem Continuity:** Subsystems (route polylines, EV chargers, traffic signals, TomTom live traffic) register their GeoJSON sources and styles through `map-gl.js` LayerRegistry; when switching styles (OpenFreeMap 3D <-> Google Roads <-> Google Satellite), all layers are cleanly re-injected underneath symbols.
+    * **Complete Purge of Leaflet and Yandex:** Purged `leaflet.js`, `leaflet.css`, and `yandex.js` (exposed API key revoked). Zero external CDN or raster dependencies for core vector rendering.
+    * Automated unit tests added in `tests/test_map_gl.js`, `tests/test_traffic_signals.js`, and `tests/test_signals_integration.js` (15/15 test suites passing).
 
 ---
 
@@ -107,11 +116,11 @@ This application provides a native-feeling, zero-lag, 60 FPS web navigation syst
 
 ```
 tesla-nav/
-├── index.html           # Main HUD UI, map container, overlays, modals, SVG icons (v=3.7.0)
-├── style.css            # Dark UI theme, 0-blur high performance rules, zoom lockstep CSS
-├── app.js               # Central coordinator (map setup, GPS tracking, styling, UI events)
+├── index.html           # Main HUD UI, MapLibre container, overlays, modals, SVG icons (v=3.10.1)
+├── style.css            # Dark UI theme, 0-blur high performance rules, MapLibre GL styling
+├── app.js               # Central coordinator (MapLibre setup, GPS tracking, styling, UI events)
+├── map-gl.js            # MapLibre abstraction layer (camera smoothing, dead reckoning, layer registry)
 ├── routing.js           # OSRM dual-server routing, progress tracking, advance voice prompts
-├── yandex.js            # Yandex JS API v2.1 lazy-loader, live traffic layer, traffic score
 ├── chargers.js          # Live 650+ EV charger markers, connector filters, 1-click route
 ├── battery.js           # Official Tesla 2018-2023 Model 3/Y specs & SoC trip calculator
 ├── weather.js           # Open-Meteo live weather client
@@ -124,49 +133,50 @@ tesla-nav/
 ├── sw.js                # Service Worker for instant PWA caching & R-gear instant reload
 ├── remote.html          # Smartphone web companion (QR code target, search, voice dictation)
 ├── chargers-cache.json  # 650+ cached charging stations across Georgia
-├── leaflet.js / .css    # Offline local Leaflet library (v1.9.4)
 ├── qrcode.min.js        # Offline QR code generator
 └── tests/
-    ├── test_routing.js          # Navigation engine automated unit tests (9 assertions)
-    ├── test_speed_limit.js      # Speed limit fallback & corridor unit tests (13 assertions)
-    ├── test_speed_limit_osm.js  # OSM Overpass grid & road snapping unit tests (22 assertions)
-    ├── test_heading.js          # Automotive heading, COG & 360 rotation tests (12 assertions)
-    ├── check_versions.js        # Version sync check across all manifests and HTML
-    └── smoke_server.js          # 18-point server security & regression test suite
+    ├── test_routing.js              # Navigation engine automated unit tests
+    ├── test_speed_limit.js          # Speed limit fallback & corridor unit tests
+    ├── test_speed_limit_osm.js      # OSM Overpass grid & road snapping unit tests
+    ├── test_heading.js              # Automotive heading, COG & 360 rotation tests
+    ├── test_traffic_signals.js      # Traffic signals Overpass tile query tests
+    ├── test_signals_integration.js  # Signals integration & route prefetch tests
+    ├── test_youtube_parse.js        # YouTube parser tests
+    ├── test_map_gl.js               # MapLibre GL abstraction, camera & dead reckoning tests
+    ├── check_version.js             # Version sync check across all manifests and HTML
+    └── smoke_server.js              # 18-point server security & regression test suite
 ```
 
 ---
 
 ## 4. Key Rules for Any Future Modification
-1. **Never break Touch Propagation:** Overlay elements MUST have `L.DomEvent.disableClickPropagation(el)` and `button svg { pointer-events: none; }`.
+1. **Never break Touch Propagation:** Overlay elements MUST stop propagation to prevent unintentional map panning (`e.stopPropagation()` and `button svg { pointer-events: none; }`).
 2. **Never use `backdrop-filter: blur()`:** It causes severe GPU stuttering on Tesla MCU Chromium.
 3. **Driving Safety & Media:** YouTube playback while driving is enabled by user configuration (`DRIVING_LOCKOUT = false`), with an explicit driver safety disclaimer.
-4. **Keep Leaflet Zoom Animation Dynamic:**
-   * On Yandex Map: `map.options.zoomAnimation = false; map._zoomAnimated = false;` (otherwise icons float and lag behind).
-   * On Google Maps: `map.options.zoomAnimation = true; map._zoomAnimated = true;` (smooth tile zoom).
+4. **MapLibre Layer Registry:** Always add custom layers via `map-gl.js` layer registry (`ensureCustomLayers()`) so they persist seamlessly across style switches (Vector 3D / Google Roads / Satellite).
 5. **Keep OSRM Dual-Server Fallback:** Public demo servers may experience rate limits; dual servers ensure 100% uptime.
 6. **Cache Busting:** Always increment `?v=X.X.X` in `index.html` when modifying CSS or JS, because Tesla Chromium caches aggressively.
 7. **Server Port:** Runs on port 3000 (`node server.js`).
 8. **Working Location Rule:** All modifications must be executed strictly within `D:\Projects\Tesla Model 3\tesla-nav`. Do NOT use `C:\...scratch`.
-9. **Orientation Default:** `currentMapOrientation` defaults to `north-up` to guarantee all raster street labels remain horizontal and readable.
-151: 
-152: ---
-153: 
-154: ## 5. Verification Commands for Auditors & Agents
-155: To verify the application:
-156: 1. Run automated test suite:
-157:    ```bash
-158:    npm test          # 48/48 unit tests (Routing + Speed limits + OSM Overpass + Heading + 360)
-159:    ```
-160: 2. Verify version consistency:
-161:    ```bash
-162:    npm run check     # Verifies v3.9.7 across package.json, index.html, sw.js
-163:    ```
-164: 3. Run security and regression smoke tests:
-165:    ```bash
-166:    npm run smoke     # 18/18 server security tests (PIN auth, rate-limit, path traversal, SSE)
-167:    ```
-168: 4. Verify JS syntax:
-169:    ```bash
-170:    node --check app.js yandex.js routing.js chargers.js battery.js server.js media-player.js speed-limit.js
-171:    ```
+9. **Native Heading-Up Navigation:** Vector tiles natively support continuous heading-up rotation and 45° 3D pitch while street labels remain horizontal and readable.
+
+---
+
+## 5. Verification Commands for Auditors & Agents
+To verify the application:
+1. Run automated test suite:
+   ```bash
+   npm test          # All test suites (Routing + Speed limits + OSM Overpass + Heading + Signals + YouTube + Map-GL)
+   ```
+2. Verify version consistency:
+   ```bash
+   npm run check     # Verifies v3.10.1 across package.json, index.html, sw.js
+   ```
+3. Run security and regression smoke tests:
+   ```bash
+   npm run smoke     # 18/18 server security tests (PIN auth, rate-limit, path traversal, SSE)
+   ```
+4. Verify JS syntax:
+   ```bash
+   node --check app.js map-gl.js routing.js chargers.js battery.js server.js media-player.js speed-limit.js traffic-signals.js traffic.js
+   ```

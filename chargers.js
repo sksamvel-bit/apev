@@ -8,22 +8,19 @@
  * (which causes severe frame-rate drops on Intel Atom MCU2), this engine maintains
  * the station database in memory and dynamically renders only visible stations
  * within the map viewport (typically 10-30 markers).
+ *
+ * MapLibre: markers are DOM elements pinned to the screen (rotationAlignment/pitchAlignment "viewport"),
+ * so they stay upright whatever the map bearing is.
  */
 
 const CURATED_CHARGERS = [];
 
 class ChargersEngine {
-  constructor(map, onRouteToCharger, startEnabled = false) {
+  constructor(map, onRouteToCharger, startEnabled = true) {
     this.map = map;
     this.onRouteToCharger = onRouteToCharger;
-    this.layerGroup = (typeof L !== "undefined" && typeof L.layerGroup === "function")
-      ? L.layerGroup()
-      : { addTo() { return this; }, addLayer() {}, removeLayer() {}, clearLayers() {} };
-    if (startEnabled && map && typeof this.layerGroup.addTo === "function") {
-      this.layerGroup.addTo(map);
-    }
     this.chargers = [];
-    this.activeMarkers = new Map(); // key -> L.marker
+    this.activeMarkers = new Map(); // key -> maplibregl.Marker
     this.isEnabled = !!startEnabled;
     this.cachedKeys = new Set();
 
@@ -33,10 +30,12 @@ class ChargersEngine {
     // Auto-sync live chargers periodically (every 15 mins)
     setInterval(() => this.fetchLiveChargers(), 15 * 60 * 1000);
 
-    // Update rendered markers on map panning/zooming
+    // Update rendered markers on map panning/zooming. 'moveend' also fires every frame while the camera follows
+    // the car, so this is throttled (first call arms a timer, later ones are ignored until it fires).
     if (this.map) {
-      this.map.on("moveend zoomend", () => {
-        if (this.isEnabled) this.updateVisibleMarkers();
+      this.map.on("moveend", () => {
+        if (!this.isEnabled || this._viewTimer) return;
+        this._viewTimer = setTimeout(() => { this._viewTimer = null; this.updateVisibleMarkers(); }, 400);
       });
     }
   }
@@ -63,33 +62,31 @@ class ChargersEngine {
     }
   }
 
-  createChargerIcon(power) {
+  createChargerElement(power) {
     const isUltraFast = power && (power.includes("120") || power.includes("150") || power.includes("160"));
     const glowColor = isUltraFast ? "#10b981" : "#00d2ff";
 
-    return L.divIcon({
-      className: 'ev-charger-custom-marker',
-      html: `
-        <div style="
-          width: 24px;
-          height: 24px;
-          background: #0f172a;
-          border: 1.8px solid ${glowColor};
-          border-radius: 50%;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          box-shadow: 0 0 8px ${glowColor}60;
-          cursor: pointer;
-        ">
-          <svg viewBox="0 0 24 24" width="13" height="13" fill="${glowColor}">
-            <path d="M11 21h-1l1-7H7.5c-.58 0-.57-.32-.38-.66.19-.34.05-.08.07-.12C8.48 10.94 10.42 7.54 13 3h1l-1 7h3.5c.49 0 .56.33.47.51l-.07.15-5.9 10.34z"/>
-          </svg>
-        </div>
-      `,
-      iconSize: [24, 24],
-      iconAnchor: [12, 12]
-    });
+    const el = document.createElement("div");
+    el.className = "ev-charger-custom-marker";
+    el.innerHTML = `
+      <div style="
+        width: 28px;
+        height: 28px;
+        background: #0f172a;
+        border: 2px solid ${glowColor};
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        box-shadow: 0 0 8px ${glowColor}60;
+        cursor: pointer;
+      ">
+        <svg viewBox="0 0 24 24" width="15" height="15" fill="${glowColor}">
+          <path d="M11 21h-1l1-7H7.5c-.58 0-.57-.32-.38-.66.19-.34.05-.08.07-.12C8.48 10.94 10.42 7.54 13 3h1l-1 7h3.5c.49 0 .56.33.47.51l-.07.15-5.9 10.34z"/>
+        </svg>
+      </div>
+    `;
+    return el;
   }
 
   addCharger(lat, lon, name, power = "50 kW", type = "CCS2", operator = "EV Network", price = null, hours = null) {
@@ -116,11 +113,6 @@ class ChargersEngine {
   }
 
   createMarkerInstance(st) {
-    const marker = L.marker([st.lat, st.lon], {
-      icon: this.createChargerIcon(st.power),
-      zIndexOffset: 500
-    });
-
     const e = window.escapeHtml || (v => String(v == null ? "" : v).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c])));
     const safeName = e(st.name);
     const safePower = e(st.power);
@@ -129,7 +121,6 @@ class ChargersEngine {
     const safePrice = st.price ? e(st.price) : null;
     const safeHours = st.hours ? e(st.hours) : null;
 
-    const safeBtnId = `route-to-charger-btn-${st.key.replace(/[.,]/g, '_')}`;
     const popupEl = document.createElement("div");
     popupEl.style.minWidth = "240px";
     popupEl.innerHTML = `
@@ -143,42 +134,43 @@ class ChargersEngine {
         ${safePrice ? `<div><strong>ტარიფი:</strong> <span style="color:#fbbf24; font-weight:700;">${safePrice}</span></div>` : ''}
         ${safeHours ? `<div><strong>სამუშაო საათები:</strong> ${safeHours}</div>` : ''}
       </div>
-      <button class="popup-dest-btn" style="background: linear-gradient(135deg, #059669, #10b981);" id="${safeBtnId}">
+      <button class="popup-dest-btn" style="background: linear-gradient(135deg, #059669, #10b981);">
         ⚡ აქ დამუხტვა (Route)
       </button>
     `;
 
-    marker.bindPopup(popupEl);
+    const popup = new maplibregl.Popup({ offset: 20, closeButton: true, maxWidth: "320px" }).setDOMContent(popupEl);
+    const btn = popupEl.querySelector("button");
+    btn.onclick = () => {
+      popup.remove();
+      if (this.onRouteToCharger) this.onRouteToCharger({ lat: st.lat, lng: st.lon, name: st.name, address: st.name });
+    };
 
-    marker.on("popupopen", () => {
-      const btn = document.getElementById(safeBtnId);
-      if (btn && this.onRouteToCharger) {
-        btn.onclick = () => {
-          marker.closePopup();
-          this.onRouteToCharger({ lat: st.lat, lng: st.lon, name: st.name, address: st.name });
-        };
-      }
-    });
-
-    return marker;
+    return new maplibregl.Marker({
+      element: this.createChargerElement(st.power),
+      anchor: "center",
+      rotationAlignment: "viewport",
+      pitchAlignment: "viewport"
+    }).setLngLat([st.lon, st.lat]).setPopup(popup);
   }
 
   // Viewport Culling: Only render markers that are inside the visible map area
   updateVisibleMarkers() {
     if (!this.isEnabled || !this.map) return;
 
-    let bounds;
+    let b;
     try {
-      bounds = this.map.getBounds().pad(0.12); // viewport + 12% padding
+      b = this.map.getBounds();
     } catch (e) {
       return;
     }
 
-    const zoom = this.map.getZoom();
-    const south = bounds.getSouth();
-    const north = bounds.getNorth();
-    const west = bounds.getWest();
-    const east = bounds.getEast();
+    const zoom = this.map.getZoom() + 1; // Leaflet-equivalent zoom (MapLibre uses 512 px tiles)
+    const padLat = (b.getNorth() - b.getSouth()) * 0.12, padLng = (b.getEast() - b.getWest()) * 0.12; // viewport + 12%
+    const south = b.getSouth() - padLat;
+    const north = b.getNorth() + padLat;
+    const west = b.getWest() - padLng;
+    const east = b.getEast() + padLng;
 
     // Few, relevant markers only: nearest to the map centre first (not array order), fast chargers first.
     // Old code rendered up to 60 and the first 60 in array order, which flooded the night map.
@@ -201,28 +193,30 @@ class ChargersEngine {
       if (!this.activeMarkers.has(st.key)) {
         const marker = this.createMarkerInstance(st);
         this.activeMarkers.set(st.key, marker);
-        this.layerGroup.addLayer(marker);
+        marker.addTo(this.map);
       }
     }
 
     // Remove markers that are no longer inside the viewport
     for (const [key, marker] of this.activeMarkers.entries()) {
       if (!currentlyVisible.has(key)) {
-        this.layerGroup.removeLayer(marker);
+        marker.remove();
         this.activeMarkers.delete(key);
       }
     }
   }
 
+  clearMarkers() {
+    for (const marker of this.activeMarkers.values()) marker.remove();
+    this.activeMarkers.clear();
+  }
+
   toggle() {
     this.isEnabled = !this.isEnabled;
     if (this.isEnabled) {
-      this.layerGroup.addTo(this.map);
       this.updateVisibleMarkers();
     } else {
-      this.layerGroup.clearLayers();
-      this.activeMarkers.clear();
-      this.map.removeLayer(this.layerGroup);
+      this.clearMarkers();
     }
     return this.isEnabled;
   }

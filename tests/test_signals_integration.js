@@ -6,9 +6,6 @@ const ok = (c, m) => { if (!c) fails++; console.log((c ? 'PASS' : 'FAIL') + '  '
 const store = {};
 global.localStorage = { getItem: k => (k in store ? store[k] : null), setItem: (k, v) => { store[k] = String(v); } };
 global.window = { showToast() {} };
-const lg = () => { const g = { layers: new Set(), addTo() { return g; }, addLayer(m) { g.layers.add(m); }, removeLayer(m) { g.layers.delete(m); } }; return g; };
-const polyline = () => ({ addTo() { return this; }, setLatLngs() {}, getBounds() { return { getSouth: () => 0, getWest: () => 0, getNorth: () => 1, getEast: () => 1 }; } });
-global.L = { layerGroup: lg, marker: () => ({ bindPopup() { return this; } }), divIcon: o => o, polyline };
 vm.runInThisContext(fs.readFileSync(__dirname + '/../routing.js', 'utf8'));
 vm.runInThisContext(fs.readFileSync(__dirname + '/../traffic-signals.js', 'utf8'));
 
@@ -28,10 +25,9 @@ global.fetch = async (url) => {
 };
 
 (async () => {
-  const sigEngine = new window.TrafficSignalsEngine({ on() {}, getZoom: () => 10, getBounds: () => null, removeLayer() {} });
-  let boundsCalls = 0; const origBounds = sigEngine.fetchSignalsForBounds.bind(sigEngine);
-  sigEngine.fetchSignalsForBounds = (...a) => { boundsCalls++; return origBounds(...a); };
-  const eng = new window.RoutingEngine({ fitBounds() {}, removeLayer() {} }, null, sigEngine, { speak() {} }, null);
+  const sigEngine = new window.TrafficSignalsEngine({ on() {}, getZoom: () => 9, getBounds: () => null });
+  const boundsCalls = 0;
+  const eng = new window.RoutingEngine({ fitBounds() {}, getSource() { return null; }, getLayer() { return null; } }, null, sigEngine, { speak() {} }, null);
   eng.onManeuverUpdate = () => {}; eng.onSummaryUpdate = () => {};
   await eng.calculateRoute({ lat: A, lng: B }, { lat: A + 1500 * M, lng: B }, true);
   await new Promise(r => setTimeout(r, 50));

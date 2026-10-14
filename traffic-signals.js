@@ -11,28 +11,30 @@
  * Alerts: only signals that are (a) ahead (+-50 deg of heading) and (b) ON the active route (<= 30 m from the route line),
  * so signals on parallel / crossing streets do not trigger "signal in 150 m".
  *
- * Map markers: data is kept per tile; DOM markers are created only for the visible area (zoom >= 15, max 150).
+ * Map rendering (MapLibre): the visible signals (zoom >= 15 in Leaflet terms = 14 in MapLibre, max 150) are one GeoJSON
+ * source drawn by a symbol layer: GPU rendered, icons stay upright whatever the map rotation/pitch is.
+ * The source/layer are registered in window.layerRegistry, so they survive a map style switch.
  */
 
 const SIGNALS_STORAGE_KEY = "sig_tiles_v1";
+const SIGNALS_SOURCE_ID = "signals-src";
+const SIGNALS_LAYER_ID = "signals-layer";
+const SIGNALS_ICON_ID = "signal-icon";
 
 class TrafficSignalsEngine {
   constructor(map, startEnabled = true) {
     this.map = map;
-    this.layerGroup = (typeof L !== "undefined" && typeof L.layerGroup === "function")
-      ? L.layerGroup()
-      : { addTo() { return this; }, addLayer() {}, removeLayer() {}, clearLayers() {} };
     this.isEnabled = !!startEnabled;
-    if (this.isEnabled && map && typeof this.layerGroup.addTo === "function") {
-      this.layerGroup.addTo(map);
-    }
+    this.geo = { type: "FeatureCollection", features: [] };  // signals currently drawn
+    this._geoKey = "";
+    this.popup = null;
 
     this.endpoints = ["https://overpass-api.de/api/interpreter", "https://overpass.kumi.systems/api/interpreter"];
     this.tileLat = 0.01;    // ~1.1 km
     this.tileLng = 0.014;   // ~1.0 km at Georgia's latitudes
     this.maxTiles = 60;
     this.ttlMs = 14 * 24 * 3600 * 1000;
-    this.minRenderZoom = 15;
+    this.minRenderZoom = 15;      // Leaflet-equivalent zoom (MapLibre zoom + 1)
     this.maxRenderMarkers = 150;
     this.routeCorridorMeters = 30;
 
@@ -40,12 +42,14 @@ class TrafficSignalsEngine {
     this.pending = new Map();  // "i,j" -> Promise
     this.failCount = 0;
     this.failUntil = 0;
-    this.markers = new Map();  // "lat,lon" -> L.marker
     this.fetchFn = (...a) => fetch(...a); // injectable for tests
 
     this.loadPersisted();
+    this.registerMapLayers();
     if (map && typeof map.on === "function") {
-      map.on("moveend zoomend", () => this.scheduleViewport());
+      map.on("moveend", () => this.scheduleViewport());
+      // setStyle() drops images: MapLibre asks for the icon again when a layer needs it
+      map.on("styleimagemissing", (e) => { if (e.id === SIGNALS_ICON_ID) this.addIcon(); });
     }
     this.scheduleViewport();
   }
@@ -178,19 +182,6 @@ class TrafficSignalsEngine {
     return this.queueTiles([...order.values()]);
   }
 
-  /** Legacy API: tiles intersecting a Leaflet bounds object (only when the area is small). */
-  fetchSignalsForBounds(bounds) {
-    const i0 = Math.floor(bounds.getSouth() / this.tileLat), i1 = Math.floor(bounds.getNorth() / this.tileLat);
-    const j0 = Math.floor(bounds.getWest() / this.tileLng), j1 = Math.floor(bounds.getEast() / this.tileLng);
-    const list = [];
-    for (let i = i0; i <= i1; i++) for (let j = j0; j <= j1; j++) list.push([i, j]);
-    if (list.length > 12) {
-      const ci = Math.floor((i0 + i1) / 2), cj = Math.floor((j0 + j1) / 2);
-      return this.queueTiles([[ci, cj]]);
-    }
-    return this.queueTiles(list);
-  }
-
   // ----------------------------------------------------- persistence
   loadPersisted() {
     try {
@@ -222,22 +213,72 @@ class TrafficSignalsEngine {
   }
 
   // --------------------------------------------------- map rendering
+  registerMapLayers() {
+    const reg = typeof window !== "undefined" ? window.layerRegistry : null;
+    if (!reg) return;
+    reg.register("signals", {
+      sources: () => ({ [SIGNALS_SOURCE_ID]: { type: "geojson", data: this.geo } }),
+      layers: () => [{
+        id: SIGNALS_LAYER_ID,
+        type: "symbol",
+        source: SIGNALS_SOURCE_ID,
+        layout: {
+          "icon-image": SIGNALS_ICON_ID,
+          "icon-allow-overlap": true,
+          "icon-ignore-placement": true,
+          "icon-pitch-alignment": "viewport",
+          "icon-rotation-alignment": "viewport",
+          visibility: this.isEnabled ? "visible" : "none"
+        }
+      }]
+    });
+  }
+
+  /** Draws the traffic-light pin (dark disc, grey ring, three lamps) as a 2x bitmap. */
+  addIcon() {
+    if (!this.map || typeof this.map.addImage !== "function" || typeof document === "undefined") return;
+    if (typeof this.map.hasImage === "function" && this.map.hasImage(SIGNALS_ICON_ID)) return;
+    const S = 44, c = document.createElement("canvas");
+    c.width = c.height = S;
+    const g = c.getContext("2d");
+    g.beginPath(); g.arc(S / 2, S / 2, S / 2 - 2, 0, Math.PI * 2);
+    g.fillStyle = "#0f172a"; g.fill();
+    g.lineWidth = 2.5; g.strokeStyle = "#64748b"; g.stroke();
+    // body
+    const bx = S / 2 - 9, by = 8, bw = 18, bh = 28, r = 6;
+    g.beginPath();
+    g.moveTo(bx + r, by); g.arcTo(bx + bw, by, bx + bw, by + bh, r); g.arcTo(bx + bw, by + bh, bx, by + bh, r);
+    g.arcTo(bx, by + bh, bx, by, r); g.arcTo(bx, by, bx + bw, by, r); g.closePath();
+    g.fillStyle = "#1e293b"; g.fill(); g.lineWidth = 2; g.strokeStyle = "#64748b"; g.stroke();
+    [["#ef4444", 15], ["#f59e0b", 22], ["#10b981", 29]].forEach(([col, y]) => {
+      g.beginPath(); g.arc(S / 2, y, 3.4, 0, Math.PI * 2); g.fillStyle = col; g.fill();
+    });
+    this.map.addImage(SIGNALS_ICON_ID, g.getImageData(0, 0, S, S), { pixelRatio: 2 });
+  }
+
   scheduleViewport() {
-    if (!this.map) return;
-    if (this._viewTimer) clearTimeout(this._viewTimer);
+    if (!this.map || this._viewTimer) return;   // throttle: moveend fires every frame while the camera follows the car
     this._viewTimer = setTimeout(() => { this._viewTimer = null; this.updateViewport(); }, 600);
     if (this._viewTimer && typeof this._viewTimer.unref === "function") this._viewTimer.unref();
+  }
+
+  /** Leaflet-equivalent zoom: MapLibre uses 512 px tiles, so the same view is one level lower. */
+  zoomLevel() {
+    return this.map && typeof this.map.getZoom === "function" ? this.map.getZoom() + 1 : 0;
   }
 
   async updateViewport() {
     if (!this.map || typeof this.map.getBounds !== "function") return;
     if (!this.isEnabled) return;
-    const z = this.map.getZoom();
-    if (z < this.minRenderZoom) { this.clearMarkers(); return; }
-    const b = this.map.getBounds();
-    if (!b) return;
-    const i0 = Math.floor(b.getSouth() / this.tileLat), i1 = Math.floor(b.getNorth() / this.tileLat);
-    const j0 = Math.floor(b.getWest() / this.tileLng), j1 = Math.floor(b.getEast() / this.tileLng);
+    if (this.zoomLevel() < this.minRenderZoom) { this.clearMarkers(); return; }
+    const b0 = this.map.getBounds();
+    if (!b0) return;
+    const padLat = (b0.getNorth() - b0.getSouth()) * 0.1, padLng = (b0.getEast() - b0.getWest()) * 0.1;
+    const b = {
+      s: b0.getSouth() - padLat, n: b0.getNorth() + padLat, w: b0.getWest() - padLng, e: b0.getEast() + padLng
+    };
+    const i0 = Math.floor(b.s / this.tileLat), i1 = Math.floor(b.n / this.tileLat);
+    const j0 = Math.floor(b.w / this.tileLng), j1 = Math.floor(b.e / this.tileLng);
     const list = [];
     for (let i = i0; i <= i1; i++) for (let j = j0; j <= j1; j++) list.push([i, j]);
     this.renderMarkers(b, list);
@@ -250,63 +291,76 @@ class TrafficSignalsEngine {
     }
   }
 
+  /** bounds = {s, n, w, e}; picks at most maxRenderMarkers signals of the given tiles that lie inside. */
   renderMarkers(bounds, tileList) {
     const want = new Map();
     for (const [i, j] of tileList) {
       const tile = this.tiles.get(this.tileKey(i, j));
       if (!tile) continue;
-      for (const s of tile.sigs) {
+      for (const sg of tile.sigs) {
         if (want.size >= this.maxRenderMarkers) break;
-        if (bounds.contains([s.lat, s.lon])) want.set(s.lat.toFixed(5) + "," + s.lon.toFixed(5), s);
+        if (sg.lat >= bounds.s && sg.lat <= bounds.n && sg.lon >= bounds.w && sg.lon <= bounds.e) {
+          want.set(sg.lat.toFixed(5) + "," + sg.lon.toFixed(5), sg);
+        }
       }
     }
-    for (const [key, m] of this.markers) {
-      if (!want.has(key)) { this.layerGroup.removeLayer(m); this.markers.delete(key); }
-    }
-    for (const [key, s] of want) {
-      if (this.markers.has(key)) continue;
-      const e = window.escapeHtml || (v => String(v == null ? "" : v));
-      const m = L.marker([s.lat, s.lon], { icon: this.createSignalIcon(), interactive: true });
-      m.bindPopup(
-        '<div style="font-weight:700; color:#fbbf24; display:flex; align-items:center; gap:6px;">🚦 ' + e(s.name) + "</div>" +
-        '<div style="font-size:0.85rem; color:#94a3b8; margin-top:4px;">საგზაო შუქნიშანი (Traffic Light)</div>'
-      );
-      this.layerGroup.addLayer(m);
-      this.markers.set(key, m);
-    }
+    this.setGeo([...want.values()]);
+  }
+
+  setGeo(sigs) {
+    const key = sigs.map(sg => sg.lat.toFixed(5) + "," + sg.lon.toFixed(5)).join("|");
+    if (key === this._geoKey) return;           // nothing changed: do not re-upload the source
+    this._geoKey = key;
+    this.geo = {
+      type: "FeatureCollection",
+      features: sigs.map(sg => ({
+        type: "Feature",
+        properties: { name: sg.name || "შუქნიშანი" },
+        geometry: { type: "Point", coordinates: [sg.lon, sg.lat] }
+      }))
+    };
+    this.pushToMap();
+  }
+
+  get visibleCount() { return this.geo.features.length; }
+
+  pushToMap() {
+    const src = this.map && typeof this.map.getSource === "function" ? this.map.getSource(SIGNALS_SOURCE_ID) : null;
+    if (src && typeof src.setData === "function") src.setData(this.geo);
   }
 
   clearMarkers() {
-    for (const m of this.markers.values()) this.layerGroup.removeLayer(m);
-    this.markers.clear();
+    this.setGeo([]);
   }
 
-  createSignalIcon() {
-    return L.divIcon({
-      className: "traffic-signal-custom-icon",
-      html: `
-        <div class="traffic-signal-pin" title="შუქნიშანი" style="
-          width: 22px; height: 22px; background: #0f172a; border: 1.2px solid #64748b; border-radius: 50%;
-          display: flex; align-items: center; justify-content: center; box-shadow: 0 2px 6px rgba(0,0,0,0.5);">
-          <svg viewBox="0 0 24 24" width="13" height="13" fill="none">
-            <rect x="7" y="2" width="10" height="20" rx="3" fill="#1e293b" stroke="#64748b" stroke-width="1.5"/>
-            <circle cx="12" cy="6" r="2.2" fill="#ef4444" />
-            <circle cx="12" cy="12" r="2.2" fill="#f59e0b" />
-            <circle cx="12" cy="18" r="2.2" fill="#10b981" />
-          </svg>
-        </div>`,
-      iconSize: [22, 22],
-      iconAnchor: [11, 11]
-    });
+  /** Tap on a signal icon -> small popup. Returns true when the tap was consumed (map click must not set a destination). */
+  handleClick(e) {
+    if (!this.isEnabled || !this.map || typeof this.map.getLayer !== "function" || !this.map.getLayer(SIGNALS_LAYER_ID)) return false;
+    const p = e.point;
+    const hit = this.map.queryRenderedFeatures([[p.x - 18, p.y - 18], [p.x + 18, p.y + 18]], { layers: [SIGNALS_LAYER_ID] });
+    if (!hit || !hit.length) return false;
+    const f = hit[0];
+    if (typeof maplibregl === "undefined") return true;
+    const esc = window.escapeHtml || (v => String(v == null ? "" : v));
+    const box = document.createElement("div");
+    box.innerHTML =
+      '<div style="font-weight:700; color:#fbbf24; display:flex; align-items:center; gap:6px;">🚦 ' + esc(f.properties.name) + "</div>" +
+      '<div style="font-size:0.85rem; color:#94a3b8; margin-top:4px;">საგზაო შუქნიშანი (Traffic Light)</div>';
+    if (this.popup) this.popup.remove();
+    this.popup = new maplibregl.Popup({ offset: 16, closeButton: true, maxWidth: "260px" })
+      .setLngLat(f.geometry.coordinates).setDOMContent(box).addTo(this.map);
+    return true;
   }
 
   toggle() {
     this.isEnabled = !this.isEnabled;
+    if (this.map && typeof this.map.getLayer === "function" && this.map.getLayer(SIGNALS_LAYER_ID)) {
+      this.map.setLayoutProperty(SIGNALS_LAYER_ID, "visibility", this.isEnabled ? "visible" : "none");
+    }
     if (this.isEnabled) {
-      this.layerGroup.addTo(this.map);   // markers stay in the group, so they reappear
       this.scheduleViewport();
-    } else {
-      this.map.removeLayer(this.layerGroup);
+    } else if (this.popup) {
+      this.popup.remove(); this.popup = null;
     }
     return this.isEnabled;
   }

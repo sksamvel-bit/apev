@@ -34,8 +34,6 @@
   --radius-full: 9999px;
 
   --font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-  --map-rotation: 0deg;
-  --counter-rotation: 0deg;
 }
 
 * {
@@ -86,9 +84,7 @@ html, body {
 
 .maplibregl-ctrl-attrib,
 .maplibregl-ctrl-logo,
-.maplibregl-compact,
-.leaflet-control-zoom,
-.leaflet-control-attribution {
+.maplibregl-compact {
   display: none !important;
 }
 
@@ -103,10 +99,26 @@ html, body {
   font-family: inherit;
 }
 
-.maplibregl-popup-tip {
-  border-top-color: rgba(15, 23, 42, 0.96) !important;
+.maplibregl-popup-anchor-top .maplibregl-popup-tip,
+.maplibregl-popup-anchor-top-left .maplibregl-popup-tip,
+.maplibregl-popup-anchor-top-right .maplibregl-popup-tip {
   border-bottom-color: rgba(15, 23, 42, 0.96) !important;
 }
+.maplibregl-popup-anchor-bottom .maplibregl-popup-tip,
+.maplibregl-popup-anchor-bottom-left .maplibregl-popup-tip,
+.maplibregl-popup-anchor-bottom-right .maplibregl-popup-tip {
+  border-top-color: rgba(15, 23, 42, 0.96) !important;
+}
+.maplibregl-popup-anchor-left .maplibregl-popup-tip {
+  border-right-color: rgba(15, 23, 42, 0.96) !important;
+}
+.maplibregl-popup-anchor-right .maplibregl-popup-tip {
+  border-left-color: rgba(15, 23, 42, 0.96) !important;
+}
+
+/* pins (charger, destination, car) are DOM markers: MapLibre positions them with an inline transform */
+.maplibregl-marker { will-change: transform; }
+.ev-charger-custom-marker { cursor: pointer; }
 
 .maplibregl-popup-close-button {
   color: #94a3b8 !important;
@@ -119,9 +131,8 @@ html, body {
   width: 22px;
   height: 22px;
   transform-origin: 50% 50%;
-  transition: transform 0.28s cubic-bezier(0.25, 0.9, 0.35, 1);
   will-change: transform;
-  pointer-events: none;
+  pointer-events: none;   /* rotated every frame by the map 'rotate' event: no CSS transition */
 }
 
 .dock-btn.manual-active {
@@ -1081,38 +1092,11 @@ button svg * {
   opacity: 1;
 }
 
-/* MAP POPUP (Tesla Dark Styling with Counter-Rotation) */
-.leaflet-popup {
-  transform-origin: center bottom;
-  /* keep popups upright on the rotating map: individual `rotate` composes with Leaflet's translate3d */
-  rotate: var(--counter-rotation, 0deg);
-}
-
-.leaflet-popup-content-wrapper {
-  background: var(--bg-card) !important;
-  backdrop-filter: var(--backdrop-blur) !important;
-  -webkit-backdrop-filter: var(--backdrop-blur) !important;
-  border: 1px solid var(--border-subtle) !important;
-  border-radius: var(--radius-md) !important;
-  box-shadow: var(--shadow-lg) !important;
-  color: var(--text-primary) !important;
-  padding: 8px 12px !important;
-}
-
+/* Destination pin (inner element: the marker wrapper's transform belongs to MapLibre) */
 .dest-custom-icon {
-  transform: rotate(var(--counter-rotation, 0deg)) !important;
-  transform-origin: center center;
-  transition: transform 0.15s ease-out;
-}
-
-.leaflet-popup-tip {
-  background: var(--bg-card) !important;
-  border: 1px solid var(--border-subtle) !important;
-}
-
-.leaflet-popup-content {
-  margin: 10px !important;
-  line-height: 1.4 !important;
+  display: block;
+  line-height: 0;
+  cursor: pointer;
 }
 
 .popup-dest-btn {
@@ -1163,8 +1147,7 @@ button svg * {
   height: 36px;
   z-index: 2;
   transform-origin: 50% 50%;
-  transition: transform 0.15s ease-out;
-  will-change: transform;
+  will-change: transform;   /* turned every frame by the follow camera: no CSS transition */
   transform: translateZ(0);
   filter: drop-shadow(0 3px 6px rgba(0, 0, 0, 0.65));
 }
@@ -1988,68 +1971,6 @@ button svg * {
   opacity: 1;
 }
 
-/* Yandex Mode Transparent Container rule so underlying SDK map shows 100% */
-body.map-style-yandex #map,
-body.map-style-yandex .leaflet-container {
-  background: transparent !important;
-}
-
-.dock-btn.yandex-active {
-  border-color: rgba(245, 158, 11, 0.7);
-  background: rgba(245, 158, 11, 0.22);
-  color: #fbbf24;
-  box-shadow: 0 0 12px rgba(245, 158, 11, 0.35);
-}
-
-/* ==========================================================================
-   YANDEX INTEGRATIONS: Traffic Score, Incidents, Lane Guidance
-   ========================================================================== */
-
-/* Top Bar Yandex Traffic Score Chip (1-10 ბალი) */
-.traffic-score-chip {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  background: var(--bg-card);
-  border: 1px solid var(--border-subtle);
-  padding: 6px 14px;
-  border-radius: var(--radius-md);
-  font-size: 0.9rem;
-  font-weight: 700;
-  box-shadow: var(--shadow-card);
-  cursor: pointer;
-  transition: all 0.18s ease;
-  min-height: 40px;
-  touch-action: manipulation;
-}
-
-.traffic-score-badge {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 24px;
-  height: 24px;
-  border-radius: 50%;
-  font-weight: 900;
-  font-size: 0.85rem;
-  color: #fff;
-}
-
-.traffic-score-badge.low {
-  background: #10b981;
-  box-shadow: 0 0 10px rgba(16, 185, 129, 0.5);
-}
-
-.traffic-score-badge.med {
-  background: #f59e0b;
-  box-shadow: 0 0 10px rgba(245, 158, 11, 0.5);
-}
-
-.traffic-score-badge.high {
-  background: #ef4444;
-  box-shadow: 0 0 10px rgba(239, 68, 68, 0.6);
-}
-
 /* Lane Guidance HUD Row */
 .hud-lane-guidance {
   display: flex;
@@ -2226,21 +2147,14 @@ html, body {
 /* ==========================================================================
    GLOBAL NIGHT MODE FILTER (1-Click Instant Darkening on ALL Maps)
    ========================================================================== */
-.night-mode-active .leaflet-tile-pane {
+.night-mode-active .maplibregl-canvas {
   filter: invert(96%) hue-rotate(180deg) brightness(85%) contrast(92%);
   transition: filter 0.3s ease;
 }
 
 /* For Google Satellite: cinematic night dimming without distorted colors */
-.night-mode-active.map-style-google-sat .leaflet-tile-pane {
+.night-mode-active.map-style-google-sat .maplibregl-canvas {
   filter: brightness(62%) contrast(125%) saturate(85%) hue-rotate(10deg);
-  transition: filter 0.3s ease;
-}
-
-/* For Yandex Maps: darken the ground and tile layer */
-.night-mode-active #yandex-map-container ymaps[class*="ground-pane"],
-.night-mode-active #yandex-map-container ymaps[class*="places-pane"] {
-  filter: invert(96%) hue-rotate(180deg) brightness(85%) contrast(92%);
   transition: filter 0.3s ease;
 }
 
@@ -2269,14 +2183,6 @@ input {
 
 .dock-btn:active, .popup-dest-btn:active, .fav-btn:active, .preview-go-btn:active {
   transform: scale(0.93) !important;
-}
-
-/* Yandex Map Lockstep Zoom: Disable all CSS transitions on markers and map panes so icons never lag behind */
-.map-style-yandex .leaflet-zoom-anim .leaflet-zoom-animated,
-.map-style-yandex .leaflet-marker-pane,
-.map-style-yandex .leaflet-tile-pane,
-.map-style-yandex .leaflet-map-pane {
-  transition: none !important;
 }
 
 /* Theater Mode Row in Settings */

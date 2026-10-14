@@ -9,12 +9,10 @@ let map = null;
 let carMarker = null;
 let destMarker = null;
 
-let currentBaseTileLayer = null;
-let currentLabelsTileLayer = null;
-let currentMapStyle = "google-roads";
+let mapCamera = null;
+let currentMapStyle = "openfreemap";
 let currentMapOrientation = "heading-up";
 localStorage.setItem("tesla_nav_map_orientation", "heading-up");
-let currentMapRotation = 0;
 
 let trafficEngine = null;
 let trafficSignalsEngine = null;
@@ -24,7 +22,6 @@ let weatherEngine = null;
 let batteryEngine = null;
 let chargersEngine = null;
 let mediaEngine = null;
-let yandexEngine = null;
 let speedLimitEngine = null;
 
 // Driving lockout switch (false keeps YouTube & search unrestricted while driving by user command)
@@ -53,6 +50,7 @@ document.addEventListener("DOMContentLoaded", () => {
   try { initMap(); } catch (e) { console.error("initMap error:", e); }
   try { applyNightMode(isNightMode); } catch (e) { console.error("applyNightMode error:", e); }
   try { initSubsystems(); } catch (e) { console.error("initSubsystems error:", e); }
+  try { setMapStyle(currentMapStyle, { persist: false }); } catch (e) { console.error("setMapStyle error:", e); }
   try { initEventListeners(); } catch (e) { console.error("initEventListeners error:", e); }
   try { requestWakeLock(); } catch (e) { console.error("requestWakeLock error:", e); }
   try { initGeolocation(); } catch (e) { console.error("initGeolocation error:", e); }
@@ -125,86 +123,131 @@ function initClock() {
   setInterval(update, 1000);
 }
 
-// Map Initialization (MapLibre GL JS - WebGL Hardware Accelerated Engine)
-const GOOGLE_ROADS_STYLE = {
-  version: 8,
-  sources: {
-    "google-roads-source": {
-      type: "raster",
-      tiles: [
-        "https://mt0.google.com/vt/lyrs=m&hl=ka&gl=GE&x={x}&y={y}&z={z}",
-        "https://mt1.google.com/vt/lyrs=m&hl=ka&gl=GE&x={x}&y={y}&z={z}",
-        "https://mt2.google.com/vt/lyrs=m&hl=ka&gl=GE&x={x}&y={y}&z={z}",
-        "https://mt3.google.com/vt/lyrs=m&hl=ka&gl=GE&x={x}&y={y}&z={z}"
-      ],
-      tileSize: 256
-    }
-  },
-  layers: [
-    {
-      id: "google-roads-layer",
-      type: "raster",
-      source: "google-roads-source",
-      minzoom: 0,
-      maxzoom: 22
-    }
-  ]
-};
+// ---------------------------------------------------------------------------------------------------------------
+// Map (MapLibre GL JS)
+//  - "openfreemap": vector tiles (OpenFreeMap, OSM data). Street names follow the roads and are never upside down,
+//    point labels stay upright, the map can be rotated (heading-up) and tilted like the Tesla navigation.
+//  - "google-roads" / "google-sat": Google raster tiles. Raster tiles have their labels baked in, so on a rotated
+//    map those labels rotate with it (that is why the vector map is the default).
+// Route line, traffic lights and the TomTom flow layer are registered in layerRegistry (map-gl.js) and re-injected on
+// every style switch; chargers and the car/destination pins are DOM markers pinned to the screen.
+// ---------------------------------------------------------------------------------------------------------------
+const OFM_STYLE_URL = "https://tiles.openfreemap.org/styles/liberty";
+const OFM_STYLE_CACHE_KEY = "tesla_nav_ofm_style_v1";
+const MAP_STYLE_KEYS = ["openfreemap", "google-roads", "google-sat"];
+const MAP_DEFAULT_ZOOM = 16;      // MapLibre zoom (Leaflet-equivalent 17)
+const MAP_HEADING_PITCH = 45;
 
-const GOOGLE_SAT_STYLE = {
-  version: 8,
-  sources: {
-    "google-sat-source": {
-      type: "raster",
-      tiles: [
-        "https://mt0.google.com/vt/lyrs=y&hl=ka&gl=GE&x={x}&y={y}&z={z}",
-        "https://mt1.google.com/vt/lyrs=y&hl=ka&gl=GE&x={x}&y={y}&z={z}",
-        "https://mt2.google.com/vt/lyrs=y&hl=ka&gl=GE&x={x}&y={y}&z={z}",
-        "https://mt3.google.com/vt/lyrs=y&hl=ka&gl=GE&x={x}&y={y}&z={z}"
-      ],
-      tileSize: 256
-    }
-  },
-  layers: [
-    {
-      id: "google-sat-layer",
-      type: "raster",
-      source: "google-sat-source",
-      minzoom: 0,
-      maxzoom: 22
-    }
-  ]
-};
+const layerRegistry = new window.MapGL.LayerRegistry();
+window.layerRegistry = layerRegistry;
 
-function getMapLibreStyle(styleKey) {
-  if (styleKey === "google-roads") return GOOGLE_ROADS_STYLE;
-  if (styleKey === "google-sat") return GOOGLE_SAT_STYLE;
-  if (styleKey === "positron") return "https://tiles.openfreemap.org/styles/positron";
-  // Default vector: OpenFreeMap Liberty (Fast, 3D Vector, Upright dynamic road labels)
-  return "https://tiles.openfreemap.org/styles/liberty";
+function googleRasterStyle(lyrs, id) {
+  return {
+    version: 8,
+    sources: {
+      [id]: {
+        type: "raster",
+        tiles: [0, 1, 2, 3].map(n => `https://mt${n}.google.com/vt/lyrs=${lyrs}&hl=ka&gl=GE&x={x}&y={y}&z={z}`),
+        tileSize: 256,
+        maxzoom: 20
+      }
+    },
+    layers: [{ id: id + "-layer", type: "raster", source: id }]
+  };
+}
+
+/** Georgian street/place names first, no 3D buildings (heavy on the Tesla GPU and they hide labels). */
+function tuneVectorStyle(style) {
+  const out = Object.assign({}, style);
+  out.layers = (style.layers || []).map((l) => {
+    if (l.id === "building-3d") {
+      return Object.assign({}, l, { layout: Object.assign({}, l.layout, { visibility: "none" }) });
+    }
+    const tf = l.type === "symbol" && l.layout ? l.layout["text-field"] : null;
+    if (tf != null) {
+      const txt = JSON.stringify(tf);
+      if (txt.includes("name:latin") || txt.includes("name_en")) {
+        return Object.assign({}, l, {
+          layout: Object.assign({}, l.layout, { "text-field": ["coalesce", ["get", "name:ka"], ["get", "name"], ["get", "name_en"]] })
+        });
+      }
+    }
+    return l;
+  });
+  return out;
+}
+
+async function loadStyleJson(styleKey) {
+  if (styleKey === "google-roads") return googleRasterStyle("m", "google-roads");
+  if (styleKey === "google-sat") return googleRasterStyle("y", "google-sat");
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), 7000);
+  try {
+    const res = await fetch(OFM_STYLE_URL, { signal: ctrl.signal });
+    if (!res.ok) throw new Error("HTTP " + res.status);
+    const json = await res.json();
+    try { localStorage.setItem(OFM_STYLE_CACHE_KEY, JSON.stringify(json)); } catch (_) {}
+    return tuneVectorStyle(json);
+  } catch (err) {
+    // style server slow/unreachable: use the last good copy (the tiles themselves may still come from the browser cache)
+    let cached = null;
+    try { cached = JSON.parse(localStorage.getItem(OFM_STYLE_CACHE_KEY)); } catch (_) {}
+    if (cached && cached.layers) return tuneVectorStyle(cached);
+    throw err;
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+// Vector map health: when the style or its tiles cannot be loaded at all, fall back to Google tiles.
+const vectorHealth = { active: false, errors: 0, tilesOk: false };
+let styleRequestToken = 0;
+
+async function applyMapStyle(styleKey) {
+  if (!map) return;
+  const token = ++styleRequestToken;
+  vectorHealth.active = styleKey === "openfreemap";
+  vectorHealth.errors = 0;
+  vectorHealth.tilesOk = false;
+  let style;
+  try {
+    style = await loadStyleJson(styleKey);
+  } catch (err) {
+    console.warn("[Map] style load failed:", styleKey, err && err.message);
+    if (styleKey === "openfreemap") fallbackToGoogleRoads("მიუწვდომელია");
+    return;
+  }
+  if (token !== styleRequestToken || !map) return;   // a newer style request replaced this one
+  map.setStyle(layerRegistry.inject(style), { diff: false });
+}
+
+function fallbackToGoogleRoads(reason) {
+  if (currentMapStyle !== "openfreemap") return;
+  showToast(`⚠️ ვექტორული რუკა ${reason} — დროებით Google რუკაზე გადავედი`, "error", 5000);
+  setMapStyle("google-roads", { persist: false });
 }
 
 function initMap() {
-  const savedStyle = localStorage.getItem("tesla_nav_map_style") || "openfreemap";
-  currentMapStyle = (savedStyle === "google-roads" || savedStyle === "google-sat" || savedStyle === "yandex") ? savedStyle : "openfreemap";
+  const saved = localStorage.getItem("tesla_nav_map_style");
+  currentMapStyle = MAP_STYLE_KEYS.includes(saved) ? saved : "openfreemap";
 
   if (typeof maplibregl === "undefined") {
     console.error("MapLibre GL JS not loaded");
     return;
   }
 
-  // Tesla MCU & Chromium hardware-accelerated configuration (identical to mapsev.com)
+  const headingUp = currentMapOrientation === "heading-up";
   map = new maplibregl.Map({
     container: "map",
-    style: getMapLibreStyle(currentMapStyle),
+    style: { version: 8, sources: {}, layers: [] },   // the real style is applied by setMapStyle() once the layers are registered
     center: [currentPos.lng, currentPos.lat],
-    zoom: 15.5,
-    pitch: currentMapOrientation === "heading-up" ? 42 : 0,
-    bearing: currentMapOrientation === "heading-up" ? currentHeading : 0,
+    zoom: MAP_DEFAULT_ZOOM,
+    pitch: headingUp ? MAP_HEADING_PITCH : 0,
+    bearing: headingUp ? lastKnownValidHeading : 0,
+    maxPitch: 60,
     attributionControl: false,
-    antialias: false,               // Prevents MCU2 frame drops
-    fadeDuration: 0,                // 0ms tile transition: eliminates stutter
-    maxTileCacheZoomLevels: 1,      // Minimal memory footprint
+    antialias: false,               // saves GPU on the Tesla MCU
+    fadeDuration: 0,
     crossSourceCollisions: false,
     dragRotate: true,
     pitchWithRotate: true,
@@ -213,97 +256,50 @@ function initMap() {
   });
   window.map = map;
 
-  map.on("load", () => {
-    setupMapLibreLayers(map);
-  });
-
-  map.on("styledata", () => {
-    setupMapLibreLayers(map);
-  });
+  // zoom around the screen centre so a pinch/scroll never fights the follow camera
+  try {
+    map.scrollZoom.enable({ around: "center" });
+    map.touchZoomRotate.enable({ around: "center" });
+  } catch (_) {}
 
   map.on("click", (e) => {
+    const t = e.originalEvent && e.originalEvent.target;
+    if (t && t.closest && t.closest(".maplibregl-marker, .maplibregl-popup")) return;   // a pin was tapped, not the map
+    if (trafficSignalsEngine && trafficSignalsEngine.handleClick(e)) return;
     handleMapClick({ lat: e.lngLat.lat, lng: e.lngLat.lng });
   });
 
-  map.on("dragstart", () => {
-    setFollowCarMode(false);
-  });
-
-  map.on("rotatestart", () => {
-    currentMapOrientation = "manual";
-    setFollowCarMode(false);
-    updateOrientationUI();
-  });
+  // Only gestures of the driver switch to manual mode (programmatic camera moves have no originalEvent)
+  map.on("dragstart", (e) => { if (e.originalEvent) setFollowCarMode(false); });
+  const manualGesture = (e) => { if (e.originalEvent && currentMapOrientation !== "manual") { setMapOrientation("manual"); setFollowCarMode(false); } };
+  map.on("rotatestart", manualGesture);
+  map.on("pitchstart", manualGesture);
 
   map.on("rotate", () => {
-    const bearing = map.getBearing();
     const needleEl = document.getElementById("compass-needle-svg");
-    if (needleEl) {
-      needleEl.style.transform = `rotate(${-bearing}deg)`;
+    if (needleEl) needleEl.style.transform = `rotate(${-map.getBearing()}deg)`;
+  });
+
+  // vector map health (see fallbackToGoogleRoads)
+  map.on("sourcedata", (e) => { if (e.sourceId === "openmaptiles" && e.tile) vectorHealth.tilesOk = true; });
+  map.on("error", (e) => {
+    if (!vectorHealth.active || vectorHealth.tilesOk || currentMapStyle !== "openfreemap") return;
+    const msg = String((e && e.error && (e.error.url || e.error.message)) || "");
+    if (e.sourceId === "openmaptiles" || msg.includes("openfreemap")) {
+      vectorHealth.errors++;
+      if (vectorHealth.errors >= 6) { vectorHealth.active = false; fallbackToGoogleRoads("ვერ ჩაიტვირთა"); }
     }
   });
 
   createVehiclePuck();
+
+  mapCamera = new window.MapGL.FollowCamera(map, { headingPitch: MAP_HEADING_PITCH, onFrame: onCameraFrame });
+  mapCamera.setMode(currentMapOrientation);
+  window.mapCamera = mapCamera;
+  // a route preview (fitBounds) must not be pulled back to the car, and our follow padding must not add to its padding
+  window.onBeforeRouteFit = () => { setFollowCarMode(false); mapCamera.clearPadding(); };
+
   updateOrientationUI();
-}
-
-function setupMapLibreLayers(m) {
-  if (!m || !m.isStyleLoaded()) return;
-
-  // Passed Route Source & Layer
-  if (!m.getSource("route-passed-source")) {
-    m.addSource("route-passed-source", {
-      type: "geojson",
-      data: { type: "FeatureCollection", features: [] }
-    });
-  }
-  if (!m.getLayer("route-passed-line")) {
-    m.addLayer({
-      id: "route-passed-line",
-      type: "line",
-      source: "route-passed-source",
-      layout: { "line-cap": "round", "line-join": "round" },
-      paint: {
-        "line-color": "#64748b",
-        "line-width": 5,
-        "line-opacity": 0.6
-      }
-    });
-  }
-
-  // Active Route Source & Layers (Casing + Glow Line)
-  if (!m.getSource("route-source")) {
-    m.addSource("route-source", {
-      type: "geojson",
-      data: { type: "FeatureCollection", features: [] }
-    });
-  }
-  if (!m.getLayer("route-casing")) {
-    m.addLayer({
-      id: "route-casing",
-      type: "line",
-      source: "route-source",
-      layout: { "line-cap": "round", "line-join": "round" },
-      paint: {
-        "line-color": "#003b66",
-        "line-width": 9,
-        "line-opacity": 0.7
-      }
-    });
-  }
-  if (!m.getLayer("route-line")) {
-    m.addLayer({
-      id: "route-line",
-      type: "line",
-      source: "route-source",
-      layout: { "line-cap": "round", "line-join": "round" },
-      paint: {
-        "line-color": "#00d2ff",
-        "line-width": 6,
-        "line-opacity": 0.95
-      }
-    });
-  }
 }
 
 function createVehiclePuck() {
@@ -330,7 +326,8 @@ function createVehiclePuck() {
   carMarker = new maplibregl.Marker({
     element: carEl,
     anchor: "center",
-    rotationAlignment: "viewport"
+    rotationAlignment: "viewport",
+    pitchAlignment: "viewport"
   })
     .setLngLat([currentPos.lng, currentPos.lat])
     .addTo(map);
@@ -338,56 +335,63 @@ function createVehiclePuck() {
   window.carMarker = carMarker;
 }
 
-function applyMapRotation(rotDeg, animated = false) {
-  currentMapRotation = rotDeg;
-  const needleEl = document.getElementById("compass-needle-svg");
-  if (needleEl) {
-    needleEl.style.transform = `rotate(${rotDeg}deg)`;
+/** Called by the follow camera every frame: moves the car pin and turns the arrow. */
+function onCameraFrame(f) {
+  if (!carMarker) return;
+  carMarker.setLngLat([f.lng, f.lat]);
+  if (!cachedCarIconEl || !cachedCarIconEl.isConnected) {
+    const el = carMarker.getElement();
+    cachedCarIconEl = el ? el.querySelector(".tesla-car-icon-body") : null;
   }
-  if (map && typeof map.setBearing === "function") {
-    const bearing = -rotDeg;
-    if (animated && typeof map.easeTo === "function") {
-      map.easeTo({ bearing: bearing, duration: 280 });
-    } else {
-      map.setBearing(bearing);
-    }
+  if (!cachedCarIconEl) return;
+  const heading = f.headingDeg != null && isFinite(f.headingDeg) ? f.headingDeg : continuousHeading;
+  let rot;
+  if (currentMapOrientation === "heading-up") rot = window.MapGL.shortestDelta(heading, f.bearing);   // road ahead is UP
+  else if (currentMapOrientation === "north-up") rot = window.MapGL.normDeg(heading);
+  else rot = window.MapGL.shortestDelta(heading, map.getBearing());
+  cachedCarIconEl.style.transform = `rotate(${rot.toFixed(1)}deg)`;
+}
+
+function createDestMarker(lngLat) {
+  const wrap = document.createElement("div");
+  wrap.className = "dest-marker-wrap";
+  wrap.innerHTML = `
+    <div class="dest-custom-icon">
+      <svg viewBox="0 0 24 24" width="38" height="38" fill="#e82127" style="filter: drop-shadow(0 3px 6px rgba(0,0,0,0.6));">
+        <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/>
+      </svg>
+    </div>`;
+  return new maplibregl.Marker({ element: wrap, anchor: "bottom", rotationAlignment: "viewport", pitchAlignment: "viewport" })
+    .setLngLat(lngLat);
+}
+
+function removeDestMarker() {
+  if (destMarker) {
+    destMarker.remove();
+    destMarker = null;
   }
 }
 
-// Map Style Switcher: OpenFreeMap (3D Vector), Google Roads, Google Satellite, Yandex Maps
-function setMapStyle(styleKey) {
-  if (styleKey !== "google-roads" && styleKey !== "google-sat" && styleKey !== "yandex") {
-    styleKey = "openfreemap";
-  }
+function setMapOrientation(mode) {
+  currentMapOrientation = mode;
+  try { localStorage.setItem("tesla_nav_map_orientation", mode); } catch (_) {}
+  if (mapCamera) { mapCamera.syncFromMap(); mapCamera.setMode(mode); }
+  updateOrientationUI();
+}
+
+// Map Style Switcher: OpenFreeMap (vector), Google Roads, Google Satellite
+function setMapStyle(styleKey, opts = {}) {
+  if (!MAP_STYLE_KEYS.includes(styleKey)) styleKey = "openfreemap";
   currentMapStyle = styleKey;
-  localStorage.setItem("tesla_nav_map_style", styleKey);
+  if (opts.persist !== false) localStorage.setItem("tesla_nav_map_style", styleKey);
 
-  if (styleKey === "yandex") {
-    if (yandexEngine) {
-      const isTrafficActive = trafficEngine ? trafficEngine.isEnabled : true;
-      yandexEngine.toggleTraffic(isTrafficActive);
-      yandexEngine.enable();
-    }
-  } else {
-    if (yandexEngine) yandexEngine.disable();
-    if (map && typeof map.setStyle === "function") {
-      map.setStyle(getMapLibreStyle(styleKey));
-    }
-  }
+  applyMapStyle(styleKey);
 
-  // Update body class for styling
-  document.body.classList.remove("map-style-openfreemap", "map-style-google-roads", "map-style-google-sat", "map-style-yandex");
+  document.body.classList.remove("map-style-openfreemap", "map-style-google-roads", "map-style-google-sat");
   document.body.classList.add(`map-style-${styleKey}`);
-
-  // Update UI selection state in menu
   document.querySelectorAll(".map-style-opt").forEach(opt => {
     opt.classList.toggle("active", opt.dataset.style === styleKey);
   });
-
-  const btnMapStyle = document.getElementById("btn-map-style");
-  if (btnMapStyle) {
-    btnMapStyle.classList.toggle("yandex-active", styleKey === "yandex");
-  }
 }
 
 // Global Night Mode (1-Click Dark/Light Toggle for ALL maps)
@@ -440,37 +444,15 @@ function initSubsystems() {
   try { speechAssistant = new SpeechAssistant(); window.speechAssistant = speechAssistant; } catch (e) { console.warn("speechAssistant init notice:", e); }
   try { batteryEngine = new BatteryEngine(); window.batteryEngine = batteryEngine; } catch (e) { console.warn("batteryEngine init notice:", e); }
   try { weatherEngine = new WeatherEngine(); window.weatherEngine = weatherEngine; } catch (e) { console.warn("weatherEngine init notice:", e); }
-  try { trafficSignalsEngine = new TrafficSignalsEngine(map, false); window.trafficSignalsEngine = trafficSignalsEngine; } catch (e) { console.warn("trafficSignalsEngine init notice:", e); }
-  try { trafficEngine = new TrafficEngine(map, false); window.trafficEngine = trafficEngine; } catch (e) { console.warn("trafficEngine init notice:", e); }
+  try { trafficSignalsEngine = new TrafficSignalsEngine(map, true); window.trafficSignalsEngine = trafficSignalsEngine; } catch (e) { console.warn("trafficSignalsEngine init notice:", e); }
+  try { trafficEngine = new TrafficEngine(map, true); window.trafficEngine = trafficEngine; } catch (e) { console.warn("trafficEngine init notice:", e); }
   try {
     chargersEngine = new ChargersEngine(map, (chargerData) => {
       prepareRoutePreview(chargerData, chargerData.name || "EV დამტენი სადგური", chargerData.address || "ელექტრომობილის დამტენი");
-    }, false);
+    }, true);
     window.chargersEngine = chargersEngine;
   } catch (e) { console.warn("chargersEngine init notice:", e); }
   try { mediaEngine = new MediaPlayerEngine(); window.mediaEngine = mediaEngine; } catch (e) { console.warn("mediaEngine init notice:", e); }
-
-  // Initialize Yandex Engine (Live Traffic & Score)
-  try {
-    yandexEngine = new YandexEngine(map, (score) => {
-      updateTrafficScoreUI(score);
-    });
-    if (trafficEngine) {
-      yandexEngine.isTrafficEnabled = trafficEngine.isEnabled;
-    }
-    yandexEngine.onReady = () => {
-      if (currentMapStyle === "yandex" && currentBaseTileLayer) {
-        map.removeLayer(currentBaseTileLayer);
-        currentBaseTileLayer = null;
-      }
-    };
-    window.yandexEngine = yandexEngine;
-
-    // CRITICAL FIX: If page loaded with Yandex style, immediately enable it!
-    if (currentMapStyle === "yandex") {
-      yandexEngine.enable();
-    }
-  } catch (e) { console.warn("yandexEngine init notice:", e); }
 
   try {
     routingEngine = new RoutingEngine(map, trafficEngine, trafficSignalsEngine, speechAssistant, batteryEngine);
@@ -627,24 +609,6 @@ function updateBatteryUI(stats) {
   // AUDIT FIX: SoC is manually entered (not read from the car) -> label as such
   if (socEl) socEl.textContent = `${stats.currentSoC}% ✎`;
   if (rangeEl) rangeEl.textContent = `≈${stats.remainingRangeKm} კმ`;
-}
-
-// Update Top Bar Yandex Traffic Score UI
-function updateTrafficScoreUI(score) {
-  const chip = document.getElementById("top-traffic-score-chip");
-  const badge = document.getElementById("traffic-score-badge");
-  const text = document.getElementById("traffic-score-text");
-  if (!chip || !badge || !text) return;
-
-  if (score === null || score === undefined || typeof score !== "number" || isNaN(score)) {
-    // If no numeric 1-10 index is reported, hide chip so it never clutters screen with "მონაცემი არ არის"
-    chip.style.display = "none";
-  } else {
-    chip.style.display = "flex";
-    badge.textContent = score;
-    badge.className = "traffic-score-badge " + (score <= 3 ? "low" : score <= 6 ? "med" : "high");
-    text.textContent = `საცობი: ${score} ბალი`;
-  }
 }
 
 // Geolocation GPS & Live Weather Fetch
@@ -914,42 +878,12 @@ function updateVehicleMarker(lat, lng, headingDeg, speedKmh, accuracyMeters = nu
     }
   }
 
-  if (carMarker) {
-    if (typeof carMarker.setLngLat === "function") {
-      carMarker.setLngLat([lng, lat]);
-    } else if (typeof carMarker.setLatLng === "function") {
-      carMarker.setLatLng([lat, lng]);
-    }
-    const markerEl = carMarker.getElement ? carMarker.getElement() : null;
-    if (!cachedCarIconEl || !cachedCarIconEl.isConnected) {
-      cachedCarIconEl = markerEl ? markerEl.querySelector(".tesla-car-icon-body") : document.getElementById("car-svg-icon");
-    }
-    const renderHeading = Math.round(continuousHeading);
-    if (cachedCarIconEl) {
-      let arrowRot = 0;
-      if (currentMapOrientation === "north-up") {
-        arrowRot = renderHeading;
-      } else if (currentMapOrientation === "manual" && map && typeof map.getBearing === "function") {
-        arrowRot = renderHeading - map.getBearing();
-      } else {
-        // Heading-Up: road ahead is UP on screen, arrow points straight UP!
-        arrowRot = 0;
-      }
-      cachedCarIconEl.style.transform = `rotate(${arrowRot}deg)`;
-      lastRenderedHeading = renderHeading;
-    }
-  }
-
-  // Heading-Up Map Rotation & Compass Needle Update
-  const cachedCompassNeedleEl = document.getElementById("compass-needle-svg");
-  if (cachedCompassNeedleEl) {
-    if (currentMapOrientation === "heading-up") {
-      cachedCompassNeedleEl.style.transform = `rotate(${-Math.round(continuousHeading)}deg)`;
-    } else if (currentMapOrientation === "north-up") {
-      cachedCompassNeedleEl.style.transform = `rotate(0deg)`;
-    } else if (map && typeof map.getBearing === "function") {
-      cachedCompassNeedleEl.style.transform = `rotate(${-map.getBearing()}deg)`;
-    }
+  // The follow camera (map-gl.js) glides the car pin and the camera between the 1 Hz GPS fixes
+  lastRenderedHeading = Math.round(continuousHeading);
+  if (mapCamera) {
+    // lastKnownValidHeading = GNSS heading snapped to the route/road. The camera does its own smoothing, so it
+    // gets this (not continuousHeading, which is already smoothed per fix and would make turns lag by seconds).
+    mapCamera.setFix({ lng, lat, headingDeg: lastKnownValidHeading, speedMs: speedKmh / 3.6 });
   }
 
   // Dirty check: only update DOM textContent when speed actually changes
@@ -969,33 +903,6 @@ function updateVehicleMarker(lat, lng, headingDeg, speedKmh, accuracyMeters = nu
     updateGpsStatusQuality(accuracyMeters);
   }
 
-  // Forward Look-Ahead Camera Offset (TMap standard: 65m ahead along heading)
-  if (isFollowCar && map) {
-    let targetLat = lat;
-    let targetLng = lng;
-    if (currentHeading != null && (speedKmh > 5 || (routingEngine && routingEngine.isNavigating))) {
-      const R = 6378137;
-      const offsetDist = 65; // 65 meters forward offset
-      const rad = currentHeading * (Math.PI / 180);
-      const dLat = (offsetDist * Math.cos(rad)) / R;
-      const dLng = (offsetDist * Math.sin(rad)) / (R * Math.cos(lat * (Math.PI / 180)));
-      targetLat = lat + dLat * (180 / Math.PI);
-      targetLng = lng + dLng * (180 / Math.PI);
-    }
-    if (typeof map.easeTo === "function") {
-      const targetPitch = currentMapOrientation === "heading-up" ? 42 : 0;
-      const targetBearing = currentMapOrientation === "heading-up" ? continuousHeading : 0;
-      map.easeTo({
-        center: [targetLng, targetLat],
-        bearing: currentMapOrientation === "manual" ? map.getBearing() : targetBearing,
-        pitch: currentMapOrientation === "manual" ? map.getPitch() : targetPitch,
-        duration: 280,
-        easing: t => t
-      });
-    } else if (typeof map.panTo === "function") {
-      map.panTo([targetLat, targetLng], { animate: true, duration: 0.35 });
-    }
-  }
 }
 
 function updateGpsStatusQuality(accuracyMeters) {
@@ -1017,52 +924,25 @@ function updateGpsStatusQuality(accuracyMeters) {
 function setFollowCarMode(enabled) {
   isFollowCar = enabled;
   const btn = document.getElementById("btn-follow-car");
-  if (btn) {
-    if (isFollowCar) {
-      btn.classList.add("active");
-      // If user re-centers while in manual rotation, resume Heading-Up mode like Tesla
-      if (currentMapOrientation === "manual") {
-        currentMapOrientation = "heading-up";
-        localStorage.setItem("tesla_nav_map_orientation", "heading-up");
-        updateOrientationUI();
-      }
-      if (map && currentPos) {
-        if (typeof map.easeTo === "function") {
-          map.easeTo({
-            center: [currentPos.lng, currentPos.lat],
-            pitch: currentMapOrientation === "heading-up" ? 42 : 0,
-            bearing: currentMapOrientation === "heading-up" ? currentHeading : 0,
-            duration: 400
-          });
-        } else if (typeof map.panTo === "function") {
-          map.panTo([currentPos.lat, currentPos.lng]);
-        }
-        updateVehicleMarker(currentPos.lat, currentPos.lng, currentHeading, currentSpeedKmh);
-      }
-    } else {
-      btn.classList.remove("active");
-    }
+  if (enabled) {
+    // If the driver re-centers while in manual rotation, resume Heading-Up mode like Tesla
+    if (currentMapOrientation === "manual") setMapOrientation("heading-up");
+    if (mapCamera) { mapCamera.syncFromMap(); mapCamera.setFollowing(true); }
+  } else if (mapCamera) {
+    mapCamera.setFollowing(false);
   }
+  if (btn) btn.classList.toggle("active", isFollowCar);
 }
 
 function toggleMapOrientation() {
   if (currentMapOrientation === "heading-up") {
-    currentMapOrientation = "north-up";
-    localStorage.setItem("tesla_nav_map_orientation", "north-up");
-    if (map && typeof map.easeTo === "function") {
-      map.easeTo({ bearing: 0, pitch: 0, duration: 400 });
-    }
+    setMapOrientation("north-up");
     showToast("🧭 ჩრდილოეთის რეჟიმი (North-Up)", "info", 1800);
   } else {
-    currentMapOrientation = "heading-up";
-    localStorage.setItem("tesla_nav_map_orientation", "heading-up");
-    if (map && typeof map.easeTo === "function") {
-      map.easeTo({ bearing: currentHeading, pitch: 42, duration: 400 });
-    }
+    setMapOrientation("heading-up");
     showToast("🧭 კურსის რეჟიმი (Heading-Up)", "info", 1800);
   }
   setFollowCarMode(true);
-  updateOrientationUI();
 }
 
 function updateOrientationUI() {
@@ -1099,26 +979,10 @@ function flipVehicleHeading180() {
     localStorage.setItem("tesla_nav_saved_heading", String(currentHeading));
   } catch (_) {}
 
-  // Update vehicle arrow rotation immediately
-  if (carMarker) {
-    const markerEl = carMarker.getElement();
-    if (!cachedCarIconEl || !cachedCarIconEl.isConnected) {
-      cachedCarIconEl = markerEl ? markerEl.querySelector(".tesla-car-icon-body") : document.getElementById("car-svg-icon");
-    }
-    if (cachedCarIconEl) {
-      cachedCarIconEl.style.transition = "transform 0.3s cubic-bezier(0.2, 0.9, 0.3, 1)";
-      cachedCarIconEl.style.transform = `rotate(${Math.round(continuousHeading)}deg)`;
-      setTimeout(() => {
-        if (cachedCarIconEl) cachedCarIconEl.style.transition = "none";
-      }, 350);
-    }
+  // The follow camera turns the arrow and the map smoothly
+  if (mapCamera) {
     lastRenderedHeading = Math.round(continuousHeading);
-  }
-
-  // Update Heading-Up map rotation immediately
-  if (currentMapOrientation === "heading-up") {
-    currentMapRotation = -Math.round(continuousHeading);
-    applyMapRotation(currentMapRotation, true);
+    mapCamera.setFix({ lng: currentPos.lng, lat: currentPos.lat, headingDeg: lastKnownValidHeading, speedMs: 0 });
   }
 
   showToast(`🔄 მიმართულება შებრუნდა 180°-ით (${currentHeading}°)`, "info", 2000);
@@ -1154,19 +1018,7 @@ function initCompassSensor() {
 
 // Map Click to Set Destination
 function handleMapClick(latlng) {
-  if (destMarker) {
-    if (typeof destMarker.remove === "function") destMarker.remove();
-    else if (map && typeof map.removeLayer === "function") map.removeLayer(destMarker);
-    destMarker = null;
-  }
-
-  const el = document.createElement("div");
-  el.className = "dest-custom-icon";
-  el.innerHTML = `
-    <svg viewBox="0 0 24 24" width="38" height="38" fill="#e82127" style="filter: drop-shadow(0 3px 6px rgba(0,0,0,0.6));">
-      <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/>
-    </svg>
-  `;
+  removeDestMarker();
 
   const popupContent = document.createElement("div");
   popupContent.innerHTML = `
@@ -1180,34 +1032,16 @@ function handleMapClick(latlng) {
     </button>
   `;
 
-  if (typeof maplibregl !== "undefined") {
-    const popup = new maplibregl.Popup({ offset: 25, closeButton: true })
-      .setDOMContent(popupContent);
+  const popup = new maplibregl.Popup({ offset: 30, closeButton: true }).setDOMContent(popupContent);
+  destMarker = createDestMarker([latlng.lng, latlng.lat]).setPopup(popup).addTo(map);
+  popup.addTo(map);
 
-    destMarker = new maplibregl.Marker({ element: el, anchor: "bottom" })
-      .setLngLat([latlng.lng, latlng.lat])
-      .setPopup(popup)
-      .addTo(map);
-
-    popup.addTo(map);
-
-    const btn = popupContent.querySelector(".popup-dest-btn");
-    if (btn) {
-      btn.onclick = () => {
-        popup.remove();
-        prepareRoutePreview(latlng, "მონიშნული ადგილი", `${latlng.lat.toFixed(4)}, ${latlng.lng.toFixed(4)}`);
-      };
-    }
-  } else if (typeof L !== "undefined" && typeof L.marker === "function") {
-    destMarker = L.marker(latlng).addTo(map);
-    destMarker.bindPopup(popupContent).openPopup();
-    const btn = popupContent.querySelector(".popup-dest-btn");
-    if (btn) {
-      btn.onclick = () => {
-        destMarker.closePopup();
-        prepareRoutePreview(latlng, "მონიშნული ადგილი", `${latlng.lat.toFixed(4)}, ${latlng.lng.toFixed(4)}`);
-      };
-    }
+  const btn = popupContent.querySelector(".popup-dest-btn");
+  if (btn) {
+    btn.onclick = () => {
+      popup.remove();
+      prepareRoutePreview(latlng, "მონიშნული ადგილი", `${latlng.lat.toFixed(4)}, ${latlng.lng.toFixed(4)}`);
+    };
   }
 }
 
@@ -1226,27 +1060,8 @@ async function prepareRoutePreview(destLatLng, destTitle = "დანიშნ�
     if (navHud) navHud.classList.remove("active");
 
     // Set destination marker
-    if (destMarker) {
-      if (typeof destMarker.remove === "function") destMarker.remove();
-      else if (map && typeof map.removeLayer === "function") map.removeLayer(destMarker);
-      destMarker = null;
-    }
-
-    const previewDestEl = document.createElement("div");
-    previewDestEl.className = "dest-custom-icon";
-    previewDestEl.innerHTML = `
-      <svg viewBox="0 0 24 24" width="38" height="38" fill="#e82127" style="filter: drop-shadow(0 3px 6px rgba(0,0,0,0.6));">
-        <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/>
-      </svg>
-    `;
-
-    if (typeof maplibregl !== "undefined") {
-      destMarker = new maplibregl.Marker({ element: previewDestEl, anchor: "bottom" })
-        .setLngLat([destLatLng.lng, destLatLng.lat])
-        .addTo(map);
-    } else if (typeof L !== "undefined" && typeof L.marker === "function") {
-      destMarker = L.marker(destLatLng).addTo(map);
-    }
+    removeDestMarker();
+    destMarker = createDestMarker([destLatLng.lng, destLatLng.lat]).addTo(map);
 
     if (!window.hasRealFix) {
       showToast("⚠️ GPS პოზიცია არ არის — მარშრუტი ნაგულისხმევი წერტილიდან ითვლება", "error", 4500);
@@ -1314,7 +1129,7 @@ function confirmStartNavigation() {
 
   routingEngine.startNavigation();
   setFollowCarMode(true);
-  if (map) map.setZoom(Math.max(map.getZoom(), 17)); // AUDIT FIX: navigation zoom after fitBounds
+  if (map) map.setZoom(Math.max(map.getZoom(), MAP_DEFAULT_ZOOM)); // navigation zoom after the preview fitBounds
   saveActiveRouteState(dest, title);
   showToast(`🚀 ნავიგაცია დაწყებულია: ${title}`, "success", 2500);
   pendingDestination = null;
@@ -1325,12 +1140,9 @@ function dismissRoutePreview() {
   const previewCard = document.getElementById("route-preview-card");
   if (previewCard) previewCard.classList.remove("active");
   routingEngine.clearRoute();
-  if (destMarker) {
-    if (typeof destMarker.remove === "function") destMarker.remove();
-    else if (map && typeof map.removeLayer === "function") map.removeLayer(destMarker);
-    destMarker = null;
-  }
+  removeDestMarker();
   pendingDestination = null;
+  setFollowCarMode(true);   // back to the car after a route preview
 }
 
 // Start Navigation (used by auto-resume and direct programmatic invocations)
@@ -1407,11 +1219,7 @@ function cancelNavigation() {
   dismissRoutePreview();
   routingEngine.clearRoute();
   clearActiveRouteState();
-  if (destMarker) {
-    if (typeof destMarker.remove === "function") destMarker.remove();
-    else if (map && typeof map.removeLayer === "function") map.removeLayer(destMarker);
-    destMarker = null;
-  }
+  removeDestMarker();
   document.getElementById("nav-hud").classList.remove("active");
   document.getElementById("traffic-signal-alert").classList.remove("active");
   document.getElementById("hud-battery-row").style.display = "none";
@@ -1716,38 +1524,21 @@ function initEventListeners() {
 
   // Map Zoom Controls (+ and -)
   document.getElementById("btn-zoom-in").addEventListener("click", () => {
-    if (map) {
-      if (currentMapStyle === "yandex") {
-        map.zoomIn(1, { animate: false });
-      } else {
-        map.zoomIn();
-      }
-    }
+    if (map) map.zoomIn({ duration: 220 });
   });
   document.getElementById("btn-zoom-out").addEventListener("click", () => {
-    if (map) {
-      if (currentMapStyle === "yandex") {
-        map.zoomOut(1, { animate: false });
-      } else {
-        map.zoomOut();
-      }
-    }
+    if (map) map.zoomOut({ duration: 220 });
   });
 
   const btnTraffic = document.getElementById("btn-toggle-traffic");
   btnTraffic.addEventListener("click", () => {
     const enabled = trafficEngine.toggle();
-    if (yandexEngine) {
-      yandexEngine.toggleTraffic(enabled);
-    }
     btnTraffic.classList.toggle("traffic-active", enabled);
-
-    const scoreChip = document.getElementById("top-traffic-score-chip");
-    if (scoreChip) {
-      scoreChip.style.opacity = enabled ? "1" : "0.35";
+    if (enabled && !trafficEngine.hasKey()) {
+      showToast("🚦 საცობების ფენისთვის პარამეტრებში TomTom API გასაღებია საჭირო", "info", 4000);
+    } else {
+      showToast(enabled ? "🚦 საცობების ფენა ჩართულია" : "🚦 საცობების ფენა გამორთულია", "info", 1800);
     }
-
-    showToast(enabled ? "🚦 საცობების ფენა ჩართულია" : "🚦 საცობების ფენა გამორთულია", "info", 1800);
   });
 
   const btnSignals = document.getElementById("btn-toggle-signals");
@@ -1797,7 +1588,7 @@ function initEventListeners() {
         const style = opt.dataset.style;
         setMapStyle(style);
         mapStyleMenu.classList.remove("open");
-        const styleName = style === "yandex" ? "🟡 Yandex Maps (ცოცხალი საცობები)" : style === "google-sat" ? "🛰️ Google Satellite (ჰიბრიდი)" : "🗺️ Google Maps (ქუჩები)";
+        const styleName = style === "google-sat" ? "🛰️ Google Satellite (ჰიბრიდი)" : style === "google-roads" ? "🗺️ Google Maps (წარწერები ბრუნავს)" : "⚡ 3D ვექტორული რუკა";
         showToast(styleName + " ჩაირთო ✅", "success", 2500);
       });
     });

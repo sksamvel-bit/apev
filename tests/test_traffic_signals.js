@@ -1,4 +1,4 @@
-// Tile-based traffic-signal engine tests (mocked Overpass + Leaflet stubs, no network).
+// Tile-based traffic-signal engine tests (mocked Overpass + MapLibre map stub, no network).
 const fs = require('fs'), vm = require('vm');
 
 let fails = 0;
@@ -9,25 +9,19 @@ const ok = (c, m) => { if (!c) fails++; console.log((c ? 'PASS' : 'FAIL') + '  '
 const store = {};
 global.localStorage = { getItem: k => (k in store ? store[k] : null), setItem: (k, v) => { store[k] = String(v); } };
 global.window = {};
-function mkLayerGroup() {
-  const g = { layers: new Set(), onMap: false,
-    addTo() { g.onMap = true; return g; }, addLayer(m) { g.layers.add(m); }, removeLayer(m) { g.layers.delete(m); } };
-  return g;
-}
-global.L = {
-  layerGroup: () => mkLayerGroup(),
-  marker: (ll, o) => ({ ll, o, bindPopup() { return this; } }),
-  divIcon: o => o
-};
+global.maplibregl = undefined;
 vm.runInThisContext(fs.readFileSync(__dirname + '/../traffic-signals.js', 'utf8'));
 const TSE = window.TrafficSignalsEngine;
 
-function mkMap(zoom = 16, b = { s: 41.725, n: 41.735, w: 44.700, e: 44.720 }) {
-  const m = { zoom, b, removed: 0, onCalls: 0,
-    on() { m.onCalls++; }, getZoom: () => m.zoom,
-    getBounds: () => ({ getSouth: () => m.b.s, getNorth: () => m.b.n, getWest: () => m.b.w, getEast: () => m.b.e,
-      contains: ([la, lo]) => la >= m.b.s && la <= m.b.n && lo >= m.b.w && lo <= m.b.e }),
-    removeLayer() { m.removed++; } };
+// MapLibre-like map stub. NOTE: zoom is the MapLibre zoom (= Leaflet zoom - 1); the engine adds 1 itself.
+function mkMap(zoom = 15, b = { s: 41.725, n: 41.735, w: 44.700, e: 44.720 }) {
+  const src = { lastData: null, setData(d) { src.lastData = d; src.sets = (src.sets || 0) + 1; } };
+  const m = { zoom, b, onCalls: 0, vis: 'visible', src, handlers: {},
+    on(ev, fn) { m.onCalls++; m.handlers[ev] = fn; }, getZoom: () => m.zoom,
+    getBounds: () => ({ getSouth: () => m.b.s, getNorth: () => m.b.n, getWest: () => m.b.w, getEast: () => m.b.e }),
+    getSource: id => (id === 'signals-src' ? src : null),
+    getLayer: id => (id === 'signals-layer' ? {} : null),
+    setLayoutProperty(id, prop, v) { if (prop === 'visibility') m.vis = v; } };
   return m;
 }
 const okRes = d => ({ ok: true, json: async () => d });
@@ -120,24 +114,27 @@ const M = 1 / 111140, ML = 1 / (111320 * Math.cos(A * Math.PI / 180));
   await e.fetchSignalsAlongRoute(huge);
   ok(e.tiles.size <= 40, 'a 400 km route is capped (' + e.tiles.size + ' tiles <= 40)');
 
-  // ---- 7. markers: culled to the viewport, zoom-gated, toggle keeps them ----
+  // ---- 7. map layer: culled to the viewport, zoom-gated, toggle keeps the data ----
   const dense = []; for (let k = 0; k < 400; k++) dense.push(node(k, 41.7255 + (k % 20) * 0.00045, 44.7005 + Math.floor(k / 20) * 0.00095, {}));
-  const map = mkMap(16);
+  const map = mkMap(15);
   e = mkEngine(() => okRes({ elements: dense }), map);
   await e.updateViewport();
-  ok(e.layerGroup.layers.size > 0 && e.layerGroup.layers.size <= 150, 'at most 150 DOM markers are created (' + e.layerGroup.layers.size + ' of 400 signals)');
-  map.zoom = 13; await e.updateViewport();
-  ok(e.layerGroup.layers.size === 0, 'zoom < 15: no markers at all');
-  map.zoom = 16; await e.updateViewport();
-  const before = e.layerGroup.layers.size;
-  e.toggle(); e.toggle();
-  ok(before > 0 && e.layerGroup.layers.size === before && e.layerGroup.onMap, 'toggle off/on keeps the markers (old code showed an empty layer after re-enabling)');
-  ok(map.onCalls >= 1, 'engine subscribes to map move/zoom events itself');
-
-  // ---- 8. legacy API still works ----
-  e = mkEngine(() => okRes({ elements: [] }));
-  await e.fetchSignalsForBounds({ getSouth: () => A, getNorth: () => A + 0.002, getWest: () => B, getEast: () => B + 0.002 });
-  ok(e.tiles.size >= 1, 'legacy fetchSignalsForBounds(bounds) still works');
-  await e.fetchSignalsForBounds({ getSouth: () => 41, getNorth: () => 42.5, getWest: () => 41, getEast: () => 46 });
-  ok(e.tiles.size <= 3, 'legacy call with a country-sized box no longer fires hundreds of tiles');
+  const nDrawn = map.src.lastData ? map.src.lastData.features.length : -1;
+  ok(nDrawn > 0 && nDrawn <= 150, 'at most 150 signals are drawn (' + nDrawn + ' of 400)');
+  ok(map.src.lastData.features[0].geometry.type === 'Point' && Math.abs(map.src.lastData.features[0].geometry.coordinates[1] - 41.7) < 0.1, 'GeoJSON points are [lon, lat]');
+  map.zoom = 12; await e.updateViewport();
+  ok(map.src.lastData.features.length === 0, 'Leaflet-equivalent zoom < 15 (MapLibre 13): nothing drawn');
+  map.zoom = 15; await e.updateViewport();
+  const before = map.src.lastData.features.length;
+  const setsBefore = map.src.sets;
+  await e.updateViewport();
+  ok(map.src.sets === setsBefore, 'unchanged view: the source is not re-uploaded');
+  e.toggle();
+  ok(map.vis === 'none', 'toggle off hides the layer');
+  e.toggle();
+  ok(before > 0 && map.vis === 'visible' && e.visibleCount === before, 'toggle on shows it again with the same data');
+  ok(map.onCalls >= 1, 'engine subscribes to map events itself');
+  map.handlers.moveend(); map.handlers.moveend(); map.handlers.moveend();
+  ok(!!e._viewTimer, 'moveend (fires every frame while following) arms ONE throttle timer');
+  clearTimeout(e._viewTimer); e._viewTimer = null;
 })();

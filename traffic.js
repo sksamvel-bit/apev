@@ -1,89 +1,94 @@
 /**
  * Traffic Engine
- * Manages live traffic flow tiles (TomTom), dynamic route congestion coloring,
- * and traffic incident alerts.
+ * Live traffic flow tiles (TomTom, needs a free API key in Settings) drawn as a MapLibre raster layer.
+ * The layer is registered in window.layerRegistry, so it survives a map style switch.
+ *
+ * There is no other real traffic data source: without a key the traffic button has nothing to show and the
+ * route gets no congestion colouring and no extra delay (the old code invented pseudo-random congestion).
  */
 
+const TRAFFIC_SOURCE_ID = "traffic-flow-src";
+const TRAFFIC_LAYER_ID = "traffic-flow-layer";
+
 class TrafficEngine {
-  constructor(map, startEnabled = false) {
+  constructor(map, startEnabled = true) {
     this.map = map;
     this.isEnabled = !!startEnabled;
     this.tomtomKey = localStorage.getItem("tomtom_api_key") || "";
-    this.trafficTileLayer = null;
-    this.routeTrafficLayers = []; // Colored sub-polylines along current route
 
-    this.initLayer();
+    this.registerMapLayers();
   }
 
-  initLayer() {
-    // If a TomTom key is provided, we can add the real-time raster flow layer
-    if (this.tomtomKey && typeof L !== "undefined" && typeof L.tileLayer === "function") {
-      this.trafficTileLayer = L.tileLayer(
-        `https://{s}.api.tomtom.com/traffic/map/4/tile/flow/relative0/{z}/{x}/{y}.png?key=${this.tomtomKey}`,
-        {
-          subdomains: ['a', 'b', 'c', 'd'],
-          maxZoom: 19,
-          opacity: 0.75,
-          zIndex: 10
-        }
-      );
-      if (this.isEnabled && this.map && typeof this.trafficTileLayer.addTo === "function") {
-        this.trafficTileLayer.addTo(this.map);
-      }
-    }
+  hasKey() {
+    return !!this.tomtomKey;
+  }
+
+  sourceSpec() {
+    return {
+      type: "raster",
+      tiles: [`https://api.tomtom.com/traffic/map/4/tile/flow/relative0/{z}/{x}/{y}.png?key=${encodeURIComponent(this.tomtomKey)}`],
+      tileSize: 256,
+      maxzoom: 19
+    };
+  }
+
+  layerSpec() {
+    return {
+      id: TRAFFIC_LAYER_ID,
+      type: "raster",
+      source: TRAFFIC_SOURCE_ID,
+      layout: { visibility: this.isEnabled ? "visible" : "none" },
+      paint: { "raster-opacity": 0.75 }
+    };
+  }
+
+  registerMapLayers() {
+    const reg = typeof window !== "undefined" ? window.layerRegistry : null;
+    if (!reg) return;
+    reg.register("traffic-flow", {
+      sources: () => (this.hasKey() ? { [TRAFFIC_SOURCE_ID]: this.sourceSpec() } : {}),
+      layers: () => (this.hasKey() ? [this.layerSpec()] : [])
+    });
+  }
+
+  /** Remove the layer/source from the live map (style data stays in the registry). */
+  removeFromMap() {
+    const m = this.map;
+    if (!m || typeof m.getLayer !== "function") return;
+    if (m.getLayer(TRAFFIC_LAYER_ID)) m.removeLayer(TRAFFIC_LAYER_ID);
+    if (m.getSource(TRAFFIC_SOURCE_ID)) m.removeSource(TRAFFIC_SOURCE_ID);
   }
 
   setApiKey(key) {
-    this.tomtomKey = key.trim();
+    this.tomtomKey = (key || "").trim();
     localStorage.setItem("tomtom_api_key", this.tomtomKey);
-    if (this.trafficTileLayer) {
-      this.map.removeLayer(this.trafficTileLayer);
-      this.trafficTileLayer = null;
+    this.removeFromMap();
+    const m = this.map;
+    if (this.hasKey() && m && typeof m.addSource === "function" && m.isStyleLoaded()) {
+      m.addSource(TRAFFIC_SOURCE_ID, this.sourceSpec());
+      m.addLayer(this.layerSpec());
     }
-    this.initLayer();
   }
 
   toggle() {
     this.isEnabled = !this.isEnabled;
-    if (this.trafficTileLayer) {
-      if (this.isEnabled) {
-        this.trafficTileLayer.addTo(this.map);
-      } else {
-        this.map.removeLayer(this.trafficTileLayer);
-      }
+    const m = this.map;
+    if (m && typeof m.getLayer === "function" && m.getLayer(TRAFFIC_LAYER_ID)) {
+      m.setLayoutProperty(TRAFFIC_LAYER_ID, "visibility", this.isEnabled ? "visible" : "none");
     }
-
-    // Toggle route traffic colored segments
-    this.routeTrafficLayers.forEach(layer => {
-      if (this.isEnabled) {
-        layer.addTo(this.map);
-      } else {
-        this.map.removeLayer(layer);
-      }
-    });
-
     return this.isEnabled;
   }
 
   clearRouteTraffic() {
-    this.routeTrafficLayers.forEach(l => this.map.removeLayer(l));
-    this.routeTrafficLayers = [];
+    // no route congestion colouring without a real data source
   }
 
   /**
-   * Generates realistic traffic congestion segments along a GeoJSON route.
-   * Classifies segments into:
-   * - Free Flow (Green / Cyan)
-   * - Moderate Delay (Yellow / Orange)
-   * - Heavy Congestion (Red / Deep Red)
-   */
-  /**
    * AUDIT FIX: previously generated PSEUDO-RANDOM (sin-based) congestion colours and
    * fake delay minutes. Removed. Without a real data source we show no congestion
-   * colouring and add 0 delay. (Real data: TomTom flow tiles / Yandex layer only.)
+   * colouring and add 0 delay.
    */
   renderRouteCongestion(latlngs, totalDurationSec) {
-    this.clearRouteTraffic();
     return 0;
   }
 }

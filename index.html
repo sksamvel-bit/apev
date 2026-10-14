@@ -16,7 +16,7 @@
   <!-- MapLibre GL CSS (Local Offline) -->
   <link rel="stylesheet" href="maplibre-gl.css">
   <!-- Custom Stylesheet -->
-  <link rel="stylesheet" href="style.css?v=3.10.0">
+  <link rel="stylesheet" href="style.css?v=3.10.1">
 </head>
 <body>
 
@@ -42,12 +42,6 @@
       </svg>
       <span id="top-battery-soc">82%</span>
       <span id="top-battery-range" class="battery-range">380 კმ</span>
-    </div>
-
-    <!-- Yandex Traffic Score Chip (1-10 ბალი) -->
-    <div id="top-traffic-score-chip" class="traffic-score-chip" style="display:none;">
-      <span id="traffic-score-badge" class="traffic-score-badge med">5</span>
-      <span id="traffic-score-text">საცობი: 5 ბალი</span>
     </div>
 
     <!-- Search Input & Dropdown -->
@@ -263,7 +257,7 @@
       <span class="dock-tooltip" id="night-tooltip-text">ღამის რეჟიმი</span>
     </button>
 
-    <button id="btn-toggle-traffic" class="dock-btn" title="საცობების ფენა">
+    <button id="btn-toggle-traffic" class="dock-btn traffic-active" title="საცობების ფენა">
       <svg viewBox="0 0 24 24">
         <path d="M19 17h2c.6 0 1-.4 1-1v-3c0-.9-.7-1.7-1.5-1.9C18.7 10.6 16 10 16 10s-1.3-1.4-2.2-2.3c-.5-.4-1.1-.7-1.8-.7H5c-.6 0-1.1.4-1.4.9l-1.5 2.6C1.4 11 1 11.7 1 12.5V16c0 .6.4 1 1 1h2"/>
         <circle cx="7" cy="17" r="2"/>
@@ -272,14 +266,14 @@
       <span class="dock-tooltip">საცობები</span>
     </button>
 
-    <button id="btn-toggle-chargers" class="dock-btn" title="EV დამტენების ფენა">
+    <button id="btn-toggle-chargers" class="dock-btn signals-active" title="EV დამტენების ფენა">
       <svg viewBox="0 0 24 24">
         <path d="M11 21h-1l1-7H7.5c-.58 0-.57-.32-.38-.66.19-.34.05-.08.07-.12C8.48 10.94 10.42 7.54 13 3h1l-1 7h3.5c.49 0 .56.33.47.51l-.07.15-5.9 10.34z" fill="currentColor"/>
       </svg>
       <span class="dock-tooltip">EV დამტენები</span>
     </button>
 
-    <button id="btn-toggle-signals" class="dock-btn" title="შუქნიშნების ჩვენება">
+    <button id="btn-toggle-signals" class="dock-btn signals-active" title="შუქნიშნების ჩვენება">
       <svg viewBox="0 0 24 24">
         <rect x="6" y="2" width="12" height="20" rx="3" stroke="currentColor" fill="none"/>
         <circle cx="12" cy="7" r="2" fill="currentColor"/>
@@ -337,8 +331,8 @@
       <button type="button" class="map-style-opt active" data-style="openfreemap">
         <span class="map-opt-icon">⚡</span>
         <div class="map-opt-text">
-          <div class="map-opt-name">3D Vector (Tesla Nav)</div>
-          <div class="map-opt-sub">სწრაფი 3D ვექტორული რუკა</div>
+          <div class="map-opt-name">3D ვექტორული რუკა</div>
+          <div class="map-opt-sub">წარწერები ყოველთვის სწორად, მოხვევისას რუკა ბრუნავს</div>
         </div>
         <span class="map-opt-check">✓</span>
       </button>
@@ -347,7 +341,7 @@
         <span class="map-opt-icon">🗺️</span>
         <div class="map-opt-text">
           <div class="map-opt-name">Google Maps</div>
-          <div class="map-opt-sub">სტანდარტული ქუჩები (Google)</div>
+          <div class="map-opt-sub">ჩვეულებრივი რუკა (წარწერები რუკასთან ერთად ბრუნავს)</div>
         </div>
         <span class="map-opt-check">✓</span>
       </button>
@@ -356,16 +350,7 @@
         <span class="map-opt-icon">🛰️</span>
         <div class="map-opt-text">
           <div class="map-opt-name">Google Satellite</div>
-          <div class="map-opt-sub">სატელიტური ჰიბრიდი</div>
-        </div>
-        <span class="map-opt-check">✓</span>
-      </button>
-
-      <button type="button" class="map-style-opt" data-style="yandex">
-        <span class="map-opt-icon">🟡</span>
-        <div class="map-opt-text">
-          <div class="map-opt-name">Yandex Maps</div>
-          <div class="map-opt-sub">იანდექსი + Live საცობები</div>
+          <div class="map-opt-sub">სატელიტი (წარწერები რუკასთან ერთად ბრუნავს)</div>
         </div>
         <span class="map-opt-check">✓</span>
       </button>
@@ -497,7 +482,7 @@
         </div>
       </div>
       <div class="modal-footer">
-        <span class="settings-version-tag" style="margin-right: auto; font-size: 0.8rem; color: var(--text-secondary); opacity: 0.8;">ვერსია: v3.10.0</span>
+        <span class="settings-version-tag" style="margin-right: auto; font-size: 0.8rem; color: var(--text-secondary); opacity: 0.8;">ვერსია: v3.10.1</span>
         <button id="modal-cancel-btn" class="btn-secondary">გაუქმება</button>
         <button id="modal-save-btn" class="btn-primary">შენახვა</button>
       </div>
@@ -506,19 +491,19 @@
 
   <!-- MapLibre GL JS (Local Offline - Hardware Accelerated WebGL Engine) -->
   <script src="maplibre-gl.js"></script>
+  <script src="map-gl.js?v=3.10.1"></script>
   <!-- QR Code Generator -->
   <script src="qrcode.min.js"></script>
   <!-- Application Engines -->
-  <script src="speech.js?v=3.10.0"></script>
-  <script src="weather.js?v=3.10.0"></script>
-  <script src="battery.js?v=3.10.0"></script>
-  <script src="chargers.js?v=3.10.0"></script>
-  <script src="traffic-signals.js?v=3.10.0"></script>
-  <script src="traffic.js?v=3.10.0"></script>
-  <script src="media-player.js?v=3.10.0"></script>
-  <script src="yandex.js?v=3.10.0"></script>
-  <script src="routing.js?v=3.10.0"></script>
-  <script src="speed-limit.js?v=3.10.0"></script>
-  <script src="app.js?v=3.10.0"></script>
+  <script src="speech.js?v=3.10.1"></script>
+  <script src="weather.js?v=3.10.1"></script>
+  <script src="battery.js?v=3.10.1"></script>
+  <script src="chargers.js?v=3.10.1"></script>
+  <script src="traffic-signals.js?v=3.10.1"></script>
+  <script src="traffic.js?v=3.10.1"></script>
+  <script src="media-player.js?v=3.10.1"></script>
+  <script src="routing.js?v=3.10.1"></script>
+  <script src="speed-limit.js?v=3.10.1"></script>
+  <script src="app.js?v=3.10.1"></script>
 </body>
 </html>
