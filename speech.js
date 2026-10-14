@@ -190,15 +190,12 @@ class SpeechAssistant {
 
           if (kaVoice) {
             utterance.voice = kaVoice;
+            this.synth.speak(utterance);
           }
-          // Intentionally NO English fallback: if Georgian voice is not installed,
-          // the navigation chime provides the audio direction without annoying English gibberish.
-
-          utterance.onerror = (e) => {
-            console.warn("SpeechSynthesis notice:", e.error || e.message);
-          };
-
-          this.synth.speak(utterance);
+          // Intentionally NO English fallback: if Georgian voice is not installed in OS,
+          // do NOT call this.synth.speak(), because Windows/Chromium will fall back to
+          // Microsoft David or English system voice. The directional audio chime provides
+          // the clear high-fidelity cue without annoying English gibberish!
         }
       } catch (e) {
         console.warn("SpeechAssistant speak error:", e.message);

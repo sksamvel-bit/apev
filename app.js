@@ -1092,18 +1092,25 @@ function handleMapClick(latlng) {
       <svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor">
         <path d="M12 2L4.5 20.29l.71.71L12 18l6.79 3 .71-.71z"/>
       </svg>
-      აქ წასვლა (Start Route)
+      აქ წასვლა
     </button>
   `;
 
-  const popup = new maplibregl.Popup({ offset: 30, closeButton: true }).setDOMContent(popupContent);
-  destMarker = createDestMarker([latlng.lng, latlng.lat]).setPopup(popup).addTo(map);
-  popup.addTo(map);
+  const popup = new maplibregl.Popup({ offset: 35, closeButton: true, closeOnClick: false })
+    .setLngLat([latlng.lng, latlng.lat])
+    .setDOMContent(popupContent);
+
+  destMarker = createDestMarker([latlng.lng, latlng.lat])
+    .setPopup(popup)
+    .addTo(map);
+
+  // Instantly display the popup on the very first map click
+  destMarker.togglePopup();
 
   const btn = popupContent.querySelector(".popup-dest-btn");
   if (btn) {
     btn.onclick = () => {
-      popup.remove();
+      removeDestMarker();
       prepareRoutePreview(latlng, "მონიშნული ადგილი", `${latlng.lat.toFixed(4)}, ${latlng.lng.toFixed(4)}`);
     };
   }

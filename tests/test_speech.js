@@ -90,10 +90,7 @@ test("speak NEVER falls back to English voices when only English is installed", 
 
   assistant.speak("500 მეტრში შეუხვიეთ მარჯვნივ");
 
-  assert.strictEqual(spokenUtterances.length, 1);
-  const u = spokenUtterances[0];
-  assert.strictEqual(u.lang, "ka-GE", "Utterance lang must strictly be Georgian ka-GE");
-  assert.strictEqual(u.voice, null, "Utterance voice must NOT fall back to an English voice!");
+  assert.strictEqual(spokenUtterances.length, 0, "Utterance must NOT be spoken if no Georgian voice exists!");
 });
 
 test("speak selects Georgian voice when ka voice is present", () => {
@@ -151,13 +148,17 @@ test("toggleMute silences both audio chimes and voice synthesis", () => {
 });
 
 test("deduplicates identical prompts within minIntervalMs", () => {
-  const { spokenUtterances } = setupMocks();
+  const { mockSynth, spokenUtterances } = setupMocks();
+  mockSynth.getVoices = () => [{ name: "Georgian", lang: "ka-GE" }];
   const assistant = new SpeechAssistant();
+  let chimes = 0;
+  assistant.playChime = () => { chimes++; };
 
   assistant.speak("გააგრძელეთ პირდაპირ");
   assistant.speak("გააგრძელეთ პირდაპირ"); // immediate repeat
 
-  assert.strictEqual(spokenUtterances.length, 1, "Immediate duplicate should be ignored");
+  assert.strictEqual(chimes, 1, "Immediate duplicate chime should be ignored");
+  assert.strictEqual(spokenUtterances.length, 1, "Immediate duplicate speech should be ignored");
 });
 
 console.log("\n" + passed + " speech tests passed");
