@@ -195,13 +195,20 @@ test("manual mode keeps the driver's bearing and pitch", () => {
   assert.strictEqual(map.bearing, 123);
 });
 
-test("a far jump (GPS just locked) snaps instead of crawling", () => {
-  const { cam, step } = makeCam();
-  cam.setFix({ lng: 44.70, lat: 41.60, headingDeg: 0, speedMs: 0 });
-  step(33);
-  cam.setFix({ lng: 44.79, lat: 41.69, headingDeg: 0, speedMs: 0 });
-  step(33);
-  near(cam.pos.lng, 44.79, 1e-6);
+test("recenter immediately positions the camera on the vehicle", () => {
+  const { cam, map, calls } = makeCam();
+  cam.setFollowing(false);
+  assert.strictEqual(cam.following, false);
+  cam.recenter({ lng: 44.80, lat: 41.70 }, 60, 45);
+  assert.strictEqual(cam.following, true);
+  near(cam.pos.lng, 44.80, 1e-6);
+  near(cam.pos.lat, 41.70, 1e-6);
+  near(cam.bearing, 60, 1e-6);
+  near(cam.pitch, 45, 1e-6);
+  assert.ok(calls.length > 0, "map camera move was called");
+  const last = calls[calls.length - 1].cam;
+  near(last.center[0], 44.80, 1e-6);
+  near(last.center[1], 41.70, 1e-6);
 });
 
 console.log("\n" + passed + " tests passed" + (process.exitCode ? " - WITH FAILURES" : ""));

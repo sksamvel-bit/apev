@@ -160,7 +160,47 @@
     }
 
     setFollowing(on) {
-      if (this.following !== on) { this.following = !!on; this._applied = null; this.wake(); }
+      this.following = !!on;
+      this._applied = null;
+      if (this.following) this.wake();
+    }
+
+    /** Immediately centers and orients the camera on the vehicle. */
+    recenter(coords, bearing, pitch) {
+      this.following = true;
+      if (coords) {
+        this.pos = { lng: coords.lng, lat: coords.lat };
+        if (!this.fix) {
+          this.fix = { lng: coords.lng, lat: coords.lat, headingDeg: bearing != null ? bearing : 0, speedMs: 0, t: this.now() };
+        } else {
+          this.fix.lng = coords.lng;
+          this.fix.lat = coords.lat;
+          if (bearing != null && isFinite(bearing)) this.fix.headingDeg = bearing;
+        }
+      }
+      if (bearing != null && isFinite(bearing)) this.bearing = normDeg(bearing);
+      if (pitch != null && isFinite(pitch)) this.pitch = pitch;
+      const h = this.map && this.map.getContainer ? this.map.getContainer().clientHeight : 0;
+      this.padTop = this.mode === "heading-up" ? Math.round(h * this.padTopFraction) : 0;
+      this._idle = 0;
+      this._applied = null;
+
+      const targetCenter = this.pos ? [this.pos.lng, this.pos.lat] : (coords ? [coords.lng, coords.lat] : null);
+      if (targetCenter && this.map) {
+        const cam = {
+          center: targetCenter,
+          bearing: this.bearing,
+          pitch: this.pitch,
+          padding: { top: Math.round(this.padTop), bottom: 0, left: 0, right: 0 }
+        };
+        if (this.map.easeTo) {
+          this._easingUntil = this.now() + 450;
+          this.map.easeTo(Object.assign({}, cam, { duration: 400 }));
+        } else if (this.map.jumpTo) {
+          this.map.jumpTo(cam, { followCamera: true });
+        }
+      }
+      this.wake();
     }
 
     /** Take the current camera state from the map (after a manual gesture or a fitBounds). */
@@ -203,6 +243,11 @@
     tick(ts) {
       this._rafId = null;
       if (!this.fix) { return; }
+      if (this._easingUntil && ts < this._easingUntil) {
+        this._rafId = this.raf((t) => this.tick(t));
+        return;
+      }
+      this._easingUntil = 0;
       if (ts - this._last < this.minFrameMs) { this._rafId = this.raf((t) => this.tick(t)); return; }
       const dt = Math.min(100, this._last ? ts - this._last : 16);
       this._last = ts;

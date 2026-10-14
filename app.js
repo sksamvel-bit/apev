@@ -268,9 +268,12 @@ function initMap() {
     handleMapClick({ lat: e.lngLat.lat, lng: e.lngLat.lng });
   });
 
-  // Only gestures of the driver switch to manual mode (programmatic camera moves have no originalEvent)
-  map.on("dragstart", (e) => { if (e.originalEvent) setFollowCarMode(false); });
-  const manualGesture = (e) => { if (e.originalEvent && currentMapOrientation !== "manual") { setMapOrientation("manual"); setFollowCarMode(false); } };
+  // User gestures switch off follow mode
+  map.on("dragstart", () => setFollowCarMode(false));
+  const manualGesture = () => {
+    if (currentMapOrientation !== "manual") setMapOrientation("manual");
+    setFollowCarMode(false);
+  };
   map.on("rotatestart", manualGesture);
   map.on("pitchstart", manualGesture);
 
@@ -294,6 +297,7 @@ function initMap() {
 
   mapCamera = new window.MapGL.FollowCamera(map, { headingPitch: MAP_HEADING_PITCH, onFrame: onCameraFrame });
   mapCamera.setMode(currentMapOrientation);
+  mapCamera.setFix({ lng: currentPos.lng, lat: currentPos.lat, headingDeg: lastKnownValidHeading || currentHeading || 0, speedMs: 0 });
   window.mapCamera = mapCamera;
   // a route preview (fitBounds) must not be pulled back to the car, and our follow padding must not add to its padding
   window.onBeforeRouteFit = () => { setFollowCarMode(false); mapCamera.clearPadding(); };
@@ -304,6 +308,12 @@ function initMap() {
 function createVehiclePuck() {
   const carEl = document.createElement("div");
   carEl.className = "tesla-car-marker-container";
+  carEl.style.cursor = "pointer";
+  carEl.title = "მანქანის ცენტრირება";
+  carEl.addEventListener("click", (e) => {
+    e.stopPropagation();
+    recenterOnCar();
+  });
   carEl.innerHTML = `
     <div class="car-heading-cone" id="car-cone"></div>
     <svg class="tesla-car-icon-body nav-arrow-body" id="car-svg-icon" viewBox="0 0 36 36" width="36" height="36">
@@ -921,16 +931,42 @@ function updateGpsStatusQuality(accuracyMeters) {
 }
 
 function setFollowCarMode(enabled) {
-  isFollowCar = enabled;
+  isFollowCar = !!enabled;
   const btn = document.getElementById("btn-follow-car");
-  if (enabled) {
-    // If the driver re-centers while in manual rotation, resume Heading-Up mode like Tesla
-    if (currentMapOrientation === "manual") setMapOrientation("heading-up");
-    if (mapCamera) { mapCamera.syncFromMap(); mapCamera.setFollowing(true); }
-  } else if (mapCamera) {
-    mapCamera.setFollowing(false);
-  }
   if (btn) btn.classList.toggle("active", isFollowCar);
+  if (mapCamera) {
+    mapCamera.setFollowing(isFollowCar);
+  }
+}
+
+function recenterOnCar() {
+  setFollowCarMode(true);
+  if (currentMapOrientation === "manual") {
+    setMapOrientation("heading-up");
+  }
+  const headingUp = currentMapOrientation === "heading-up";
+  const targetBearing = headingUp ? (lastKnownValidHeading || currentHeading || 0) : 0;
+  const targetPitch = headingUp ? MAP_HEADING_PITCH : 0;
+
+  if (mapCamera && typeof mapCamera.recenter === "function") {
+    mapCamera.recenter(currentPos, targetBearing, targetPitch);
+  } else if (map) {
+    const h = map.getContainer ? map.getContainer().clientHeight : window.innerHeight;
+    const padTop = headingUp ? Math.round(h * 0.30) : 0;
+    if (map.easeTo) {
+      map.easeTo({
+        center: [currentPos.lng, currentPos.lat],
+        bearing: targetBearing,
+        pitch: targetPitch,
+        padding: { top: padTop, bottom: 0, left: 0, right: 0 },
+        duration: 400
+      });
+    } else if (map.panTo) {
+      map.panTo([currentPos.lat, currentPos.lng]);
+    }
+  }
+
+  showToast("🎯 მანქანის ცენტრირება", "info", 1500);
 }
 
 function toggleMapOrientation() {
@@ -1509,8 +1545,9 @@ function initEventListeners() {
   }
 
   // Dock Buttons
-  document.getElementById("btn-follow-car").addEventListener("click", () => {
-    setFollowCarMode(!isFollowCar);
+  document.getElementById("btn-follow-car").addEventListener("click", (e) => {
+    e.stopPropagation();
+    recenterOnCar();
   });
 
   const btnOrientation = document.getElementById("btn-map-orientation");
