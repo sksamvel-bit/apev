@@ -100,8 +100,34 @@
       if (this.btn) this.btn.classList.add("active");
 
       this.currentDistance = 0;
+      this.currentHeading = null;
       this.runStep();
       this.timer = setInterval(() => this.runStep(), this.stepIntervalMs);
+    }
+
+    getPointAtDistance(dist) {
+      if (!this.coords || !this.cumDist || this.coords.length === 0) return { lat: 0, lng: 0 };
+      if (dist <= 0) return { lat: this.coords[0][0], lng: this.coords[0][1] };
+      const totalLen = this.cumDist[this.cumDist.length - 1];
+      if (dist >= totalLen) {
+        const last = this.coords[this.coords.length - 1];
+        return { lat: last[0], lng: last[1] };
+      }
+
+      let seg = 0;
+      while (seg < this.cumDist.length - 2 && this.cumDist[seg + 1] < dist) {
+        seg++;
+      }
+
+      const p1 = this.coords[seg];
+      const p2 = this.coords[Math.min(seg + 1, this.coords.length - 1)];
+      const segLen = Math.max(0.001, this.cumDist[seg + 1] - this.cumDist[seg]);
+      const t = Math.max(0, Math.min(1, (dist - this.cumDist[seg]) / segLen));
+
+      return {
+        lat: p1[0] + t * (p2[0] - p1[0]),
+        lng: p1[1] + t * (p2[1] - p1[1])
+      };
     }
 
     runStep() {
@@ -119,26 +145,39 @@
         return;
       }
 
-      // Linear scan for current segment in cumDist
-      let seg = 0;
-      while (seg < this.cumDist.length - 2 && this.cumDist[seg + 1] < this.currentDistance) {
-        seg++;
-      }
-
-      const p1 = this.coords[seg];
-      const p2 = this.coords[Math.min(seg + 1, this.coords.length - 1)];
-      const segLen = Math.max(0.1, this.cumDist[seg + 1] - this.cumDist[seg]);
-      const t = Math.max(0, Math.min(1, (this.currentDistance - this.cumDist[seg]) / segLen));
-
-      const lat = p1[0] + t * (p2[0] - p1[0]);
-      const lng = p1[1] + t * (p2[1] - p1[1]);
-      const heading = (re && typeof re.calculateBearing === "function")
-        ? Math.round(re.calculateBearing(p1[0], p1[1], p2[0], p2[1]))
-        : 0;
+      const currentPos = this.getPointAtDistance(this.currentDistance);
 
       // Realistic speed modulation: ~45-56 km/h
       const speedKmh = Math.max(25, Math.round(48 + Math.sin(this.currentDistance / 60) * 8));
-      const currentPos = { lat, lng };
+      const speedMps = speedKmh / 3.6;
+
+      // Pure Pursuit Lookahead steering (14m - 24m ahead on polyline)
+      const lookaheadDist = Math.max(14, Math.min(24, speedMps * 1.35));
+      const lookaheadPos = this.getPointAtDistance(Math.min(totalLen, this.currentDistance + lookaheadDist));
+
+      let rawTargetHeading = 0;
+      if (re && typeof re.calculateBearing === "function") {
+        rawTargetHeading = re.calculateBearing(currentPos.lat, currentPos.lng, lookaheadPos.lat, lookaheadPos.lng);
+      } else {
+        const dLng = (lookaheadPos.lng - currentPos.lng) * Math.PI / 180;
+        const lat1 = currentPos.lat * Math.PI / 180;
+        const lat2 = lookaheadPos.lat * Math.PI / 180;
+        const y = Math.sin(dLng) * Math.cos(lat2);
+        const x = Math.cos(lat1) * Math.sin(lat2) - Math.sin(lat1) * Math.cos(lat2) * Math.cos(dLng);
+        rawTargetHeading = (Math.atan2(y, x) * 180 / Math.PI + 360) % 360;
+      }
+
+      // Smooth automotive steering curve without sharp discrete jumps
+      if (this.currentHeading == null || isNaN(this.currentHeading)) {
+        this.currentHeading = rawTargetHeading;
+      } else {
+        let delta = ((rawTargetHeading - this.currentHeading + 540) % 360) - 180;
+        const maxRate = 18;
+        const clampedDelta = Math.max(-maxRate, Math.min(maxRate, delta));
+        this.currentHeading = (this.currentHeading + clampedDelta * 0.75 + 360) % 360;
+      }
+
+      const heading = Math.round(this.currentHeading);
 
       // Update route tracking & maneuvers
       let signalAhead = null;
@@ -155,16 +194,26 @@
           signalAhead: signalAhead
         });
       } else if (typeof window !== "undefined" && typeof window.updateVehicleMarker === "function") {
-        window.updateVehicleMarker(lat, lng, heading, speedKmh, 5);
+        window.updateVehicleMarker(currentPos.lat, currentPos.lng, heading, speedKmh, 5);
+      }
+
+      // Explicitly feed FollowCamera smooth continuous heading
+      if (typeof window !== "undefined" && window.mapCamera) {
+        window.mapCamera.setFix({
+          lng: currentPos.lng,
+          lat: currentPos.lat,
+          headingDeg: heading,
+          speedMs: speedMps
+        });
       }
 
       // Advance distance for next tick (dt = stepIntervalMs / 1000)
-      const speedMps = speedKmh / 3.6;
       this.currentDistance += speedMps * (this.stepIntervalMs / 1000);
     }
 
     stop() {
       this.isSimulating = false;
+      this.currentHeading = null;
       if (typeof window !== "undefined") window.isSimulatingDrive = false;
       if (this.timer) {
         clearInterval(this.timer);

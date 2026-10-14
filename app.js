@@ -842,7 +842,7 @@ function updateVehicleMarker(lat, lng, headingDeg, speedKmh, accuracyMeters = nu
   const candidateBearing = targetHeading !== null ? targetHeading : lastKnownValidHeading;
 
   if (candidateBearing !== null) {
-    if (routingEngine && routingEngine.isNavigating && !routingEngine.isRerouting) {
+    if (routingEngine && routingEngine.isNavigating && !routingEngine.isRerouting && !window.isSimulatingDrive) {
       // CASE A: Active Navigation Route - snap to route segment if aligned within 45 deg
       const routeBearing = routingEngine.getCurrentSegmentBearing ? routingEngine.getCurrentSegmentBearing() : null;
       if (routeBearing !== null) {

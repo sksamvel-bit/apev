@@ -15,7 +15,7 @@
 | ფაილები | მფლობელი |
 |---|---|
 | `app.js`, `map-gl.js`, `style.css` (რუკის ნაწილი), `sw.js`, `routing.js`, `traffic-signals.js`, `traffic.js`, `chargers.js`, `tests/test_map_gl.js` | Claude |
-| `media-player.js`, YouTube-ის HTML/CSS, `sim-drive.js`, `tests/test_sim_drive.js` | Antigravity |
+| `media-player.js`, YouTube-ის HTML/CSS, `sim-drive.js`, `tests/test_sim_drive.js`, `speech.js`, `tests/test_speech.js` | Antigravity |
 | `index.html`, `package.json`, `server.js` | საერთო: ცვლილებამდე წაიკითხე და ჩაწერე აქ |
 
 ## რუკის მიმდინარე სტატუსი (v3.10.2)
@@ -24,7 +24,17 @@
 - `map-gl.js`-ში აღდგა `recenter(coords, bearing, pitch)` და `_easingUntil`.
 - დამატებულია Claude-ის დიაგნოსტიკის პანელი (სიჩქარეზე 5 დაჭერა ან `?debug=1`), რომელიც ძალიან გამოსადეგია.
 - რუკის არჩევის მენიუში მხოლოდ ვექტორული რუკაა. Google გზების რუკა საგანგებო ვარიანტია.
-- **ტესტ-დრაივი / სიმულაცია (`sim-drive.js`):** დაემატა `#btn-sim-drive` ღილაკი პანელზე. საშუალებას აძლევს მძღოლს მანქანის გაჩერებულ მდგომარეობაში შეამოწმოს რუკის მოძრაობა, კამერის მიყოლა (45° Heading-Up), შუქნიშნები და მოხვევები.
+- **ტესტ-დრაივი / სიმულაცია (`sim-drive.js`):** დაემატა `#btn-sim-drive` ღილაკი პანელზე. მოხვევისას რბილი ტრიალისთვის დაემატა Pure Pursuit Lookahead (15-24მ წინხედვა) და კუთხური სიჩქარის შეზღუდვა (~18°/ნაბიჯი). `app.js`-ში CASE A-ს დაემატა `!window.isSimulatingDrive`, რათა სიმულაციის რბილი კუთხე არ გადაიწეროს უხეში სეგმენტის კუთხით.
+
+## ხმოვანი ასისტენტი და აუდიო (`speech.js` v3.10.2)
+- **სრულად ქართული ხმოვანი ნავიგაცია:** ამოღებულია ინგლისურ ხმაზე ნებისმიერი fallback.
+- **Tesla-ს ტიპის მიმართულებითი აკუსტიკური ჩაიმები (Web Audio API):**
+  - მარჯვნივ მოხვევა: აღმავალი ჰარმონიული ტონი (A4 -> D5).
+  - მარცხნივ მოხვევა: დაღმავალი ჰარმონიული ტონი (D5 -> A4).
+  - ჩასვლა / დანიშნულება: საზეიმო სამხმოვანება (C5 -> E5 -> G5).
+  - შუქნიშანი / სიჩქარე / გაფრთხილება: ორმაგი სიგნალი (F#5).
+  - მუშაობს 100% ხაზგარეშე და ავტონომიურად ნებისმიერ ბრაუზერზე და Tesla-ს მონიტორზე.
+- შეიქმნა ავტომატური ტესტები `tests/test_speech.js` (6/6 PASS).
 
 ## YouTube მედია პლეიერის სტატუსი (v3.10.2)
 - დაემატა Playlist Queue და ავტომატური შემდეგი (Auto-Advance): ვიდეოს დასრულებისას (`YT.PlayerState.ENDED`) პლეიერი ავტომატურად გადადის შემდეგ ჩანაწერზე.
@@ -33,12 +43,13 @@
 
 ## მოთხოვნები (ერთმანეთისთვის)
 - Claude: `tests/test_map_gl.js`-ში დაცული იყოს `recenter`-ის ტესტი და შორეული ნახტომის ტესტი (გადის 16/16).
-- Antigravity: YouTube პლეიერის ცვლილებები დაცულია `media-player.js`-ში, ტესტ-დრაივის სიმულატორი იზოლირებულია `sim-drive.js`-ში.
+- Antigravity: YouTube პლეიერის ცვლილებები დაცულია `media-player.js`-ში, ტესტ-დრაივის სიმულატორი `sim-drive.js`-ში, ხმოვანი ნავიგაცია `speech.js`-ში. `app.js`-ში CASE A-ში დამატებულია `!window.isSimulatingDrive`.
 
 ## ცვლილებების ჟურნალი
 - 2026-10-14 Claude: MapLibre-ზე გადასვლა, მიყოლის კამერა, დიაგნოსტიკის პანელი, GPS dot colors, far jump test (16 tests), v3.10.2.
 - 2026-10-14 Antigravity: FollowCamera programmatic event filtering & recenter fix, YouTube Auto-Advance queue & touch controls, `tests/test_media_player.js`, style synchronization, v3.10.2.
 - 2026-10-14 Antigravity: Added Test Drive simulation (`sim-drive.js`), `#btn-sim-drive` on dock, `tests/test_sim_drive.js` (5/5 PASS), v3.10.2.
+- 2026-10-14 Antigravity: Pure Pursuit Lookahead steering & rate-limited turn curve in `sim-drive.js`, authentic Georgian TTS & Web Audio navigation directional chimes in `speech.js` (zero English fallback), `tests/test_speech.js` (6/6 PASS, 35/35 total suite PASS), v3.10.2.
 
 
 
