@@ -1,7 +1,7 @@
 # 🚀 Tesla In-Car Navigation (Georgia) — Master Agent Handover Guide
 
 > **Target Audience:** Future AI Agents, Engineers, and Auditors.  
-> **Status as of October 14, 2026:** Production Ready, Optimized for Tesla MCU Chromium Browser, Version **v3.10.1**.  
+> **Status as of October 14, 2026:** Production Ready, Optimized for Tesla MCU Chromium Browser, Version **v3.10.2**.  
 > **Primary URL:** `http://localhost:3000` (Local) / `http://192.168.111.25:3000` (In-car WiFi/Hotspot) / `https://apev.onrender.com` (Cloud).  
 > **Repository Location:** `D:\Projects\Tesla Model 3\tesla-nav`  
 > **Backup Directory:** `D:\Projects\Tesla Model 3\tesla-nav-backup`  
@@ -110,6 +110,25 @@ This application provides a native-feeling, zero-lag, 60 FPS web navigation syst
     * **Streamlined UI:** Removed Google Maps and Satellite options from the selector menu; the app opens directly into 3D Vector map without restoring old raster preferences. Google Roads is kept strictly as an automatic emergency fallback if the vector server is unreachable.
     * **Complete Purge of Leaflet and Yandex:** Purged `leaflet.js`, `leaflet.css`, and `yandex.js` (exposed API key revoked). Zero external CDN or raster dependencies for core vector rendering.
     * Automated unit tests added in `tests/test_map_gl.js`, `tests/test_traffic_signals.js`, and `tests/test_signals_integration.js` (15/15 test suites passing).
+* **6.19 FollowCamera Decoupling Fix, Programmatic Event Filtering & Auto-Resume (v3.10.2):**
+  * **Driver Problem:** During real in-car driving tests, the map froze in place while the car arrow kept driving forward, turning left/right according to GPS, and flew straight off the screen. Tapping Recenter pulled it back for a split-second, but then it broke again.
+  * **True Root Cause Analysis:**
+    * In MapLibre GL JS, whenever `jumpTo({ bearing, pitch })` executes programmatically to orient the camera or tilt to 45°, MapLibre internally fires `rotatestart` and `pitchstart` events.
+    * In the previous commit, event listeners `map.on("rotatestart")` and `map.on("pitchstart")` were hooked without filtering out programmatic camera movements.
+    * On the very first frame of camera tracking, MapLibre fired `pitchstart`/`rotatestart`, triggering `setFollowCarMode(false)`!
+    * This decoupled the camera: `FollowCamera.tick()` stopped calling `jumpTo()`, but continued updating `this.pos` and calling `onCameraFrame(f)`, causing `carMarker.setLngLat` to fly off screen across a stationary map.
+  * **Solution:**
+    * **Strict Event Separation:** Map gesture handlers now strictly filter `if (e && e.originalEvent && !e.followCamera)` so internal camera interpolation never disengages follow mode.
+    * **Restoration of `recenter(coords, bearing, pitch)`:** Restored smooth easing camera recentering method in `map-gl.js` with `_easingUntil` protection so easing animations never clash with subsequent ticks.
+    * **8-Second Auto-Resume Timer:** If the driver deliberately pans the map to look around, an 8-second timer (`FOLLOW_RESUME_MS = 8000`) automatically and smoothly snaps the camera back to following the car (`recenterOnCar()`).
+    * **Top Bar GPS Quality Indicators:** Added `.gps-exact` (bright green glow), `.gps-good` (cyan glow), and `.gps-weak` (amber glow) CSS classes to `#gps-status-dot`.
+* **6.20 YouTube Playlist Queue, Auto-Advance & In-Car Touch Controls (v3.10.2):**
+  * **Driver Problem:** When watching YouTube or listening to music, the player stopped after a single video ended, with no next/prev track buttons or continuous playlist capability.
+  * **Solution:**
+    * **Auto-Advance Queue:** Subscribed to YouTube IFrame API `window.onmessage` events. When `event === "onStateChange"` returns `0` (YT.PlayerState.ENDED), the engine automatically advances to the next track in the queue without requiring user touch.
+    * **Full Playlist Queueing:** Presets and search results (`/api/youtube/search?list=1&q=...`) are mapped into `this.queue`, allowing seamless next/prev album navigation.
+    * **Automotive Touch Controls:** Added dedicated touch-friendly `⏮️` (Prev), `⏯️` (Play/Pause), `⏭️` (Next), and `🔂` (Loop) buttons, along with a live track title badge in `#media-player-card`.
+    * **Automated Unit Tests:** Added `tests/test_media_player.js` covering queue navigation, wrapping, loop repeat, postMessage command formatting, and URL parsing (16/16 test suites passing).
 
 ---
 
@@ -117,7 +136,7 @@ This application provides a native-feeling, zero-lag, 60 FPS web navigation syst
 
 ```
 tesla-nav/
-├── index.html           # Main HUD UI, MapLibre container, overlays, modals, SVG icons (v=3.10.1)
+├── index.html           # Main HUD UI, MapLibre container, overlays, modals, SVG icons (v=3.10.2)
 ├── style.css            # Dark UI theme, 0-blur high performance rules, MapLibre GL styling
 ├── app.js               # Central coordinator (MapLibre setup, GPS tracking, styling, UI events)
 ├── map-gl.js            # MapLibre abstraction layer (camera smoothing, dead reckoning, layer registry)
@@ -126,7 +145,7 @@ tesla-nav/
 ├── battery.js           # Official Tesla 2018-2023 Model 3/Y specs & SoC trip calculator
 ├── weather.js           # Open-Meteo live weather client
 ├── speech.js            # Georgian voice navigation assistant
-├── media-player.js      # Picture-in-picture YouTube player (unrestricted during driving)
+├── media-player.js      # Picture-in-picture YouTube player with Auto-Advance Queue & Controls
 ├── speed-limit.js      # OSM Overpass live maxspeed engine with spatial grid cache & fallback
 ├── traffic-signals.js   # Live traffic lights layer via Overpass API (+-50 deg heading filter)
 ├── traffic.js           # Traffic layer coordinator
@@ -144,6 +163,7 @@ tesla-nav/
     ├── test_signals_integration.js  # Signals integration & route prefetch tests
     ├── test_youtube_parse.js        # YouTube parser tests
     ├── test_map_gl.js               # MapLibre GL abstraction, camera & dead reckoning tests
+    ├── test_media_player.js         # Media player playlist queue, auto-advance & loop unit tests
     ├── check_version.js             # Version sync check across all manifests and HTML
     └── smoke_server.js              # 18-point server security & regression test suite
 ```

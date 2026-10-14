@@ -134,7 +134,7 @@ function initClock() {
 // ---------------------------------------------------------------------------------------------------------------
 const OFM_STYLE_URL = "https://tiles.openfreemap.org/styles/liberty";
 const OFM_STYLE_CACHE_KEY = "tesla_nav_ofm_style_v1";
-const MAP_STYLE_KEYS = ["openfreemap", "google-roads"];
+const MAP_STYLE_KEYS = ["openfreemap", "google-roads", "google-sat"];
 const MAP_DEFAULT_ZOOM = 16;      // MapLibre zoom (Leaflet-equivalent 17)
 const MAP_HEADING_PITCH = 45;
 
@@ -272,16 +272,10 @@ function initMap() {
     handleMapClick({ lat: e.lngLat.lat, lng: e.lngLat.lng });
   });
 
-  // Only genuine gestures of the driver switch to manual mode (programmatic camera moves have no originalEvent and pass followCamera: true)
-  map.on("dragstart", (e) => { if (e && e.originalEvent) { setFollowCarMode(false); scheduleFollowResume(); } });
-  map.on("dragend", (e) => { if (e && e.originalEvent) scheduleFollowResume(); });
-  const manualGesture = (e) => {
-    if (e && e.originalEvent && !e.followCamera && currentMapOrientation !== "manual") {
-      setMapOrientation("manual");
-      setFollowCarMode(false);
-      scheduleFollowResume();
-    }
-  };
+  // Only gestures of the driver switch to manual mode (programmatic camera moves have no originalEvent)
+  map.on("dragstart", (e) => { if (e.originalEvent) { setFollowCarMode(false); scheduleFollowResume(); } });
+  map.on("dragend", (e) => { if (e.originalEvent) scheduleFollowResume(); });
+  const manualGesture = (e) => { if (e.originalEvent && currentMapOrientation !== "manual") { setMapOrientation("manual"); setFollowCarMode(false); } };
   map.on("rotatestart", manualGesture);
   map.on("pitchstart", manualGesture);
 
@@ -681,6 +675,7 @@ function initGeolocation() {
 
       currentPos = { lat, lng };
       currentSpeedKmh = speed;
+      try { const d = (window.__dbg = window.__dbg || { fixes: [] }); d.fixes.push({ t: Date.now(), lat, lng, acc: coords.accuracy, spd: coords.speed, hdg: coords.heading }); if (d.fixes.length > 40) d.fixes.shift(); } catch (_) {}
 
       updateVehicleMarker(lat, lng, rawHeading, speed, coords.accuracy);
       fetchWeatherForPos(lat, lng);
@@ -1652,7 +1647,7 @@ function initEventListeners() {
         const style = opt.dataset.style;
         setMapStyle(style);
         mapStyleMenu.classList.remove("open");
-        const styleName = style === "google-roads" ? "🗺️ Google Maps (საგანგებო)" : "⚡ 3D ვექტორული რუკა";
+        const styleName = style === "google-sat" ? "🛰️ Google Satellite (ჰიბრიდი)" : style === "google-roads" ? "🗺️ Google Maps (წარწერები ბრუნავს)" : "⚡ 3D ვექტორული რუკა";
         showToast(styleName + " ჩაირთო ✅", "success", 2500);
       });
     });
@@ -1937,3 +1932,61 @@ function initRemoteSession() {
     });
   }
 }
+
+// ---------------------------------------------------------------------------------------------------------
+// Diagnostics HUD: ?debug=1 in the address, or tap the speed number 5 times. Shows what the GPS really delivers
+// and where the camera/arrow are, so a drive can be analysed from a photo of the screen.
+// ---------------------------------------------------------------------------------------------------------
+(function setupDebugHud() {
+  let el = null, timer = null, taps = [];
+  const f = (v, n = 1) => (typeof v === "number" && isFinite(v) ? v.toFixed(n) : "-");
+  function render() {
+    if (!el || !window.map || !window.carMarker) return;
+    const d = window.__dbg || { fixes: [] }, fx = d.fixes, now = Date.now();
+    const last = fx[fx.length - 1], prev = fx[fx.length - 2];
+    let dt = null, dist = null;
+    if (last && prev) {
+      dt = (last.t - prev.t) / 1000;
+      dist = routingEngine ? routingEngine.haversineMeters(prev.lat, prev.lng, last.lat, last.lng) : null;
+    }
+    const c = map.getContainer().getBoundingClientRect(), r = carMarker.getElement().getBoundingClientRect();
+    const padTop = map.getPadding().top;
+    const dx = r.x + r.width / 2 - c.x - c.width / 2;
+    const dy = r.y + r.height / 2 - c.y - (c.height / 2 + padTop / 2);
+    const cam = window.mapCamera;
+    const fps = cam ? (cam.frameCount - (el._fc || 0)) / ((now - (el._ft || now)) / 1000 || 1) : 0;
+    if (cam) { el._fc = cam.frameCount; el._ft = now; }
+    const lines = [
+      "v3.10.2 DEBUG  fixes:" + fx.length + "  age:" + (last ? f((now - last.t) / 1000) : "-") + "s",
+      "last fix: acc " + f(last && last.acc, 0) + "m  spd " + f(last && last.spd) + "  hdg " + f(last && last.hdg, 0),
+      "gap " + f(dt) + "s  jump " + f(dist) + "m  => " + (dt && dist != null ? f(dist / dt * 3.6, 0) : "-") + " km/h",
+      "follow " + isFollowCar + "  mode " + currentMapOrientation + "  fps " + f(fps, 0),
+      "bearing " + f(map.getBearing(), 0) + "  pitch " + f(map.getPitch(), 0) + "  zoom " + f(map.getZoom(), 1) + "  pad " + padTop,
+      "arrow offset from expected: dx " + f(dx, 0) + "  dy " + f(dy, 0) + " px",
+      "heading used " + f(lastKnownValidHeading, 0) + "  speed " + currentSpeedKmh + " km/h"
+    ];
+    fx.slice(-5).forEach(q => lines.push(((now - q.t) / 1000).toFixed(1).padStart(5) + "s  " + q.lat.toFixed(5) + "," + q.lng.toFixed(5) + "  a" + f(q.acc, 0) + " s" + f(q.spd) + " h" + f(q.hdg, 0)));
+    el.textContent = lines.join("\n");
+  }
+  function toggle(force) {
+    const on = force != null ? force : !el;
+    if (on && !el) {
+      el = document.createElement("pre");
+      el.style.cssText = "position:fixed;left:8px;top:80px;z-index:99999;margin:0;padding:8px 10px;background:rgba(0,0,0,.78);color:#7CFC7C;font:13px/1.35 monospace;border-radius:8px;pointer-events:none;white-space:pre";
+      document.body.appendChild(el);
+      timer = setInterval(render, 250);
+    } else if (!on && el) {
+      clearInterval(timer); el.remove(); el = null;
+    }
+  }
+  window.toggleDebugHud = toggle;
+  document.addEventListener("DOMContentLoaded", () => {
+    if (/[?&]debug=1/.test(location.search)) toggle(true);
+    const sv = document.getElementById("speed-val");
+    if (sv) sv.addEventListener("click", () => {
+      const t = Date.now();
+      taps = taps.filter(x => t - x < 3000); taps.push(t);
+      if (taps.length >= 5) { taps = []; toggle(); }
+    });
+  });
+})();

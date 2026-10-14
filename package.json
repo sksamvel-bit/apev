@@ -5,7 +5,7 @@
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
-    "test": "node tests/test_routing.js && node tests/test_speed_limit.js && node tests/test_speed_limit_osm.js && node tests/test_heading.js && node tests/test_traffic_signals.js && node tests/test_signals_integration.js && node tests/test_youtube_parse.js && node tests/test_map_gl.js",
+    "test": "node tests/test_routing.js && node tests/test_speed_limit.js && node tests/test_speed_limit_osm.js && node tests/test_heading.js && node tests/test_traffic_signals.js && node tests/test_signals_integration.js && node tests/test_youtube_parse.js && node tests/test_map_gl.js && node tests/test_media_player.js",
     "smoke": "node tests/smoke_server.js",
     "check": "node tests/check_version.js"
   },

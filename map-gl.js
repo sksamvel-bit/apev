@@ -142,6 +142,7 @@
       this._last = 0;
       this._idle = 0;
       this._applied = null;
+      this.frameCount = 0;         // diagnostics: animation frames actually processed
     }
 
     /** Latest GPS fix. headingDeg should already be smoothed by the caller (continuous heading). */
@@ -251,6 +252,7 @@
       if (ts - this._last < this.minFrameMs) { this._rafId = this.raf((t) => this.tick(t)); return; }
       const dt = Math.min(100, this._last ? ts - this._last : 16);
       this._last = ts;
+      this.frameCount++;
 
       // 1) where the car should be right now (dead reckoning between fixes)
       const fix = this.fix;

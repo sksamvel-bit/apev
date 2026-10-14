@@ -439,21 +439,6 @@ html, body {
   box-shadow: 0 0 8px var(--accent-amber);
 }
 
-.gps-dot.gps-exact {
-  background: #00e676;
-  box-shadow: 0 0 10px #00e676;
-}
-
-.gps-dot.gps-good {
-  background: #00d2ff;
-  box-shadow: 0 0 8px #00d2ff;
-}
-
-.gps-dot.gps-weak {
-  background: #ffab00;
-  box-shadow: 0 0 8px #ffab00;
-}
-
 @keyframes pulse-dot {
   0%, 100% { opacity: 1; transform: scale(1); }
   50% { opacity: 0.5; transform: scale(0.85); }
@@ -1144,7 +1129,7 @@ button svg * {
   justify-content: center;
   width: 44px;
   height: 44px;
-  position: relative;
+  position: absolute;   /* MapLibre positions markers with top/left 0 + transform; relative would put them in the page flow */
 }
 
 .car-heading-cone {
@@ -1813,6 +1798,61 @@ button svg * {
   width: 100%;
   height: 100%;
   border: none;
+}
+
+.media-playback-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+  padding: 6px 10px;
+}
+
+.media-ctrl-btn {
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 8px;
+  color: var(--text-primary);
+  font-size: 1.15rem;
+  min-width: 42px;
+  min-height: 42px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  touch-action: manipulation;
+  transition: background 0.15s ease, transform 0.1s ease;
+  user-select: none;
+}
+
+.media-ctrl-btn:active {
+  background: var(--accent-red);
+  transform: scale(0.92);
+}
+
+.media-ctrl-btn.active {
+  background: rgba(0, 210, 255, 0.25);
+  border-color: var(--accent-cyan);
+}
+
+.media-track-badge {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  overflow: hidden;
+  padding: 0 4px;
+}
+
+#media-track-title {
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .media-controls-row {
