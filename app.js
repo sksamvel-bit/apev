@@ -12,12 +12,8 @@ let destMarker = null;
 let currentBaseTileLayer = null;
 let currentLabelsTileLayer = null;
 let currentMapStyle = "google-roads";
-let currentMapOrientation = localStorage.getItem("tesla_nav_map_orientation");
-if (!currentMapOrientation || currentMapOrientation === "heading-up") {
-  // CRITICAL: Reset legacy heading-up to north-up so raster street labels are ALWAYS 100% horizontal and readable!
-  currentMapOrientation = "north-up";
-  localStorage.setItem("tesla_nav_map_orientation", "north-up");
-}
+let currentMapOrientation = "heading-up";
+localStorage.setItem("tesla_nav_map_orientation", "heading-up");
 let currentMapRotation = 0;
 
 let trafficEngine = null;
@@ -1164,26 +1160,16 @@ function toggleMapOrientation() {
     compassDragMoved = false;
     return;
   }
-  if (currentMapOrientation === "manual") {
-    // 1st click when manually rotated away from North:
-    // Smoothly resets rotation to True North (0 deg)!
-    currentMapOrientation = "north-up";
-    applyMapRotation(0, true);
-    showToast("⬆️ რუკა გასწორდა ჩრდილოეთზე (North-Up) — წარწერები ჰორიზონტალურია ✅", "success", 2000);
-  } else if (currentMapOrientation === "north-up") {
-    // 2nd click (or when at North): switches to dynamic Heading-Up
-    currentMapOrientation = "heading-up";
-    showToast("🧭 კურსის რეჟიმი (Heading-Up) — რასტერულ რუკაზე წარწერები ბრუნავს", "info", 2500);
-    if (currentPos) {
-      updateVehicleMarker(currentPos.lat, currentPos.lng, currentHeading, currentSpeedKmh);
-    }
-  } else {
-    // In Heading-Up: switches to North-Up
-    currentMapOrientation = "north-up";
-    applyMapRotation(0, true);
-    showToast("⬆️ რუკა გასწორდა ჩრდილოეთზე (North-Up) — წარწერები ჰორიზონტალურია ✅", "success", 2000);
+  // Pure Heading-Up mode: vehicle always points straight ahead (Course-Up)
+  currentMapOrientation = "heading-up";
+  localStorage.setItem("tesla_nav_map_orientation", "heading-up");
+  setFollowCarMode(true);
+  if (currentPos) {
+    currentMapRotation = -Math.round(continuousHeading || lastKnownValidHeading || 0);
+    applyMapRotation(currentMapRotation, true);
+    updateVehicleMarker(currentPos.lat, currentPos.lng, currentHeading, currentSpeedKmh);
   }
-  localStorage.setItem("tesla_nav_map_orientation", currentMapOrientation);
+  showToast("🧭 კურსის რეჟიმი (Heading-Up) — მანქანა მუდამ პირდაპირ მიდის", "info", 1800);
   updateOrientationUI();
 }
 
@@ -1192,20 +1178,19 @@ function updateOrientationUI() {
   const tip = document.getElementById("orientation-tooltip");
   if (!btn) return;
 
-  btn.classList.remove("active", "manual-active");
+  btn.classList.remove("manual-active");
   document.body.classList.remove("orientation-north-up", "orientation-heading-up", "orientation-manual");
 
-  if (currentMapOrientation === "heading-up") {
+  if (currentMapOrientation === "manual") {
+    btn.classList.add("manual-active");
+    btn.classList.remove("active");
+    document.body.classList.add("orientation-manual");
+    if (tip) tip.textContent = "დააჭირეთ კურსზე (Heading-Up) დასაბრუნებლად";
+  } else {
+    currentMapOrientation = "heading-up";
     btn.classList.add("active");
     document.body.classList.add("orientation-heading-up");
     if (tip) tip.textContent = "კურსის რეჟიმი (Heading-Up)";
-  } else if (currentMapOrientation === "manual") {
-    btn.classList.add("manual-active");
-    document.body.classList.add("orientation-manual");
-    if (tip) tip.textContent = "დააჭირეთ ჩრდილოეთზე (North) დასაბრუნებლად";
-  } else {
-    document.body.classList.add("orientation-north-up");
-    if (tip) tip.textContent = "ჩრდილოეთი (North-Up) — წარწერები სწორია";
   }
 }
 
