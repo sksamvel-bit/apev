@@ -163,10 +163,9 @@ function initMap() {
     return p;
   };
 
-  // Set initial map style (persisted or Google Roads by default)
-  const savedStyle = localStorage.getItem("tesla_nav_map_style");
-  const initialStyle = (savedStyle === "google-sat" || savedStyle === "yandex") ? savedStyle : "google-roads";
-  setMapStyle(initialStyle);
+  // Set initial map style: strictly Google Roads by default (clean Google Maps)
+  localStorage.setItem("tesla_nav_map_style", "google-roads");
+  setMapStyle("google-roads");
 
   // Custom Automotive Navigation Arrow Marker (Red Chevron with White Outline, matching photo)
   const carIcon = L.divIcon({
@@ -486,7 +485,7 @@ function setMapStyle(styleKey) {
     let failCount = 0;
     layer.on("tileerror", () => {
       failCount++;
-      if (failCount >= 4 && !layer._fallbackActive && map && map.hasLayer(layer)) {
+      if (failCount >= 30 && !layer._fallbackActive && map && map.hasLayer(layer)) {
         layer._fallbackActive = true;
         console.warn("[Map] Primary tiles failing, switching to CartoDB Voyager fallback");
         map.removeLayer(layer);
@@ -533,7 +532,9 @@ function setMapStyle(styleKey) {
 }
 
 // Global Night Mode (1-Click Dark/Light Toggle for ALL maps)
-let isNightMode = localStorage.getItem("tesla_nav_night_mode") === "true";
+// Default to Day Mode (clean, authentic Google Maps daylight appearance)
+let isNightMode = false;
+localStorage.setItem("tesla_nav_night_mode", "false");
 
 function toggleNightMode() {
   applyNightMode(!isNightMode);
@@ -580,12 +581,12 @@ function initSubsystems() {
   try { speechAssistant = new SpeechAssistant(); window.speechAssistant = speechAssistant; } catch (e) { console.warn("speechAssistant init notice:", e); }
   try { batteryEngine = new BatteryEngine(); window.batteryEngine = batteryEngine; } catch (e) { console.warn("batteryEngine init notice:", e); }
   try { weatherEngine = new WeatherEngine(); window.weatherEngine = weatherEngine; } catch (e) { console.warn("weatherEngine init notice:", e); }
-  try { trafficSignalsEngine = new TrafficSignalsEngine(map); window.trafficSignalsEngine = trafficSignalsEngine; } catch (e) { console.warn("trafficSignalsEngine init notice:", e); }
-  try { trafficEngine = new TrafficEngine(map); window.trafficEngine = trafficEngine; } catch (e) { console.warn("trafficEngine init notice:", e); }
+  try { trafficSignalsEngine = new TrafficSignalsEngine(map, false); window.trafficSignalsEngine = trafficSignalsEngine; } catch (e) { console.warn("trafficSignalsEngine init notice:", e); }
+  try { trafficEngine = new TrafficEngine(map, false); window.trafficEngine = trafficEngine; } catch (e) { console.warn("trafficEngine init notice:", e); }
   try {
     chargersEngine = new ChargersEngine(map, (chargerData) => {
       prepareRoutePreview(chargerData, chargerData.name || "EV დამტენი სადგური", chargerData.address || "ელექტრომობილის დამტენი");
-    });
+    }, false);
     window.chargersEngine = chargersEngine;
   } catch (e) { console.warn("chargersEngine init notice:", e); }
   try { mediaEngine = new MediaPlayerEngine(); window.mediaEngine = mediaEngine; } catch (e) { console.warn("mediaEngine init notice:", e); }

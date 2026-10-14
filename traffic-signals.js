@@ -17,10 +17,13 @@
 const SIGNALS_STORAGE_KEY = "sig_tiles_v1";
 
 class TrafficSignalsEngine {
-  constructor(map) {
+  constructor(map, startEnabled = true) {
     this.map = map;
-    this.layerGroup = L.layerGroup().addTo(map);
-    this.isEnabled = true;
+    this.layerGroup = L.layerGroup();
+    this.isEnabled = !!startEnabled;
+    if (this.isEnabled && map) {
+      this.layerGroup.addTo(map);
+    }
 
     this.endpoints = ["https://overpass-api.de/api/interpreter", "https://overpass.kumi.systems/api/interpreter"];
     this.tileLat = 0.01;    // ~1.1 km

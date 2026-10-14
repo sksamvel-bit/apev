@@ -13,13 +13,16 @@
 const CURATED_CHARGERS = [];
 
 class ChargersEngine {
-  constructor(map, onRouteToCharger) {
+  constructor(map, onRouteToCharger, startEnabled = false) {
     this.map = map;
     this.onRouteToCharger = onRouteToCharger;
-    this.layerGroup = L.layerGroup().addTo(map);
+    this.layerGroup = L.layerGroup();
+    if (startEnabled && map) {
+      this.layerGroup.addTo(map);
+    }
     this.chargers = [];
     this.activeMarkers = new Map(); // key -> L.marker
-    this.isEnabled = true;
+    this.isEnabled = !!startEnabled;
     this.cachedKeys = new Set();
 
     this.loadCuratedChargers();

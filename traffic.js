@@ -5,9 +5,9 @@
  */
 
 class TrafficEngine {
-  constructor(map) {
+  constructor(map, startEnabled = false) {
     this.map = map;
-    this.isEnabled = true;
+    this.isEnabled = !!startEnabled;
     this.tomtomKey = localStorage.getItem("tomtom_api_key") || "";
     this.trafficTileLayer = null;
     this.routeTrafficLayers = []; // Colored sub-polylines along current route
