@@ -234,6 +234,19 @@ function initMap() {
 
   if (typeof maplibregl === "undefined") {
     console.error("MapLibre GL JS not loaded");
+    const mapEl = document.getElementById("map");
+    if (mapEl) {
+      mapEl.innerHTML = `
+        <div style="display:flex; flex-direction:column; align-items:center; justify-content:center; height:100%; color:#f1f5f9; text-align:center; padding:20px;">
+          <div style="font-size:2rem; margin-bottom:12px;">🗺️</div>
+          <div style="font-size:1.2rem; font-weight:700; margin-bottom:8px;">რუკის ძრავის ჩატვირთვა ვერ მოხერხდა</div>
+          <div style="font-size:0.9rem; color:#94a3b8; margin-bottom:20px; max-width:400px;">გთხოვთ დააჭიროთ განახლებას (Ctrl + Shift + R ან ქვედა ღილაკი)</div>
+          <button onclick="if('caches' in window){caches.keys().then(k=>Promise.all(k.map(n=>caches.delete(n)))).then(()=>location.reload(true))}else{location.reload(true)}" style="background:#e82127; color:#fff; border:none; border-radius:10px; padding:12px 24px; font-size:1rem; font-weight:600; cursor:pointer;">
+            🔄 რუკის განახლება
+          </button>
+        </div>
+      `;
+    }
     return;
   }
 
