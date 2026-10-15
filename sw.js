@@ -10,27 +10,27 @@
  * 4. skipWaiting + clients.claim for atomic instant updates without stale caches.
  */
 
-const CACHE_NAME = 'tesla-nav-v3.10.3';
+const CACHE_NAME = 'tesla-nav-v3.10.4';
 
 const PRECACHE_ASSETS = [
   '/',
   '/index.html',
-  '/style.css?v=3.10.3',
-  '/app.js?v=3.10.3',
-  '/speed-limit.js?v=3.10.3',
-  '/routing.js?v=3.10.3',
-  '/chargers.js?v=3.10.3',
-  '/traffic-signals.js?v=3.10.3',
-  '/traffic.js?v=3.10.3',
-  '/weather.js?v=3.10.3',
-  '/battery.js?v=3.10.3',
-  '/media-player.js?v=3.10.3',
-  '/speech.js?v=3.10.3',
-  '/maplibre-gl.js?v=3.10.3',
-  '/map-gl.js?v=3.10.3',
-  '/maplibre-gl.css?v=3.10.3',
+  '/style.css?v=3.10.4',
+  '/app.js?v=3.10.4',
+  '/speed-limit.js?v=3.10.4',
+  '/routing.js?v=3.10.4',
+  '/chargers.js?v=3.10.4',
+  '/traffic-signals.js?v=3.10.4',
+  '/traffic.js?v=3.10.4',
+  '/weather.js?v=3.10.4',
+  '/battery.js?v=3.10.4',
+  '/media-player.js?v=3.10.4',
+  '/speech.js?v=3.10.4',
+  '/maplibre-gl.js?v=3.10.4',
+  '/map-gl.js?v=3.10.4',
+  '/maplibre-gl.css?v=3.10.4',
   '/qrcode.min.js',
-  '/sim-drive.js?v=3.10.3',
+  '/sim-drive.js?v=3.10.4',
   '/manifest.json',
   '/icon.svg',
   '/icon-192.png',

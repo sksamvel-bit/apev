@@ -136,7 +136,15 @@ const OFM_STYLE_URL = "https://tiles.openfreemap.org/styles/liberty";
 const OFM_STYLE_CACHE_KEY = "tesla_nav_ofm_style_v1";
 const MAP_STYLE_KEYS = ["openfreemap", "google-roads"];
 const MAP_DEFAULT_ZOOM = 16;      // MapLibre zoom (Leaflet-equivalent 17)
-const MAP_HEADING_PITCH = 45;
+// Performance experiments (all default to the normal behaviour): ?labels=0 hides the base-map labels/icons, ?markers=0 skips the
+// charger DOM markers, ?pitch=N sets the heading-up tilt (0-60). Used to find what makes the car's browser slow.
+const PERF = (function () {
+  const q = new URLSearchParams(location.search);
+  const p = parseFloat(q.get("pitch"));
+  return { labels: q.get("labels") !== "0", markers: q.get("markers") !== "0", pitch: isFinite(p) && p >= 0 && p <= 60 ? p : null };
+})();
+window.__perf = PERF;
+const MAP_HEADING_PITCH = PERF.pitch != null ? PERF.pitch : 45;
 
 const layerRegistry = new window.MapGL.LayerRegistry();
 window.layerRegistry = layerRegistry;
@@ -270,6 +278,18 @@ function initMap() {
     pixelRatio: (function () { const q = parseFloat(new URLSearchParams(location.search).get('dpr')); return q > 0 ? q : Math.min(window.devicePixelRatio || 1, 1.25); })()   // ?dpr=1 for perf experiments
   });
   window.map = map;
+  if (!PERF.labels) {
+    const hideLabels = () => {
+      try {
+        map.getStyle().layers.forEach((l) => {
+          if (l.type === "symbol" && l.source === "openmaptiles" && !(l.layout && l.layout.visibility === "none")) map.setLayoutProperty(l.id, "visibility", "none");
+        });
+      } catch (_) {}
+    };
+    map.on("styledata", hideLabels);
+  }
+  window.__renderCount = 0;
+  map.on("render", () => { window.__renderCount++; });
 
   // zoom around the screen centre so a pinch/scroll never fights the follow camera
   try {
@@ -1981,12 +2001,16 @@ function initRemoteSession() {
     const dy = r.y + r.height / 2 - c.y - (c.height / 2 + padTop / 2);
     const cam = window.mapCamera;
     const fps = cam ? (cam.frameCount - (el._fc || 0)) / ((now - (el._ft || now)) / 1000 || 1) : 0;
+    const rfps = ((window.__renderCount || 0) - (el._rc || 0)) / ((now - (el._ft0 || now)) / 1000 || 1);
+    el._rc = window.__renderCount || 0; el._ft0 = now;
     if (cam) { el._fc = cam.frameCount; el._ft = now; }
     const lines = [
       "v3.10.3 DEBUG  fixes:" + fx.length + "  age:" + (last ? f((now - last.t) / 1000) : "-") + "s",
       "last fix: acc " + f(last && last.acc, 0) + "m  spd " + f(last && last.spd) + "  hdg " + f(last && last.hdg, 0),
       "gap " + f(dt) + "s  jump " + f(dist) + "m  => " + (dt && dist != null ? f(dist / dt * 3.6, 0) : "-") + " km/h",
-      "follow " + isFollowCar + "  mode " + currentMapOrientation + "  fps " + f(fps, 0),
+      "follow " + isFollowCar + "  mode " + currentMapOrientation + "  fps " + f(fps, 0) + "  render " + f(rfps, 0) + "/s",
+      "cost: jumpTo " + f(cam && cam.jumpMs, 1) + "ms  onFrame " + f(cam && cam.cbMs, 1) + "ms",
+      "flags: dpr " + f(map.getPixelRatio && map.getPixelRatio(), 2) + "  pitch " + (PERF.pitch != null ? PERF.pitch : "45*") + "  labels " + (PERF.labels ? "on" : "OFF") + "  markers " + (PERF.markers ? "on" : "OFF"),
       "bearing " + f(map.getBearing(), 0) + "  pitch " + f(map.getPitch(), 0) + "  zoom " + f(map.getZoom(), 1) + "  pad " + padTop,
       "arrow offset from expected: dx " + f(dx, 0) + "  dy " + f(dy, 0) + " px",
       "heading used " + f(lastKnownValidHeading, 0) + "  speed " + currentSpeedKmh + " km/h"

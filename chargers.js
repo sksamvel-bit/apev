@@ -157,6 +157,7 @@ class ChargersEngine {
   // Viewport Culling: Only render markers that are inside the visible map area
   updateVisibleMarkers() {
     if (!this.isEnabled || !this.map) return;
+    if (window.__perf && window.__perf.markers === false) return;   // ?markers=0 perf experiment
 
     let b;
     try {

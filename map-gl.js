@@ -106,6 +106,8 @@
   }
 
   // -------------------------------------------------------------- FollowCamera
+  const perfNow = () => (typeof performance !== 'undefined' && performance.now ? performance.now() : Date.now());
+
   class FollowCamera {
     /**
      * opts: minFrameMs (33 = 30 fps), posTauMs, bearingTauMs, bearingSlowTauMs, pitchTauMs, extrapMaxMs,
@@ -143,6 +145,8 @@
       this._idle = 0;
       this._applied = null;
       this.frameCount = 0;         // diagnostics: animation frames actually processed
+      this.jumpMs = 0;             // diagnostics: moving average of map.jumpTo() cost
+      this.cbMs = 0;               // diagnostics: moving average of the onFrame callback cost
     }
 
     /** Latest GPS fix. headingDeg should already be smoothed by the caller (continuous heading). */
@@ -302,13 +306,19 @@
         const cam = { center: [this.pos.lng, this.pos.lat], padding: { top: Math.round(this.padTop), bottom: 0, left: 0, right: 0 } };
         if (tb != null) cam.bearing = this.bearing;
         if (tp != null) cam.pitch = this.pitch;
+        const p0 = perfNow();
         this.map.jumpTo(cam, { followCamera: true });
+        this.jumpMs += (perfNow() - p0 - this.jumpMs) * 0.2;
       } else {
         // the driver is looking around: mirror the map so that resuming eases from where it is now
         this.bearing = this.map.getBearing();
         this.pitch = this.map.getPitch();
       }
-      if (this.onFrame) this.onFrame({ lng: this.pos.lng, lat: this.pos.lat, bearing: this.bearing, pitch: this.pitch, speedMs: fix.speedMs, headingDeg: fix.headingDeg });
+      if (this.onFrame) {
+        const c0 = perfNow();
+        this.onFrame({ lng: this.pos.lng, lat: this.pos.lat, bearing: this.bearing, pitch: this.pitch, speedMs: fix.speedMs, headingDeg: fix.headingDeg });
+        this.cbMs += (perfNow() - c0 - this.cbMs) * 0.2;
+      }
 
       // 4) sleep when nothing moves (saves GPU on the Tesla)
       if (changed || fix.speedMs > 1) this._idle = 0; else this._idle++;
