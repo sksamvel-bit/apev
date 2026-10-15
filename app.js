@@ -1983,7 +1983,7 @@ function initRemoteSession() {
     const fps = cam ? (cam.frameCount - (el._fc || 0)) / ((now - (el._ft || now)) / 1000 || 1) : 0;
     if (cam) { el._fc = cam.frameCount; el._ft = now; }
     const lines = [
-      "v3.10.2 DEBUG  fixes:" + fx.length + "  age:" + (last ? f((now - last.t) / 1000) : "-") + "s",
+      "v3.10.3 DEBUG  fixes:" + fx.length + "  age:" + (last ? f((now - last.t) / 1000) : "-") + "s",
       "last fix: acc " + f(last && last.acc, 0) + "m  spd " + f(last && last.spd) + "  hdg " + f(last && last.hdg, 0),
       "gap " + f(dt) + "s  jump " + f(dist) + "m  => " + (dt && dist != null ? f(dist / dt * 3.6, 0) : "-") + " km/h",
       "follow " + isFollowCar + "  mode " + currentMapOrientation + "  fps " + f(fps, 0),
