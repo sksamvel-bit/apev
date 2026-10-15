@@ -52,6 +52,4 @@
 - 2026-10-14 Antigravity: Added Test Drive simulation (`sim-drive.js`), `#btn-sim-drive` on dock, `tests/test_sim_drive.js` (5/5 PASS), v3.10.2.
 - 2026-10-14 Antigravity: Pure Pursuit Lookahead steering in `sim-drive.js`, authentic Georgian TTS & Web Audio chimes in `speech.js`, `tests/test_speech.js` (6/6 PASS), v3.10.2.
 - 2026-10-14 Antigravity: v3.10.3 cache invalidation, restart server daemon to clear localhost 404, instant 1-click destination popup on map click, strictly prevent OS default English voice fallback in speech.js.
-
-
-
+- 2026-10-15 Claude & Antigravity: Commit 5d4ea93. Fixed low-FPS camera lag in map-gl.js (increased dt cap to 1000ms), added ?dpr= parameter in app.js for Tesla resolution profiling, added regression test in test_map_gl.js (17/17 PASS). Expanded international geocoding (Armenia, Turkey, Azerbaijan) in server.js. Agreement: focus on Tesla FPS optimization first before adding Google/Yandex raster layers.
