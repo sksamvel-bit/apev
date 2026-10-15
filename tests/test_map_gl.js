@@ -220,4 +220,14 @@ test("a far jump (GPS just locked) snaps instead of crawling", () => {
   near(cam.pos.lng, 44.79, 1e-6);
 });
 
+test("low fps (500 ms frames) still converges on the dead-reckoned target: no lag from a dt cap", () => {
+  const { cam, step } = makeCam({ posTauMs: 220 });
+  cam.setFix({ lng: 44.79, lat: 41.69, headingDeg: 90, speedMs: 15 });
+  step(33);
+  for (let i = 0; i < 3; i++) step(500);
+  const tgt = 44.79 + (15 * 1.5) / (111320 * Math.cos(41.69 * Math.PI / 180));
+  const lagM = (tgt - cam.pos.lng) * 111320 * Math.cos(41.69 * Math.PI / 180);
+  assert.ok(lagM < 3, "lag " + lagM.toFixed(2) + " m should be < 3 m");
+});
+
 console.log("\n" + passed + " tests passed" + (process.exitCode ? " - WITH FAILURES" : ""));

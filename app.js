@@ -267,7 +267,7 @@ function initMap() {
     pitchWithRotate: false,
     touchPitch: false,
     clickTolerance: 12,             // touch jitter below 12 px is a tap, not a drag
-    pixelRatio: Math.min(window.devicePixelRatio || 1, 1.25)
+    pixelRatio: (function () { const q = parseFloat(new URLSearchParams(location.search).get('dpr')); return q > 0 ? q : Math.min(window.devicePixelRatio || 1, 1.25); })()   // ?dpr=1 for perf experiments
   });
   window.map = map;
 

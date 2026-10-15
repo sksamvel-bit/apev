@@ -250,7 +250,7 @@
       }
       this._easingUntil = 0;
       if (ts - this._last < this.minFrameMs) { this._rafId = this.raf((t) => this.tick(t)); return; }
-      const dt = Math.min(100, this._last ? ts - this._last : 16);
+      const dt = Math.min(1000, this._last ? ts - this._last : 16);   // real frame time: a 100 ms cap made smoothing lag at 1-3 fps
       this._last = ts;
       this.frameCount++;
 
