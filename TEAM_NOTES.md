@@ -16,6 +16,7 @@
 |---|---|
 | `app.js`, `map-gl.js`, `style.css` (რუკის ნაწილი), `sw.js`, `routing.js`, `traffic-signals.js`, `traffic.js`, `chargers.js`, `tests/test_map_gl.js` | Claude |
 | `media-player.js`, YouTube-ის HTML/CSS, `sim-drive.js`, `tests/test_sim_drive.js`, `speech.js`, `tests/test_speech.js` | Antigravity |
+| `chargers-cache.json`, `audio/`, `turn-audio.js`, სერვერის მხარე დამტენების სინქრონიზაციისთვის (`server.js`) | Antigravity (2026-10-15 შეთანხმებით) |
 | `index.html`, `package.json`, `server.js` | საერთო: ცვლილებამდე წაიკითხე და ჩაწერე აქ |
 
 ## რუკის მიმდინარე სტატუსი (v3.10.3)
@@ -42,6 +43,26 @@
 - დაემატა სენსორული მართვის ზოლი: `⏮️`, `⏯️`, `⏭️`, `🔂` (Loop) და მიმდინარე ტრეკის სათაური.
 - შეიქმნა ავტომატური ტესტები `tests/test_media_player.js` (7/7 PASS).
 
+## პრიორიტეტები და როლები (შეთანხმებულია 2026-10-15: Samvel, Claude, Antigravity)
+მკაცრი რიგი. მთავარი მიზანი: ვიზუალურად **Tesla Premium Connectivity-ის რუკის ანალოგი**. ვიზუალი ბოლოსაა: ჯერ არსებულს ვასწორებთ.
+
+| რიგი | დავალება | პასუხისმგებელი | ფაილები |
+|---|---|---|---|
+| 0 | ტესტი მანქანაში (`?debug=1`, `&labels=0`, `&markers=0`, `&pitch=20`, HUD-ის ფოტოები) | Samvel | რეალური მანქანა |
+| 1 | რუკის შემსუბუქება (Lite რეჟიმი), წმინდა წარმადობა | Claude | `map-gl.js`, `app.js` |
+| 2 | დამტენები რუკიდან ცალკე სიაში (ახლომდებარე, "მხოლოდ სწრაფი", 5–6 მარკერი სიის გახსნისას, დადასტურების ღილაკი) | Claude | `chargers.js`, UI |
+| 3 | საძიებო სისტემა (მთლიანად Claude-ს; სერვერის `countrycodes` უკვე ჩართულია) | Claude | `app.js`, Search UI |
+| 4 | დამტენების ბაზა და სინქრონიზაცია GeoCharge.ge-დან (პირველად dry-run, ბაზაში ჩაწერის გარეშე; ატრიბუცია; `robots.txt`) | Antigravity | `server.js`, `chargers-cache.json` |
+| 5 | ქართული აუდიო (წინასწარ ჩაწერილი ფრაზები) | Antigravity | `audio/`, `turn-audio.js`, `speech.js` |
+| 6 | Tesla Premium Connectivity ვიზუალი (რუკის სტილი, ინტერფეისი) | Claude (Antigravity რევიუ) | `map-gl.js`, სტილები, HUD |
+
+წესები ამ გეგმისთვის:
+- 4 და 5 რუკის კოდს არ ეხება, ამიტომ პარალელურად შეიძლება. ერთ ფაილს ერთდროულად ორი მხარე არ ეხება.
+- Claude ამოწმებს (ტესტებით) Antigravity-ის 4 და 5 პუნქტებს. Antigravity ზედამხედველობს სერვერის სტაბილურობას და რეპოზიტორის სისუფთავეს.
+- ტესლას სტილი ჯერ გადამრთველის უკან (`?style=tesla`), ძველი რუკა ნაგულისხმევად უცვლელი, სანამ Samvel არ დაამტკიცებს. ყოველი ნაბიჯი ცალკე ვერსია და commit, რომ დაბრუნება ერთი `git revert`-ით იყოს შესაძლებელი.
+- "თავისუფალი/დაკავებული" სტატუსი დამტენებზე არ გვაქვს (მონაცემში არ არის), ამას არ ვპირდებით. PlugShare გამორიცხულია (კომერციული ლიცენზია), Open Charge Map შესაძლებელია მხოლოდ მესამე წყაროდ.
+- ამჟამად ველოდებით პუნქტ 0-ის შედეგს; სხვას არაფერს ვცვლით.
+
 ## მოთხოვნები (ერთმანეთისთვის)
 - Claude: `tests/test_map_gl.js`-ში დაცული იყოს `recenter`-ის ტესტი და შორეული ნახტომის ტესტი (გადის 16/16).
 - Antigravity: YouTube პლეიერის ცვლილებები დაცულია `media-player.js`-ში, ტესტ-დრაივის სიმულატორი `sim-drive.js`-ში, ხმოვანი ნავიგაცია `speech.js`-ში. `app.js`-ში CASE A-ში დამატებულია `!window.isSimulatingDrive` და `handleMapClick`-ში 1-click popup display.
@@ -53,3 +74,4 @@
 - 2026-10-14 Antigravity: Pure Pursuit Lookahead steering in `sim-drive.js`, authentic Georgian TTS & Web Audio chimes in `speech.js`, `tests/test_speech.js` (6/6 PASS), v3.10.2.
 - 2026-10-14 Antigravity: v3.10.3 cache invalidation, restart server daemon to clear localhost 404, instant 1-click destination popup on map click, strictly prevent OS default English voice fallback in speech.js.
 - 2026-10-15 Claude & Antigravity: Commit 5d4ea93. Fixed low-FPS camera lag in map-gl.js (increased dt cap to 1000ms), added ?dpr= parameter in app.js for Tesla resolution profiling, added regression test in test_map_gl.js (17/17 PASS). Expanded international geocoding (Armenia, Turkey, Azerbaijan) in server.js. Agreement: focus on Tesla FPS optimization first before adding Google/Yandex raster layers.
+- 2026-10-15 Claude: დაფიქსირდა შეთანხმებული პრიორიტეტები და როლების გადანაწილება (სექცია "პრიორიტეტები და როლები"), ფაილების მფლობელების ცხრილი განახლდა. კოდი არ შეცვლილა.
