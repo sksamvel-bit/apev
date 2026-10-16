@@ -309,9 +309,23 @@ function initMap() {
     PERF.lite = !!on;
     if (persist) { try { localStorage.setItem("lite", on ? "1" : "0"); } catch (_) {} }
     if (on) applyLite();
-    else { liteHidden.forEach((id) => { try { map.setLayoutProperty(id, "visibility", "visible"); } catch (_) {} }); liteHidden.clear(); }
+    else { detailOn = false; liteHidden.forEach((id) => { try { map.setLayoutProperty(id, "visibility", "visible"); } catch (_) {} }); liteHidden.clear(); }
   };
-  map.on("styledata", applyLite);
+  // While the car stands (speed < 3 km/h for 2 s) house numbers and minor street names come back; they hide again when moving.
+  let detailOn = false, stillSince = 0;
+  const setDetail = (on) => {
+    if (on === detailOn || !PERF.lite) return;
+    detailOn = on;
+    try {
+      window.MapGL.pickLiteDetail(map.getStyle().layers, "openmaptiles").forEach((id) => map.setLayoutProperty(id, "visibility", on ? "visible" : "none"));
+    } catch (_) {}
+  };
+  setInterval(() => {
+    if (!PERF.lite) return;
+    if (currentSpeedKmh < 3) { if (!stillSince) stillSince = Date.now(); if (Date.now() - stillSince > 2000) setDetail(true); }
+    else { stillSince = 0; setDetail(false); }
+  }, 500);
+  map.on("styledata", () => { applyLite(); if (detailOn) { detailOn = false; setDetail(true); } });
   if (PERF.liteAuto && !PERF.lite) {
     const gov = new window.MapGL.LiteGovernor({ minFps: 6, need: 5 });
     let lastCount = 0, lastT = performance.now();

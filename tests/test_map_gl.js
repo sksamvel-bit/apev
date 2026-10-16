@@ -246,6 +246,12 @@ test("Lite ignores layers from other sources", () => {
   assert.deepStrictEqual(MapGL.pickLiteHidden([{ id: "x", type: "symbol", source: "route", "source-layer": "poi" }], "openmaptiles"), []);
 });
 
+test("Lite detail set = house numbers + minor street names only (not POI, shields, arrows)", () => {
+  const L = [sym("poi_r20", "poi"), sym("housenumber", "housenumber"), sym("highway-name-minor", "transportation_name"),
+    sym("highway-shield-us", "transportation_name"), sym("highway-name-major", "transportation_name")];
+  assert.deepStrictEqual(MapGL.pickLiteDetail(L, "openmaptiles").sort(), ["highway-name-minor", "housenumber"]);
+});
+
 test("LiteGovernor fires after 5 consecutive slow moving samples, not when parked or briefly slow", () => {
   const g = new MapGL.LiteGovernor({ minFps: 6, need: 5 });
   for (let i = 0; i < 10; i++) assert.strictEqual(g.sample(2, false), false);

@@ -351,6 +351,13 @@
     return out;
   }
 
+  /** Subset of the Lite-hidden layers that is shown again while the car is standing: house numbers and minor street names. */
+  function pickLiteDetail(layers, source) {
+    const hidden = new Set(pickLiteHidden(layers, source));
+    return (layers || []).filter((l) => hidden.has(l.id) &&
+      (l["source-layer"] === "housenumber" || (l["source-layer"] === "transportation_name" && !/shield|one_?way|arrow/i.test(l.id)))).map((l) => l.id);
+  }
+
   /** Decides when to switch Lite on automatically: `need` consecutive moving samples below `minFps`. */
   function LiteGovernor(opts) {
     opts = opts || {};
@@ -367,5 +374,5 @@
     return false;
   };
 
-  return { shortestDelta, normDeg, advance, MapUtil, LayerRegistry, FollowCamera, pickLiteHidden, LiteGovernor };
+  return { shortestDelta, normDeg, advance, MapUtil, LayerRegistry, FollowCamera, pickLiteHidden, pickLiteDetail, LiteGovernor };
 });
