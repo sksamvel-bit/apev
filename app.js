@@ -135,13 +135,17 @@ function initClock() {
 const OFM_STYLE_URL = "https://tiles.openfreemap.org/styles/liberty";
 const OFM_STYLE_CACHE_KEY = "tesla_nav_ofm_style_v1";
 const MAP_STYLE_KEYS = ["openfreemap", "google-roads"];
+const APP_VERSION = "3.10.5";
 const MAP_DEFAULT_ZOOM = 16;      // MapLibre zoom (Leaflet-equivalent 17)
 // Performance experiments (all default to the normal behaviour): ?labels=0 hides the base-map labels/icons, ?markers=0 skips the
 // charger DOM markers, ?pitch=N sets the heading-up tilt (0-60). Used to find what makes the car's browser slow.
 const PERF = (function () {
   const q = new URLSearchParams(location.search);
   const p = parseFloat(q.get("pitch"));
-  return { labels: q.get("labels") !== "0", markers: q.get("markers") !== "0", pitch: isFinite(p) && p >= 0 && p <= 60 ? p : null };
+  let stored = null; try { stored = localStorage.getItem("lite"); } catch (_) {}
+  const lq = q.get("lite");   // ?lite=1 forces Lite, ?lite=0 forces the full map (and disables auto-Lite)
+  return { labels: q.get("labels") !== "0", markers: q.get("markers") !== "0", pitch: isFinite(p) && p >= 0 && p <= 60 ? p : null,
+           lite: lq === "1" || (lq == null && stored === "1"), liteAuto: lq == null };
 })();
 window.__perf = PERF;
 const MAP_HEADING_PITCH = PERF.pitch != null ? PERF.pitch : 45;
@@ -290,6 +294,33 @@ function initMap() {
   }
   window.__renderCount = 0;
   map.on("render", () => { window.__renderCount++; });
+
+  // Lite mode: hide minor labels/icons (the main cost on the car's CPU). Re-applied after every style change.
+  const liteHidden = new Set();
+  const applyLite = () => {
+    try {
+      if (!PERF.lite) return;
+      window.MapGL.pickLiteHidden(map.getStyle().layers, "openmaptiles").forEach((id) => {
+        if (map.getLayoutProperty(id, "visibility") !== "none") { liteHidden.add(id); map.setLayoutProperty(id, "visibility", "none"); }
+      });
+    } catch (_) {}
+  };
+  window.__setLite = (on, persist) => {
+    PERF.lite = !!on;
+    if (persist) { try { localStorage.setItem("lite", on ? "1" : "0"); } catch (_) {} }
+    if (on) applyLite();
+    else { liteHidden.forEach((id) => { try { map.setLayoutProperty(id, "visibility", "visible"); } catch (_) {} }); liteHidden.clear(); }
+  };
+  map.on("styledata", applyLite);
+  if (PERF.liteAuto && !PERF.lite) {
+    const gov = new window.MapGL.LiteGovernor({ minFps: 6, need: 5 });
+    let lastCount = 0, lastT = performance.now();
+    setInterval(() => {
+      const now = performance.now(), fps = (window.__renderCount - lastCount) * 1000 / (now - lastT);
+      lastCount = window.__renderCount; lastT = now;
+      if (gov.sample(fps, currentSpeedKmh > 3)) window.__setLite(true, true);
+    }, 1000);
+  }
 
   // zoom around the screen centre so a pinch/scroll never fights the follow camera
   try {
@@ -2005,7 +2036,7 @@ function initRemoteSession() {
     el._rc = window.__renderCount || 0; el._ft0 = now;
     if (cam) { el._fc = cam.frameCount; el._ft = now; }
     const lines = [
-      "v3.10.3 DEBUG  fixes:" + fx.length + "  age:" + (last ? f((now - last.t) / 1000) : "-") + "s",
+      "v" + APP_VERSION + " DEBUG" + (PERF.lite ? " LITE" : "") + "  fixes:" + fx.length + "  age:" + (last ? f((now - last.t) / 1000) : "-") + "s",
       "last fix: acc " + f(last && last.acc, 0) + "m  spd " + f(last && last.spd) + "  hdg " + f(last && last.hdg, 0),
       "gap " + f(dt) + "s  jump " + f(dist) + "m  => " + (dt && dist != null ? f(dist / dt * 3.6, 0) : "-") + " km/h",
       "follow " + isFollowCar + "  mode " + currentMapOrientation + "  fps " + f(fps, 0) + "  render " + f(rfps, 0) + "/s",

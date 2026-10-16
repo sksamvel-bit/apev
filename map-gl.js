@@ -326,5 +326,46 @@
     }
   }
 
-  return { shortestDelta, normDeg, advance, MapUtil, LayerRegistry, FollowCamera };
+  // ------------------------------------------------------------------ Lite mode
+  // The car's Atom CPU spends most of its frame time placing labels. Lite keeps place names and major-road names
+  // and hides everything else that is text/icon on the base map.
+  const LITE_KEEP_ROAD = /motorway|trunk|primary|secondary|highway-name-major|major/i;
+  const LITE_DROP_ROAD = /minor|path|track|service|shield|one_?way|arrow|pedestrian|footway|cycle/i;
+  const LITE_DROP_SRC = /^(poi|housenumber|aerodrome_label|mountain_peak|water_name|waterway|park|aeroway|building)$/;
+
+  /** Ids of base-map symbol layers to hide in Lite mode. `layers` is map.getStyle().layers. */
+  function pickLiteHidden(layers, source) {
+    const out = [];
+    for (const l of layers || []) {
+      if (!l || l.type !== "symbol") continue;
+      if (source && l.source !== source) continue;
+      const sl = l["source-layer"] || "";
+      const id = String(l.id || "");
+      let hide;
+      if (sl === "place") hide = /other|hamlet|suburb|neighbo|island|isolated/i.test(id);
+      else if (LITE_DROP_SRC.test(sl)) hide = true;
+      else if (sl === "transportation_name" || sl === "transportation") hide = LITE_DROP_ROAD.test(id) || !LITE_KEEP_ROAD.test(id);
+      else hide = /poi|housenumber|peak|airport|water|park|shield|oneway|arrow/i.test(id);
+      if (hide) out.push(l.id);
+    }
+    return out;
+  }
+
+  /** Decides when to switch Lite on automatically: `need` consecutive moving samples below `minFps`. */
+  function LiteGovernor(opts) {
+    opts = opts || {};
+    this.minFps = opts.minFps || 6;
+    this.need = opts.need || 5;
+    this.low = 0;
+    this.fired = false;
+  }
+  LiteGovernor.prototype.sample = function (fps, moving) {
+    if (this.fired) return false;
+    if (!moving) { this.low = 0; return false; }
+    this.low = fps < this.minFps ? this.low + 1 : 0;
+    if (this.low >= this.need) { this.fired = true; return true; }
+    return false;
+  };
+
+  return { shortestDelta, normDeg, advance, MapUtil, LayerRegistry, FollowCamera, pickLiteHidden, LiteGovernor };
 });

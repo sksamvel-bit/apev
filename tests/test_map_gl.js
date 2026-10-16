@@ -1,6 +1,7 @@
 /* Unit tests for map-gl.js (MapUtil, LayerRegistry, FollowCamera). Run: node tests/test_map_gl.js */
 const assert = require("assert");
 const { shortestDelta, normDeg, advance, MapUtil, LayerRegistry, FollowCamera } = require("../map-gl.js");
+const MapGL = require("../map-gl.js");
 
 let passed = 0;
 function test(name, fn) {
@@ -228,6 +229,31 @@ test("low fps (500 ms frames) still converges on the dead-reckoned target: no la
   const tgt = 44.79 + (15 * 1.5) / (111320 * Math.cos(41.69 * Math.PI / 180));
   const lagM = (tgt - cam.pos.lng) * 111320 * Math.cos(41.69 * Math.PI / 180);
   assert.ok(lagM < 3, "lag " + lagM.toFixed(2) + " m should be < 3 m");
+});
+
+const sym = (id, sl) => ({ id, type: "symbol", source: "openmaptiles", "source-layer": sl });
+test("Lite hides POI/house numbers/minor road names/shields but keeps places and major road names", () => {
+  const layers = [sym("poi_r20", "poi"), sym("housenumber", "housenumber"), sym("highway-name-minor", "transportation_name"),
+    sym("highway-name-path", "transportation_name"), sym("highway-shield-us", "transportation_name"), sym("water_name_point_label", "water_name"),
+    sym("highway-name-major", "transportation_name"), sym("label_city", "place"), sym("label_other", "place"),
+    { id: "road", type: "line", source: "openmaptiles", "source-layer": "transportation" }];
+  const h = MapGL.pickLiteHidden(layers, "openmaptiles");
+  for (const id of ["poi_r20", "housenumber", "highway-name-minor", "highway-name-path", "highway-shield-us", "water_name_point_label", "label_other"]) assert.ok(h.includes(id), id + " should be hidden");
+  for (const id of ["highway-name-major", "label_city", "road"]) assert.ok(!h.includes(id), id + " should stay");
+});
+
+test("Lite ignores layers from other sources", () => {
+  assert.deepStrictEqual(MapGL.pickLiteHidden([{ id: "x", type: "symbol", source: "route", "source-layer": "poi" }], "openmaptiles"), []);
+});
+
+test("LiteGovernor fires after 5 consecutive slow moving samples, not when parked or briefly slow", () => {
+  const g = new MapGL.LiteGovernor({ minFps: 6, need: 5 });
+  for (let i = 0; i < 10; i++) assert.strictEqual(g.sample(2, false), false);
+  for (let i = 0; i < 4; i++) assert.strictEqual(g.sample(2, true), false);
+  assert.strictEqual(g.sample(15, true), false);   // recovered: counter resets
+  for (let i = 0; i < 4; i++) assert.strictEqual(g.sample(2, true), false);
+  assert.strictEqual(g.sample(2, true), true);
+  assert.strictEqual(g.sample(2, true), false);    // fires once
 });
 
 console.log("\n" + passed + " tests passed" + (process.exitCode ? " - WITH FAILURES" : ""));
