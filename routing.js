@@ -257,7 +257,16 @@ class RoutingEngine {
     const alts = routes.map((r, k) => k).filter((k) => k !== activeIdx);
     // keep only distinct, reasonable ones (relative to the ACTIVE route; routes[0] is OSRM's fastest)
     const base = [best].concat(alts.map((k) => routes[k]));
-    const keep = RoutingEngine.pickAlternatives(base).map((j) => alts[j - 1]);
+    const mainPts = best.geometry.coordinates;
+    const margin = Math.min(1000, best.distance * 0.15);
+    const keep = [];
+    const labelPos = {};
+    RoutingEngine.pickAlternatives(base).map((j) => alts[j - 1]).forEach((k) => {
+      // A real alternative leaves the main route by at least 400 m somewhere away from start/end
+      // (OSRM also returns tiny U-turn loops at the ends: those are noise, not choices)
+      const dv = RoutingEngine.divergence(routes[k].geometry.coordinates, mainPts, margin);
+      if (dv.pos && dv.maxDist >= 400) { keep.push(k); labelPos[k] = dv.pos; }
+    });
     this.altRoutes = keep;
     const feats = keep.map((k) => ({
       type: "Feature", properties: { k },
@@ -267,38 +276,41 @@ class RoutingEngine {
     this.pushAltData();
     this.clearAltMarkers();
     if (typeof document === "undefined" || !this.map || typeof maplibregl === "undefined") return;
-    const mainPts = best.geometry.coordinates;
     keep.forEach((k) => {
       const r = routes[k];
-      const pos = this.altLabelPos(r.geometry.coordinates, mainPts);
       const mins = Math.max(1, Math.round(r.duration / 60));
       const diff = Math.round((r.duration - best.duration) / 60);
       const el = document.createElement("div");
       el.className = "route-alt-label";
       el.textContent = mins + " წთ" + (diff !== 0 ? " (" + (diff > 0 ? "+" : "") + diff + ")" : "");
       el.addEventListener("click", (ev) => { ev.stopPropagation(); this.selectAlternative(k); });
-      try { this.altMarkers.push(new maplibregl.Marker({ element: el }).setLngLat(pos).addTo(this.map)); } catch (_) {}
+      try { this.altMarkers.push(new maplibregl.Marker({ element: el }).setLngLat(labelPos[k]).addTo(this.map)); } catch (_) {}
     });
   }
 
-  /** Label spot: a vertex of the alternative in its middle part, as far as possible from the main route. */
-  altLabelPos(altCoords, mainCoords) {
-    const n = altCoords.length;
-    const lo = Math.floor(n * 0.3), hi = Math.max(lo + 1, Math.ceil(n * 0.7));
-    const stepA = Math.max(1, Math.floor((hi - lo) / 20));
-    const stepM = Math.max(1, Math.floor(mainCoords.length / 200));
-    let best = altCoords[Math.floor(n / 2)], bd = -1;
-    for (let i = lo; i < hi; i += stepA) {
+  /**
+   * How far (m) the alternative really leaves the main route, and where: the vertex of the alternative that is
+   * farthest from the main route, ignoring the first/last `margin` metres. Returns { maxDist, pos } (pos = [lng, lat],
+   * also the best place for the label).
+   */
+  static divergence(altCoords, mainCoords, margin) {
+    const kx = 111139 * Math.cos(mainCoords[0][1] * Math.PI / 180), ky = 111139;
+    const first = mainCoords[0], last = mainCoords[mainCoords.length - 1];
+    const stepM = Math.max(1, Math.floor(mainCoords.length / 1500));
+    const stepA = Math.max(1, Math.floor(altCoords.length / 80));
+    const dist = (a, p) => Math.hypot((a[0] - p[0]) * kx, (a[1] - p[1]) * ky);
+    let best = null, bd = -1;
+    for (let i = 0; i < altCoords.length; i += stepA) {
       const a = altCoords[i];
+      if (dist(a, first) < margin || dist(a, last) < margin) continue;
       let md = Infinity;
       for (let j = 0; j < mainCoords.length; j += stepM) {
-        const dx = a[0] - mainCoords[j][0], dy = a[1] - mainCoords[j][1];
-        const d = dx * dx + dy * dy;
+        const d = dist(a, mainCoords[j]);
         if (d < md) md = d;
       }
       if (md > bd) { bd = md; best = a; }
     }
-    return best;
+    return { maxDist: bd, pos: best };
   }
 
   pushAltData() {

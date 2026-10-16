@@ -12,7 +12,7 @@ const mk = (dist, dur, dx) => ({
   distance: dist, duration: dur, geometry: { coordinates: line(dx) },
   legs: [{ steps: [{ maneuver: { type: 'depart', location: [44.80, 41.70] }, name: 'A', distance: dist, duration: dur }, { maneuver: { type: 'arrive', location: [44.80, 41.72] }, name: '', distance: 0, duration: 0 }] }]
 });
-const best = mk(2300, 300, 0), fast2 = mk(2900, 340, 0.004), copy = mk(2310, 302, 0.0001), slow = mk(9000, 1500, 0.01);
+const best = mk(2300, 300, 0), fast2 = mk(2900, 340, 0.01), copy = mk(2310, 302, 0.0001), slow = mk(9000, 1500, 0.02), loop = mk(2400, 310, 0.0015);
 
 const urls = [];
 let answer = { routes: [best, fast2, copy, slow] };
@@ -21,6 +21,11 @@ global.fetch = async (u) => { urls.push(u); return { ok: true, json: async () =>
 (async () => {
   const picked = RE.pickAlternatives([best, fast2, copy, slow]);
   ok(picked.length === 1 && picked[0] === 1, 'near-copy and absurdly slow routes are dropped, the real alternative stays');
+
+  const dvLoop = RE.divergence(loop.geometry.coordinates, best.geometry.coordinates, 345);
+  const dvReal = RE.divergence(fast2.geometry.coordinates, best.geometry.coordinates, 345);
+  ok(dvLoop.maxDist < 400, 'a tiny wiggle next to the main route is not a real alternative (' + Math.round(dvLoop.maxDist) + ' m)');
+  ok(dvReal.maxDist > 700 && dvReal.pos, 'a real detour is measured (' + Math.round(dvReal.maxDist) + ' m) and gets its label spot away from the main route');
 
   const eng = new RE({ getSource() { return null; }, fitBounds() { }, on() { } }, null, null, null, null);
   let selected = null; eng.onRouteSelected = (r) => { selected = r; };
@@ -45,5 +50,5 @@ global.fetch = async (u) => { urls.push(u); return { ok: true, json: async () =>
   eng.clearRoute();
   ok(eng.altGeo.features.length === 0, 'clearing the route clears the alternatives');
   process.exitCode = fails ? 1 : 0;
-  console.log(fails ? fails + ' route alternative tests FAILED' : '9 route alternative tests passed');
+  console.log(fails ? fails + ' route alternative tests FAILED' : '11 route alternative tests passed');
 })();
