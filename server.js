@@ -18,7 +18,7 @@ process.on('unhandledRejection', e => console.error('[unhandled]', e && e.messag
 const STATIC_WHITELIST = new Set([
   'index.html','remote.html','style.css','qrcode.min.js',
   'maplibre-gl.js','maplibre-gl.css','map-gl.js',
-  'app.js','routing.js','traffic.js','traffic-signals.js','chargers.js','charger-list.js','search.js','tesla-style.js','turn-audio.js','speed-cameras.js',
+  'app.js','routing.js','traffic.js','traffic-signals.js','chargers.js','charger-list.js','search.js','tesla-style.js',
   'battery.js','weather.js','speech.js','media-player.js','speed-limit.js',
   'sim-drive.js',
   'manifest.json','icon.svg','icon-192.png','icon-512.png','sw.js'
@@ -705,65 +705,6 @@ function httpsGetJson(url) {
   });
 }
 
-// ---- Fixed speed cameras (OpenStreetMap via Overpass): fetched by the server once a day, never by the browser ----
-const SpeedCameras = require('./speed-cameras.js');
-const CAMERAS_FILE = path.join(PUBLIC_DIR, 'cameras-cache.json');
-const CAMERAS_TTL_MS = 24 * 3600 * 1000;
-const CAMERAS_QUERY = '[out:json][timeout:40];node["highway"="speed_camera"](41.0,40.0,43.6,46.8);out;'; // whole of Georgia
-const CAMERAS_ENDPOINTS = ['https://overpass-api.de/api/interpreter', 'https://overpass.kumi.systems/api/interpreter'];
-let camerasCache = { t: 0, cameras: [] };
-let camerasPending = null;
-try {
-  if (fs.existsSync(CAMERAS_FILE)) {
-    const saved = JSON.parse(fs.readFileSync(CAMERAS_FILE, 'utf8'));
-    if (saved && Array.isArray(saved.cameras)) camerasCache = { t: Number(saved.t) || 0, cameras: saved.cameras };
-  }
-} catch (e) { console.warn('[cameras] cache file ignored:', e.message); }
-
-function overpassPost(endpoint, query) {
-  return new Promise((resolve, reject) => {
-    const body = 'data=' + encodeURIComponent(query);
-    const u = new URL(endpoint);
-    const req = https.request({
-      method: 'POST', hostname: u.hostname, path: u.pathname, timeout: 45000,
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'Content-Length': Buffer.byteLength(body), 'User-Agent': 'apev-tesla-nav/1.0 (personal use)' }
-    }, resp => {
-      let data = '';
-      resp.on('data', c => { data += c; if (data.length > 5 * 1024 * 1024) resp.destroy(); });
-      resp.on('end', () => {
-        if (resp.statusCode !== 200) return reject(new Error('HTTP ' + resp.statusCode));
-        try { resolve(JSON.parse(data)); } catch (e) { reject(new Error('bad JSON')); }
-      });
-      resp.on('error', reject);
-    });
-    req.on('error', reject);
-    req.on('timeout', () => { req.destroy(); reject(new Error('timeout')); });
-    req.write(body); req.end();
-  });
-}
-
-async function getSpeedCameras() {
-  if (camerasCache.cameras.length && Date.now() - camerasCache.t < CAMERAS_TTL_MS) return camerasCache;
-  if (camerasPending) return camerasPending;
-  camerasPending = (async () => {
-    let lastErr = null;
-    for (const ep of CAMERAS_ENDPOINTS) {
-      try {
-        const cams = SpeedCameras.parseOverpass(await overpassPost(ep, CAMERAS_QUERY));
-        if (cams.length) {
-          camerasCache = { t: Date.now(), cameras: cams };
-          try { fs.writeFileSync(CAMERAS_FILE, JSON.stringify(camerasCache)); } catch (_) {}
-          console.log(`[cameras] ${cams.length} speed cameras loaded from ${new URL(ep).hostname}`);
-          return camerasCache;
-        }
-      } catch (e) { lastErr = e; }
-    }
-    console.warn('[cameras] Overpass unavailable, serving the previous list:', lastErr && lastErr.message);
-    camerasCache.t = Date.now() - CAMERAS_TTL_MS + 15 * 60 * 1000; // try again in 15 minutes
-    return camerasCache;
-  })().finally(() => { camerasPending = null; });
-  return camerasPending;
-}
 async function searchYouTubeApi(query) {
   const base = 'https://www.googleapis.com/youtube/v3/';
   const s = await httpsGetJson(base + 'search?part=snippet&type=video&maxResults=6&videoEmbeddable=true&safeSearch=moderate'
@@ -1180,18 +1121,6 @@ const server = http.createServer((req, res) => {
     }).catch(err => {
       res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
       res.end(JSON.stringify({ success: false, fallbackQuery: q, error: err.message }));
-    });
-    return;
-  }
-
-  // API Endpoint: /api/cameras (fixed speed cameras, OSM data cached 24 h)
-  if (pathname === '/api/cameras') {
-    getSpeedCameras().then(c => {
-      res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'private, max-age=3600' });
-      res.end(JSON.stringify({ updated: c.t, cameras: c.cameras }));
-    }).catch(() => {
-      res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
-      res.end(JSON.stringify({ updated: 0, cameras: [] }));
     });
     return;
   }

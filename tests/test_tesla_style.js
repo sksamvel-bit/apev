@@ -57,4 +57,19 @@ test("roadClass", () => {
   assert.strictEqual(T.roadClass("road_service"), "minor");
 });
 
+test("diff: day->night changes only paint colors, same layer ids, and back again is the inverse", () => {
+  const base = { version: 8, layers: [
+    { id: "bg", type: "background", paint: { "background-color": "#fff" } },
+    { id: "road_minor", type: "line", "source-layer": "transportation", paint: { "line-color": "#000" } },
+    { id: "poi", type: "symbol", "source-layer": "poi", layout: {}, paint: {} }
+  ] };
+  const d = T.diff(base, false, true);
+  assert.ok(d.length > 0);
+  assert.ok(d.every((c) => ["bg", "road_minor", "poi"].includes(c.id)));
+  assert.ok(d.find((c) => c.id === "bg" && c.prop === "background-color" && c.value === T.PALETTE.night.land));
+  assert.strictEqual(T.diff(base, true, true).length, 0);
+  const back = T.diff(base, true, false);
+  assert.ok(back.find((c) => c.id === "bg" && c.value === T.PALETTE.day.land));
+});
+
 console.log("\n" + passed + " tesla style tests passed" + (process.exitCode ? " - WITH FAILURES" : ""));

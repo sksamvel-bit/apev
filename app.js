@@ -16,7 +16,6 @@ localStorage.setItem("tesla_nav_map_orientation", "heading-up");
 
 let trafficEngine = null;
 let trafficSignalsEngine = null;
-let camerasEngine = null;
 let routingEngine = null;
 let speechAssistant = null;
 let weatherEngine = null;
@@ -136,7 +135,7 @@ function initClock() {
 const OFM_STYLE_URL = "https://tiles.openfreemap.org/styles/liberty";
 const OFM_STYLE_CACHE_KEY = "tesla_nav_ofm_style_v1";
 const MAP_STYLE_KEYS = ["openfreemap", "google-roads"];
-const APP_VERSION = "3.10.19";
+const APP_VERSION = "3.10.22";
 const MAP_DEFAULT_ZOOM = 16;      // MapLibre zoom (Leaflet-equivalent 17)
 // Performance experiments (all default to the normal behaviour): ?labels=0 hides the base-map labels/icons, ?markers=0 skips the
 // charger DOM markers, ?pitch=N sets the heading-up tilt (0-60). Used to find what makes the car's browser slow.
@@ -208,9 +207,12 @@ function tuneVectorStyle(style) {
     const ref = out.layers.find((l) => l.type === "symbol" && l.layout && l.layout["text-font"] && l["source-layer"] === "transportation_name") ||
                 out.layers.find((l) => l.type === "symbol" && l.layout && l.layout["text-font"]);
     out.layers.push({
-      id: "housenumber", type: "symbol", source: "openmaptiles", "source-layer": "housenumber", minzoom: 17,
-      layout: { "text-field": ["get", "housenumber"], "text-font": ref ? ref.layout["text-font"] : ["Noto Sans Regular"], "text-size": 12 },
-      paint: { "text-color": "#555555", "text-halo-color": "#ffffff", "text-halo-width": 1.2 }
+      // minzoom 16 = the car's default zoom (MAP_DEFAULT_ZOOM); with 17 the numbers never showed unless the driver zoomed in.
+      // They are hidden while driving (see the speed watcher in initMap) because placing them costs CPU on the Atom.
+      id: "housenumber", type: "symbol", source: "openmaptiles", "source-layer": "housenumber", minzoom: 16,
+      layout: { "text-field": ["get", "housenumber"], "text-font": ref ? ref.layout["text-font"] : ["Noto Sans Regular"],
+        "text-size": ["interpolate", ["linear"], ["zoom"], 16, 11, 18, 14] },
+      paint: { "text-color": "#3f4650", "text-halo-color": "#ffffff", "text-halo-width": 1.5 }
     });
   }
   return out;
@@ -228,12 +230,13 @@ async function loadStyleJson(styleKey) {
     if (!res.ok) throw new Error("HTTP " + res.status);
     const json = await res.json();
     try { localStorage.setItem(OFM_STYLE_CACHE_KEY, JSON.stringify(json)); } catch (_) {}
-    return teslaLook(tuneVectorStyle(json));
+    window.__teslaBase = tuneVectorStyle(json);
+    return teslaLook(window.__teslaBase);
   } catch (err) {
     // style server slow/unreachable: use the last good copy (the tiles themselves may still come from the browser cache)
     let cached = null;
     try { cached = JSON.parse(localStorage.getItem(OFM_STYLE_CACHE_KEY)); } catch (_) {}
-    if (cached && cached.layers) return teslaLook(tuneVectorStyle(cached));
+    if (cached && cached.layers) { window.__teslaBase = tuneVectorStyle(cached); return teslaLook(window.__teslaBase); }
     throw err;
   } finally {
     clearTimeout(timer);
@@ -337,6 +340,7 @@ function initMap() {
   window.__setLite = (on, persist) => {
     PERF.lite = !!on;
     if (persist) { try { sessionStorage.setItem("lite", on ? "1" : "0"); } catch (_) {} }
+    try { hnOn = null; } catch (_) {}
     if (on) applyLite();
     else { detailOn = false; liteHidden.forEach((id) => { try { map.setLayoutProperty(id, "visibility", "visible"); } catch (_) {} }); liteHidden.clear(); }
   };
@@ -354,7 +358,16 @@ function initMap() {
     if (currentSpeedKmh < 3) { if (!stillSince) stillSince = Date.now(); if (Date.now() - stillSince > 2000) setDetail(true); }
     else { stillSince = 0; setDetail(false); }
   }, 500);
-  map.on("styledata", () => { applyLite(); if (detailOn) { detailOn = false; setDetail(true); } });
+  map.on("styledata", () => { applyLite(); if (detailOn) { detailOn = false; setDetail(true); } hnOn = null; });
+  // Normal (non-Lite) mode: house numbers are shown while the car crawls/stands (< 15 km/h) and hidden while driving (> 25 km/h).
+  let hnOn = null;
+  setInterval(() => {
+    if (PERF.lite) return;   // Lite has its own stand-still logic above
+    const want = hnOn === false ? currentSpeedKmh < 15 : currentSpeedKmh <= 25;
+    if (want === hnOn) return;
+    hnOn = want;
+    try { if (map.getLayer("housenumber")) map.setLayoutProperty("housenumber", "visibility", want ? "visible" : "none"); } catch (_) { hnOn = null; }
+  }, 700);
   if (PERF.liteAuto && !PERF.lite) {
     const gov = new window.MapGL.LiteGovernor({ minFps: 6, need: 5 });
     let lastCount = 0, lastT = performance.now();
@@ -546,7 +559,19 @@ function applyNightMode(enable) {
   window.__night = enable;
   localStorage.setItem("tesla_nav_night_mode", isNightMode ? "true" : "false");
   // Tesla look has its own dark palette: rebuild the style instead of filtering the canvas
-  if (TESLA_LOOK && nightChanged && map && currentMapStyle === "openfreemap") applyMapStyle(currentMapStyle);
+  // (patched in place: a full setStyle rebuild blanks the map and freezes the car's browser)
+  if (TESLA_LOOK && nightChanged && map && currentMapStyle === "openfreemap") {
+    let patched = false;
+    try {
+      if (window.__teslaBase && map.isStyleLoaded()) {
+        for (const c of window.TeslaStyle.diff(window.__teslaBase, !enable, enable)) {
+          if (map.getLayer(c.id)) map.setPaintProperty(c.id, c.prop, c.value);
+        }
+        patched = true;
+      }
+    } catch (e) { console.warn("night paint patch failed, rebuilding:", e); }
+    if (!patched) applyMapStyle(currentMapStyle);
+  }
   document.body.classList.toggle("night-mode-active", isNightMode);
 
   const btnNight = document.getElementById("btn-toggle-night");
@@ -585,7 +610,6 @@ function initSubsystems() {
   try { batteryEngine = new BatteryEngine(); window.batteryEngine = batteryEngine; } catch (e) { console.warn("batteryEngine init notice:", e); }
   try { weatherEngine = new WeatherEngine(); window.weatherEngine = weatherEngine; } catch (e) { console.warn("weatherEngine init notice:", e); }
   try { trafficSignalsEngine = new TrafficSignalsEngine(map, true); window.trafficSignalsEngine = trafficSignalsEngine; } catch (e) { console.warn("trafficSignalsEngine init notice:", e); }
-  try { camerasEngine = new SpeedCamerasEngine(map, true); window.camerasEngine = camerasEngine; } catch (e) { console.warn("camerasEngine init notice:", e); }
   try { trafficEngine = new TrafficEngine(map, true); window.trafficEngine = trafficEngine; } catch (e) { console.warn("trafficEngine init notice:", e); }
   try {
     chargersEngine = new ChargersEngine(map, (chargerData) => {
@@ -800,7 +824,6 @@ function initGeolocation() {
       try { const d = (window.__dbg = window.__dbg || { fixes: [] }); d.fixes.push({ t: Date.now(), lat, lng, acc: coords.accuracy, spd: coords.speed, hdg: coords.heading }); if (d.fixes.length > 40) d.fixes.shift(); } catch (_) {}
 
       updateVehicleMarker(lat, lng, rawHeading, speed, coords.accuracy);
-      if (camerasEngine) camerasEngine.update(currentPos, currentHeading, speed, (t) => { if (speechAssistant) speechAssistant.speak(t); });
       fetchWeatherForPos(lat, lng);
 
       if (routingEngine && routingEngine.isNavigating) {
@@ -1806,16 +1829,6 @@ function initEventListeners() {
       showToast(enabled ? "🚦 საცობების ფენა ჩართულია" : "🚦 საცობების ფენა გამორთულია", "info", 1800);
     }
   });
-
-  const btnCameras = document.getElementById("btn-toggle-cameras");
-  if (btnCameras) {
-    btnCameras.addEventListener("click", () => {
-      if (!camerasEngine) return;
-      const enabled = camerasEngine.toggle();
-      btnCameras.classList.toggle("cameras-active", enabled);
-      showToast(enabled ? "📷 სიჩქარის კამერები ჩართულია" : "📷 სიჩქარის კამერები გამორთულია", "info", 1800);
-    });
-  }
 
   const btnSignals = document.getElementById("btn-toggle-signals");
   btnSignals.addEventListener("click", () => {

@@ -86,11 +86,27 @@
     return out;
   }
 
+  /**
+   * Day <-> night without reloading the style: the list of paint properties that differ between the two palettes.
+   * [{id, prop, value}] to feed map.setPaintProperty (cheap; a full setStyle rebuild freezes the Atom MCU2 and blanks the map).
+   */
+  function diff(base, fromNight, toNight) {
+    const a = apply(base, fromNight).layers, b = apply(base, toNight).layers;
+    const out = [];
+    for (let i = 0; i < b.length; i++) {
+      const pa = (a[i] && a[i].paint) || {}, pb = b[i].paint || {};
+      for (const k of Object.keys(pb)) {
+        if (JSON.stringify(pa[k]) !== JSON.stringify(pb[k])) out.push({ id: b[i].id, prop: k, value: pb[k] });
+      }
+    }
+    return out;
+  }
+
   /** Colors the route layers use in the Tesla look. */
   function routeColors(night) {
     const P = night ? PALETTE.night : PALETTE.day;
     return { line: P.route, casing: P.routeCasing };
   }
 
-  return { apply, routeColors, roadClass, PALETTE };
+  return { apply, diff, routeColors, roadClass, PALETTE };
 });
