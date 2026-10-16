@@ -29,7 +29,35 @@ class RoutingEngine {
     this.onArrival = null;
     this.onPositionUpdate = null;
 
+    // Alternatives (preview only): other OSRM routes drawn in grey, tap one (or its time label) to switch
+    this.altRoutes = [];
+    this.altCtx = null;
+    this.altGeo = RoutingEngine.emptyGeo();
+    this.altMarkers = [];
+    this.onRouteSelected = null;
+
     this.registerMapLayers();
+    if (map && typeof map.on === "function") {
+      map.on("click", "route-alt-line", (e) => {
+        const f = e && e.features && e.features[0];
+        if (f && f.properties && f.properties.k != null) this.selectAlternative(Number(f.properties.k));
+      });
+    }
+  }
+
+  /** Keeps up to 2 genuinely different alternatives (not near-copies of the best route, not absurdly slow). */
+  static pickAlternatives(routes) {
+    const best = routes[0];
+    const out = [];
+    for (let k = 1; k < routes.length && out.length < 2; k++) {
+      const r = routes[k];
+      if (!r || !r.geometry || !r.geometry.coordinates || r.geometry.coordinates.length < 2) continue;
+      if (r.duration > best.duration * 1.6 + 120) continue;
+      const same = (o) => Math.abs(r.duration - o.duration) < o.duration * 0.03 && Math.abs(r.distance - o.distance) < o.distance * 0.03;
+      if (same(best) || out.some((j) => same(routes[j]))) continue; // near-copy of the active route or of one already kept
+      out.push(k);
+    }
+    return out;
   }
 
   static emptyGeo() {
@@ -53,12 +81,17 @@ class RoutingEngine {
     reg.register("route", {
       where: "labels",
       sources: () => ({
+        "route-alt-source": { type: "geojson", data: this.altGeo },
         "route-passed-source": { type: "geojson", data: this.routeGeo.passed },
         "route-source": { type: "geojson", data: this.routeGeo.upcoming }
       }),
       layers: () => {
         const tl = typeof window !== "undefined" && window.__teslaLook && window.TeslaStyle ? window.TeslaStyle.routeColors(!!window.__night) : null;
         return [
+        { id: "route-alt-casing", type: "line", source: "route-alt-source", layout: round,
+          paint: { "line-color": "#ffffff", "line-width": 9, "line-opacity": 0.7 } },
+        { id: "route-alt-line", type: "line", source: "route-alt-source", layout: round,
+          paint: { "line-color": "#8a93a0", "line-width": 6, "line-opacity": 0.95 } },
         { id: "route-passed-line", type: "line", source: "route-passed-source", layout: round,
           paint: { "line-color": "#64748b", "line-width": 5, "line-opacity": 0.6 } },
         { id: "route-casing", type: "line", source: "route-source", layout: round,
@@ -106,7 +139,9 @@ class RoutingEngine {
       throw new Error("არასწორი კოორდინატები");
     }
 
-    const query = `${start.lng},${start.lat};${end.lng},${end.lat}?overview=full&geometries=geojson&steps=true&alternatives=false`;
+    // Alternatives only for a preview (not while driving / rerouting: those must be fast and unambiguous)
+    const wantAlt = !autoStart && opts.alternatives !== false;
+    const query = `${start.lng},${start.lat};${end.lng},${end.lat}?overview=full&geometries=geojson&steps=true&alternatives=${wantAlt ? "true" : "false"}`;
 
     const routingServers = [
       "https://router.project-osrm.org/route/v1/driving/",
@@ -141,9 +176,14 @@ class RoutingEngine {
       throw lastError || new Error("მარშრუტი ვერ მოიძებნა");
     }
 
+    return this.applyRoute(data.routes, 0, start, end, endLatLng, autoStart, opts, wantAlt);
+  }
+
+  /** Makes routes[idx] the active route (used for the first calculation and when the user taps an alternative). */
+  applyRoute(routes, idx, start, end, endLatLng, autoStart, opts, wantAlt) {
     this.clearRoute(); // success -> now replace the old route
 
-    const route = data.routes[0];
+    const route = routes[idx];
     const geojsonCoords = route.geometry.coordinates; // [lon, lat]
     const latlngs = geojsonCoords.map(c => [c[1], c[0]]);
 
@@ -174,6 +214,7 @@ class RoutingEngine {
 
     // Render route on map
     this.setRouteData(latlngs, []);
+    if (wantAlt) this.setAlternatives(routes, idx, { start, end, endLatLng });
 
     // Fit bounds nicely with padding for the preview card. Not when navigation starts right away
     // (the camera follows the car) and not for a reroute (opts.fit === false keeps the driving zoom).
@@ -207,6 +248,77 @@ class RoutingEngine {
     }
 
     return this.activeRoute;
+  }
+
+  /** Draw the other routes in grey with a "N წთ (+M)" label each. */
+  setAlternatives(routes, activeIdx, ctx) {
+    this.altCtx = { routes, ctx };
+    const best = routes[activeIdx];
+    const alts = routes.map((r, k) => k).filter((k) => k !== activeIdx);
+    // keep only distinct, reasonable ones (relative to the ACTIVE route; routes[0] is OSRM's fastest)
+    const base = [best].concat(alts.map((k) => routes[k]));
+    const keep = RoutingEngine.pickAlternatives(base).map((j) => alts[j - 1]);
+    this.altRoutes = keep;
+    const feats = keep.map((k) => ({
+      type: "Feature", properties: { k },
+      geometry: { type: "LineString", coordinates: routes[k].geometry.coordinates }
+    }));
+    this.altGeo = { type: "FeatureCollection", features: feats };
+    this.pushAltData();
+    this.clearAltMarkers();
+    if (typeof document === "undefined" || !this.map || typeof maplibregl === "undefined") return;
+    const mainPts = best.geometry.coordinates;
+    keep.forEach((k) => {
+      const r = routes[k];
+      const pos = this.altLabelPos(r.geometry.coordinates, mainPts);
+      const mins = Math.max(1, Math.round(r.duration / 60));
+      const diff = Math.round((r.duration - best.duration) / 60);
+      const el = document.createElement("div");
+      el.className = "route-alt-label";
+      el.textContent = mins + " წთ" + (diff !== 0 ? " (" + (diff > 0 ? "+" : "") + diff + ")" : "");
+      el.addEventListener("click", (ev) => { ev.stopPropagation(); this.selectAlternative(k); });
+      try { this.altMarkers.push(new maplibregl.Marker({ element: el }).setLngLat(pos).addTo(this.map)); } catch (_) {}
+    });
+  }
+
+  /** Label spot: a vertex of the alternative in its middle part, as far as possible from the main route. */
+  altLabelPos(altCoords, mainCoords) {
+    const n = altCoords.length;
+    const lo = Math.floor(n * 0.3), hi = Math.max(lo + 1, Math.ceil(n * 0.7));
+    const stepA = Math.max(1, Math.floor((hi - lo) / 20));
+    const stepM = Math.max(1, Math.floor(mainCoords.length / 200));
+    let best = altCoords[Math.floor(n / 2)], bd = -1;
+    for (let i = lo; i < hi; i += stepA) {
+      const a = altCoords[i];
+      let md = Infinity;
+      for (let j = 0; j < mainCoords.length; j += stepM) {
+        const dx = a[0] - mainCoords[j][0], dy = a[1] - mainCoords[j][1];
+        const d = dx * dx + dy * dy;
+        if (d < md) md = d;
+      }
+      if (md > bd) { bd = md; best = a; }
+    }
+    return best;
+  }
+
+  pushAltData() {
+    if (!this.map || typeof this.map.getSource !== "function") return;
+    const src = this.map.getSource("route-alt-source");
+    if (src && typeof src.setData === "function") src.setData(this.altGeo);
+  }
+
+  clearAltMarkers() {
+    this.altMarkers.forEach((m) => { try { m.remove(); } catch (_) {} });
+    this.altMarkers = [];
+  }
+
+  /** Switch the preview to alternative k (index in the OSRM answer). No refit: the user keeps the view. */
+  selectAlternative(k) {
+    if (!this.altCtx || this.isNavigating || !this.altCtx.routes[k]) return null;
+    const { routes, ctx } = this.altCtx;
+    const route = this.applyRoute(routes, k, ctx.start, ctx.end, ctx.endLatLng, false, { fit: false }, true);
+    if (typeof this.onRouteSelected === "function") this.onRouteSelected(route);
+    return route;
   }
 
   parseSteps(rawSteps, allLatlngs) {
@@ -547,6 +659,11 @@ class RoutingEngine {
     this.isRerouting = false;
     this.lastClosestIndex = 0;
     this.setRouteData([], []);
+    this.altRoutes = [];
+    this.altCtx = null;
+    this.altGeo = RoutingEngine.emptyGeo();
+    this.pushAltData();
+    this.clearAltMarkers();
     if (this.trafficEngine) {
       this.trafficEngine.clearRouteTraffic();
     }

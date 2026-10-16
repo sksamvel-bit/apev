@@ -2376,3 +2376,10 @@ input {
 .tesla-look.map-style-openfreemap.night-mode-active .maplibregl-canvas { filter: none; }
 .tesla-look #navArrowGrad stop:first-child { stop-color: #6aa6ff; }
 .tesla-look #navArrowGrad stop:last-child { stop-color: #3e6ae1; }
+
+/* Alternative routes in the route preview: small tappable time labels on the grey lines */
+.route-alt-label {
+  background: #8a93a0; color: #fff; font-weight: 700; font-size: 15px; line-height: 1;
+  padding: 7px 10px; border-radius: 14px; border: 2px solid #fff; cursor: pointer; white-space: nowrap;
+  box-shadow: 0 2px 6px rgba(0,0,0,.35);
+}

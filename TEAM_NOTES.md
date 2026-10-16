@@ -100,3 +100,5 @@
 - 2026-10-16 Claude: v3.10.14 — Tesla look: გზების იერარქია (მთავარი თეთრი, მცირე ოდნავ ნაცრისფერი, მკაფიო კონტური), ქუჩის/POI წარწერები და POI იკონები დახუჭული; place სახელები უცვლელი. მხოლოდ ?style=tesla.
 
 - 2026-10-16 Claude: v3.10.15 — Tesla look ღამე: POI იკონები უფრო მკრთალი (opacity 0.35), გზები უფრო კონტრასტული. დღე უცვლელი. მხოლოდ ?style=tesla.
+
+- 2026-10-16 Claude: v3.10.16 — პუნქტი: OSRM ალტერნატიული მარშრუტები. routing.js: მხოლოდ preview-ში alternatives=true (ნავიგაცია/რეროუტი — false); გაფილტრული 2-მდე რეალური ალტერნატივა (ახლო ასლები და >1.6x ნელი იჭრება); რუკაზე რუხი ხაზები + წარწერა "N წთ (+M)", დაწკაპებით გადართვა (selectAlternative, onRouteSelected ანახლებს preview ბარათს app.js fillPreviewCard-ით). ახალი ტესტი test_route_alternatives.js (7). Google Routes API აკრძალულია არა-Google რუკაზე (Routes API Terms 19.2) — არ ვიყენებთ; TomTom — მხოლოდ Terms-ის გადამოწმების შემდეგ.

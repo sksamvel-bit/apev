@@ -135,7 +135,7 @@ function initClock() {
 const OFM_STYLE_URL = "https://tiles.openfreemap.org/styles/liberty";
 const OFM_STYLE_CACHE_KEY = "tesla_nav_ofm_style_v1";
 const MAP_STYLE_KEYS = ["openfreemap", "google-roads"];
-const APP_VERSION = "3.10.15";
+const APP_VERSION = "3.10.16";
 const MAP_DEFAULT_ZOOM = 16;      // MapLibre zoom (Leaflet-equivalent 17)
 // Performance experiments (all default to the normal behaviour): ?labels=0 hides the base-map labels/icons, ?markers=0 skips the
 // charger DOM markers, ?pitch=N sets the heading-up tilt (0-60). Used to find what makes the car's browser slow.
@@ -681,6 +681,10 @@ function initSubsystems() {
     }
   };
 
+  routingEngine.onRouteSelected = (route) => {
+    // The user tapped another route in the preview: refresh the card numbers
+    if (pendingDestination) fillPreviewCard(route, pendingDestination.title, pendingDestination.address);
+  };
   routingEngine.onSummaryUpdate = (summary) => {
     const distStr = `${summary.distanceKm} კმ`;
     const timeStr = `${summary.durationMin} წთ`;
@@ -1261,40 +1265,45 @@ async function prepareRoutePreview(destLatLng, destTitle = "დანიშნ�
     };
 
     // Populate Preview Card UI
-    const titleEl = document.getElementById("preview-dest-title");
-    const addrEl = document.getElementById("preview-dest-address");
-    const timeEl = document.getElementById("preview-time");
-    const distEl = document.getElementById("preview-dist");
-    const etaEl = document.getElementById("preview-eta");
-    const kwhEl = document.getElementById("preview-battery-kwh");
-    const arrivalEl = document.getElementById("preview-battery-arrival");
-
-    const durationMin = Math.max(1, Math.round(route.durationSeconds / 60) + (route.trafficDelayMin || 0));
-    const distKm = (route.distanceMeters / 1000).toFixed(1);
-
-    const now = new Date();
-    now.setMinutes(now.getMinutes() + durationMin);
-    const etaStr = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
-
-    if (titleEl) titleEl.textContent = destTitle;
-    if (addrEl) addrEl.textContent = destAddress || destTitle;
-    if (timeEl) timeEl.textContent = `${durationMin} წთ`;
-    if (distEl) distEl.textContent = `${distKm} კმ`;
-    if (etaEl) etaEl.textContent = etaStr;
-
-    if (route.batteryImpact) {
-      if (kwhEl) kwhEl.textContent = `⚡ ~${route.batteryImpact.energyKwh} kWh`;
-      if (arrivalEl) arrivalEl.textContent = `🔋 ჩასვლისას: ~${route.batteryImpact.arrivalSoC}% (შეფასება)`;
-    } else {
-      if (kwhEl) kwhEl.textContent = `⚡ ელემენტი: მზადაა`;
-      if (arrivalEl) arrivalEl.textContent = `🔋 ჩასვლისას: OK`;
-    }
+    fillPreviewCard(route, destTitle, destAddress);
 
     if (previewCard) {
       previewCard.classList.add("active");
     }
   } catch (err) {
     showToast("მარშრუტის დახაზვა ვერ მოხერხდა: " + err.message, "error");
+  }
+}
+
+/** Fills the route preview card (time, distance, ETA, battery) for the given route. Called again when an alternative is tapped. */
+function fillPreviewCard(route, destTitle, destAddress) {
+  const titleEl = document.getElementById("preview-dest-title");
+  const addrEl = document.getElementById("preview-dest-address");
+  const timeEl = document.getElementById("preview-time");
+  const distEl = document.getElementById("preview-dist");
+  const etaEl = document.getElementById("preview-eta");
+  const kwhEl = document.getElementById("preview-battery-kwh");
+  const arrivalEl = document.getElementById("preview-battery-arrival");
+
+  const durationMin = Math.max(1, Math.round(route.durationSeconds / 60) + (route.trafficDelayMin || 0));
+  const distKm = (route.distanceMeters / 1000).toFixed(1);
+
+  const now = new Date();
+  now.setMinutes(now.getMinutes() + durationMin);
+  const etaStr = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+
+  if (titleEl) titleEl.textContent = destTitle;
+  if (addrEl) addrEl.textContent = destAddress || destTitle;
+  if (timeEl) timeEl.textContent = `${durationMin} წთ`;
+  if (distEl) distEl.textContent = `${distKm} კმ`;
+  if (etaEl) etaEl.textContent = etaStr;
+
+  if (route.batteryImpact) {
+    if (kwhEl) kwhEl.textContent = `⚡ ~${route.batteryImpact.energyKwh} kWh`;
+    if (arrivalEl) arrivalEl.textContent = `🔋 ჩასვლისას: ~${route.batteryImpact.arrivalSoC}% (შეფასება)`;
+  } else {
+    if (kwhEl) kwhEl.textContent = `⚡ ელემენტი: მზადაა`;
+    if (arrivalEl) arrivalEl.textContent = `🔋 ჩასვლისას: OK`;
   }
 }
 
