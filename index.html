@@ -14,9 +14,9 @@
   <link rel="apple-touch-icon" href="icon-192.png">
   
   <!-- MapLibre GL CSS (Local Offline) -->
-  <link rel="stylesheet" href="maplibre-gl.css?v=3.10.6">
+  <link rel="stylesheet" href="maplibre-gl.css?v=3.10.7">
   <!-- Custom Stylesheet -->
-  <link rel="stylesheet" href="style.css?v=3.10.6">
+  <link rel="stylesheet" href="style.css?v=3.10.7">
 </head>
 <body>
 
@@ -213,6 +213,15 @@
   </aside>
 
   <!-- RIGHT DOCK CONTROLS (Compact Vertical Touch Strip) -->
+  <aside id="chargers-drawer" class="chargers-drawer" aria-label="EV დამტენების სია">
+    <div class="cd-head">
+      <div class="cd-title">⚡ დამტენები <span class="cd-count"></span></div>
+      <button class="cd-close" type="button" aria-label="დახურვა">✕</button>
+    </div>
+    <button class="cd-filter" type="button">⚡ მხოლოდ სწრაფი DC (50+ kW)</button>
+    <div class="cd-list"></div>
+  </aside>
+
   <nav class="dock-controls">
     <!-- Group 1: Navigation & Zoom -->
     <button id="btn-follow-car" class="dock-btn active" title="მანქანის ცენტრირება">
@@ -280,6 +289,16 @@
         <path d="M11 21h-1l1-7H7.5c-.58 0-.57-.32-.38-.66.19-.34.05-.08.07-.12C8.48 10.94 10.42 7.54 13 3h1l-1 7h3.5c.49 0 .56.33.47.51l-.07.15-5.9 10.34z" fill="currentColor"/>
       </svg>
       <span class="dock-tooltip">EV დამტენები</span>
+    </button>
+
+    <button id="btn-chargers-list" class="dock-btn" title="დამტენების სია">
+      <svg viewBox="0 0 24 24">
+        <line x1="8" y1="6" x2="21" y2="6" stroke="currentColor" stroke-width="2"/>
+        <line x1="8" y1="12" x2="21" y2="12" stroke="currentColor" stroke-width="2"/>
+        <line x1="8" y1="18" x2="21" y2="18" stroke="currentColor" stroke-width="2"/>
+        <circle cx="4" cy="6" r="1.5" fill="currentColor"/><circle cx="4" cy="12" r="1.5" fill="currentColor"/><circle cx="4" cy="18" r="1.5" fill="currentColor"/>
+      </svg>
+      <span class="dock-tooltip">დამტენების სია</span>
     </button>
 
     <button id="btn-toggle-signals" class="dock-btn signals-active" title="შუქნიშნების ჩვენება">
@@ -480,7 +499,7 @@
         </div>
       </div>
       <div class="modal-footer">
-        <span class="settings-version-tag" style="margin-right: auto; font-size: 0.8rem; color: var(--text-secondary); opacity: 0.8;">ვერსია: v3.10.6</span>
+        <span class="settings-version-tag" style="margin-right: auto; font-size: 0.8rem; color: var(--text-secondary); opacity: 0.8;">ვერსია: v3.10.7</span>
         <button id="modal-cancel-btn" class="btn-secondary">გაუქმება</button>
         <button id="modal-save-btn" class="btn-primary">შენახვა</button>
       </div>
@@ -488,21 +507,22 @@
   </div>
 
   <!-- MapLibre GL JS (Local Offline - Hardware Accelerated WebGL Engine) -->
-  <script src="maplibre-gl.js?v=3.10.6"></script>
-  <script src="map-gl.js?v=3.10.6"></script>
+  <script src="maplibre-gl.js?v=3.10.7"></script>
+  <script src="map-gl.js?v=3.10.7"></script>
   <!-- QR Code Generator -->
   <script src="qrcode.min.js"></script>
   <!-- Application Engines -->
-  <script src="speech.js?v=3.10.6"></script>
-  <script src="weather.js?v=3.10.6"></script>
-  <script src="battery.js?v=3.10.6"></script>
-  <script src="chargers.js?v=3.10.6"></script>
-  <script src="traffic-signals.js?v=3.10.6"></script>
-  <script src="traffic.js?v=3.10.6"></script>
-  <script src="media-player.js?v=3.10.6"></script>
-  <script src="routing.js?v=3.10.6"></script>
-  <script src="speed-limit.js?v=3.10.6"></script>
-  <script src="sim-drive.js?v=3.10.6"></script>
-  <script src="app.js?v=3.10.6"></script>
+  <script src="speech.js?v=3.10.7"></script>
+  <script src="weather.js?v=3.10.7"></script>
+  <script src="battery.js?v=3.10.7"></script>
+  <script src="chargers.js?v=3.10.7"></script>
+  <script src="charger-list.js?v=3.10.7"></script>
+  <script src="traffic-signals.js?v=3.10.7"></script>
+  <script src="traffic.js?v=3.10.7"></script>
+  <script src="media-player.js?v=3.10.7"></script>
+  <script src="routing.js?v=3.10.7"></script>
+  <script src="speed-limit.js?v=3.10.7"></script>
+  <script src="sim-drive.js?v=3.10.7"></script>
+  <script src="app.js?v=3.10.7"></script>
 </body>
 </html>

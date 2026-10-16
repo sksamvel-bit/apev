@@ -135,7 +135,7 @@ function initClock() {
 const OFM_STYLE_URL = "https://tiles.openfreemap.org/styles/liberty";
 const OFM_STYLE_CACHE_KEY = "tesla_nav_ofm_style_v1";
 const MAP_STYLE_KEYS = ["openfreemap", "google-roads"];
-const APP_VERSION = "3.10.6";
+const APP_VERSION = "3.10.7";
 const MAP_DEFAULT_ZOOM = 16;      // MapLibre zoom (Leaflet-equivalent 17)
 // Performance experiments (all default to the normal behaviour): ?labels=0 hides the base-map labels/icons, ?markers=0 skips the
 // charger DOM markers, ?pitch=N sets the heading-up tilt (0-60). Used to find what makes the car's browser slow.
@@ -1714,6 +1714,16 @@ function initEventListeners() {
       const enabled = chargersEngine.toggle();
       btnChargers.classList.toggle("signals-active", enabled);
     });
+  }
+
+  // EV charger list drawer (nearest first, fast-DC filter)
+  const btnChargersList = document.getElementById("btn-chargers-list");
+  if (btnChargersList && window.ChargerList && chargersEngine) {
+    const drawer = new window.ChargerList.ChargerDrawer(chargersEngine, () => currentPos, {
+      onFocus: (st) => { try { setFollowCarMode(false); map.easeTo({ center: [st.lon, st.lat], duration: 400 }); scheduleFollowResume(); } catch (_) {} }
+    });
+    btnChargersList.addEventListener("click", () => btnChargersList.classList.toggle("active", drawer.toggle()));
+    drawer.el && drawer.el.querySelector(".cd-close").addEventListener("click", () => btnChargersList.classList.remove("active"));
   }
 
   // Toggle In-Car YouTube Media Player
