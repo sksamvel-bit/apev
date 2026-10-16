@@ -18,7 +18,7 @@ process.on('unhandledRejection', e => console.error('[unhandled]', e && e.messag
 const STATIC_WHITELIST = new Set([
   'index.html','remote.html','style.css','qrcode.min.js',
   'maplibre-gl.js','maplibre-gl.css','map-gl.js',
-  'app.js','routing.js','traffic.js','traffic-signals.js','chargers.js','charger-list.js','search.js','tesla-style.js',
+  'app.js','routing.js','traffic.js','traffic-signals.js','chargers.js','charger-list.js','search.js','tesla-style.js','turn-audio.js',
   'battery.js','weather.js','speech.js','media-player.js','speed-limit.js',
   'sim-drive.js',
   'manifest.json','icon.svg','icon-192.png','icon-512.png','sw.js'
@@ -250,7 +250,9 @@ const MIME_TYPES = {
   '.png': 'image/png',
   '.jpg': 'image/jpeg',
   '.svg': 'image/svg+xml',
-  '.ico': 'image/x-icon'
+  '.ico': 'image/x-icon',
+  '.mp3': 'audio/mpeg',
+  '.ogg': 'audio/ogg'
 };
 
 function getLocalIpAddresses() {
@@ -468,7 +470,7 @@ async function getLiveGeorgiaChargers(forceRefresh = false) {
         count: stations.length,
         timestamp: now,
         stations: stations
-      }, null, 2), (err) => {
+      }, null, 2), 'utf8', (err) => {
         if (err) console.warn('[EV] Cache file write notice:', err.message);
       });
     }
@@ -1228,9 +1230,10 @@ const server = http.createServer((req, res) => {
   let reqPath = pathname;
   if (reqPath === '/' || reqPath === '') reqPath = '/index.html';
 
-  // AUDIT FIX: whitelist by bare file name; any directory traversal is rejected
+  // AUDIT FIX: whitelist by bare file name or audio pack file; any directory traversal is rejected
   const name = reqPath.slice(1);
-  if (!STATIC_WHITELIST.has(name)) {
+  const isAudioFile = name.startsWith('audio/') && /^[a-z0-9_\-\.\/]+$/i.test(name) && !name.includes('..');
+  if (!STATIC_WHITELIST.has(name) && !isAudioFile) {
     res.writeHead(404, { 'Content-Type': 'text/plain; charset=utf-8' });
     res.end('404 Not Found');
     return;

@@ -9,6 +9,12 @@ class SpeechAssistant {
   constructor() {
     this.synth = (typeof window !== "undefined" && window.speechSynthesis) ? window.speechSynthesis : null;
     this.audioCtx = null;
+    this.turnAudio = null;
+    if (typeof window !== "undefined" && window.TurnAudioEngine && window.TurnAudioEngine.TurnAudioEngine) {
+      try {
+        this.turnAudio = new window.TurnAudioEngine.TurnAudioEngine();
+      } catch (_) {}
+    }
     this.voices = [];
     this.isMuted = false;
     this.lastPrompt = "";
@@ -171,8 +177,18 @@ class SpeechAssistant {
       this.playChime("default");
     }
 
-    // 2. Georgian TTS Voice Synthesis (Zero English fallback)
-    if (this.synth) {
+    // 2. Pre-rendered authentic Georgian navigation voice audio pack
+    let audioPlayed = false;
+    if (this.turnAudio && typeof this.turnAudio.play === "function") {
+      try {
+        audioPlayed = this.turnAudio.play(text);
+      } catch (e) {
+        console.warn("SpeechAssistant turnAudio notice:", e.message);
+      }
+    }
+
+    // 3. Georgian TTS Voice Synthesis (Zero English fallback: only if audio clip not played and Georgian voice exists)
+    if (!audioPlayed && this.synth) {
       try {
         this.synth.cancel();
         if (typeof SpeechSynthesisUtterance !== "undefined") {
@@ -208,6 +224,9 @@ class SpeechAssistant {
 
   toggleMute() {
     this.isMuted = !this.isMuted;
+    if (this.turnAudio && typeof this.turnAudio.setMuted === "function") {
+      this.turnAudio.setMuted(this.isMuted);
+    }
     if (this.isMuted && this.synth) {
       try {
         this.synth.cancel();
