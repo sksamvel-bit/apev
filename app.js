@@ -16,6 +16,7 @@ localStorage.setItem("tesla_nav_map_orientation", "heading-up");
 
 let trafficEngine = null;
 let trafficSignalsEngine = null;
+let camerasEngine = null;
 let routingEngine = null;
 let speechAssistant = null;
 let weatherEngine = null;
@@ -135,7 +136,7 @@ function initClock() {
 const OFM_STYLE_URL = "https://tiles.openfreemap.org/styles/liberty";
 const OFM_STYLE_CACHE_KEY = "tesla_nav_ofm_style_v1";
 const MAP_STYLE_KEYS = ["openfreemap", "google-roads"];
-const APP_VERSION = "3.10.18";
+const APP_VERSION = "3.10.19";
 const MAP_DEFAULT_ZOOM = 16;      // MapLibre zoom (Leaflet-equivalent 17)
 // Performance experiments (all default to the normal behaviour): ?labels=0 hides the base-map labels/icons, ?markers=0 skips the
 // charger DOM markers, ?pitch=N sets the heading-up tilt (0-60). Used to find what makes the car's browser slow.
@@ -584,6 +585,7 @@ function initSubsystems() {
   try { batteryEngine = new BatteryEngine(); window.batteryEngine = batteryEngine; } catch (e) { console.warn("batteryEngine init notice:", e); }
   try { weatherEngine = new WeatherEngine(); window.weatherEngine = weatherEngine; } catch (e) { console.warn("weatherEngine init notice:", e); }
   try { trafficSignalsEngine = new TrafficSignalsEngine(map, true); window.trafficSignalsEngine = trafficSignalsEngine; } catch (e) { console.warn("trafficSignalsEngine init notice:", e); }
+  try { camerasEngine = new SpeedCamerasEngine(map, true); window.camerasEngine = camerasEngine; } catch (e) { console.warn("camerasEngine init notice:", e); }
   try { trafficEngine = new TrafficEngine(map, true); window.trafficEngine = trafficEngine; } catch (e) { console.warn("trafficEngine init notice:", e); }
   try {
     chargersEngine = new ChargersEngine(map, (chargerData) => {
@@ -798,6 +800,7 @@ function initGeolocation() {
       try { const d = (window.__dbg = window.__dbg || { fixes: [] }); d.fixes.push({ t: Date.now(), lat, lng, acc: coords.accuracy, spd: coords.speed, hdg: coords.heading }); if (d.fixes.length > 40) d.fixes.shift(); } catch (_) {}
 
       updateVehicleMarker(lat, lng, rawHeading, speed, coords.accuracy);
+      if (camerasEngine) camerasEngine.update(currentPos, currentHeading, speed, (t) => { if (speechAssistant) speechAssistant.speak(t); });
       fetchWeatherForPos(lat, lng);
 
       if (routingEngine && routingEngine.isNavigating) {
@@ -1803,6 +1806,16 @@ function initEventListeners() {
       showToast(enabled ? "🚦 საცობების ფენა ჩართულია" : "🚦 საცობების ფენა გამორთულია", "info", 1800);
     }
   });
+
+  const btnCameras = document.getElementById("btn-toggle-cameras");
+  if (btnCameras) {
+    btnCameras.addEventListener("click", () => {
+      if (!camerasEngine) return;
+      const enabled = camerasEngine.toggle();
+      btnCameras.classList.toggle("cameras-active", enabled);
+      showToast(enabled ? "📷 სიჩქარის კამერები ჩართულია" : "📷 სიჩქარის კამერები გამორთულია", "info", 1800);
+    });
+  }
 
   const btnSignals = document.getElementById("btn-toggle-signals");
   btnSignals.addEventListener("click", () => {
