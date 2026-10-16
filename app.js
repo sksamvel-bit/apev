@@ -135,7 +135,7 @@ function initClock() {
 const OFM_STYLE_URL = "https://tiles.openfreemap.org/styles/liberty";
 const OFM_STYLE_CACHE_KEY = "tesla_nav_ofm_style_v1";
 const MAP_STYLE_KEYS = ["openfreemap", "google-roads"];
-const APP_VERSION = "3.10.5";
+const APP_VERSION = "3.10.6";
 const MAP_DEFAULT_ZOOM = 16;      // MapLibre zoom (Leaflet-equivalent 17)
 // Performance experiments (all default to the normal behaviour): ?labels=0 hides the base-map labels/icons, ?markers=0 skips the
 // charger DOM markers, ?pitch=N sets the heading-up tilt (0-60). Used to find what makes the car's browser slow.
@@ -186,6 +186,16 @@ function tuneVectorStyle(style) {
     }
     return l;
   });
+  // The Liberty style has no house-number layer although the tiles carry the data: add one (zoom 17+, small, no collisions with names).
+  if (!out.layers.some((l) => l["source-layer"] === "housenumber") && out.sources && out.sources.openmaptiles) {
+    const ref = out.layers.find((l) => l.type === "symbol" && l.layout && l.layout["text-font"] && l["source-layer"] === "transportation_name") ||
+                out.layers.find((l) => l.type === "symbol" && l.layout && l.layout["text-font"]);
+    out.layers.push({
+      id: "housenumber", type: "symbol", source: "openmaptiles", "source-layer": "housenumber", minzoom: 17,
+      layout: { "text-field": ["get", "housenumber"], "text-font": ref ? ref.layout["text-font"] : ["Noto Sans Regular"], "text-size": 12 },
+      paint: { "text-color": "#555555", "text-halo-color": "#ffffff", "text-halo-width": 1.2 }
+    });
+  }
   return out;
 }
 
