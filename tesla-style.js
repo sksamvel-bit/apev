@@ -14,13 +14,13 @@
   const PALETTE = {
     day: {
       land: "#eceff2", land2: "#e4e8ec", park: "#d9e6dc", water: "#c5d8e8", building: "#dde1e6",
-      minor: "#ffffff", major: "#ffffff", hwy: "#ffffff", casing: "#d3d8de", rail: "#cfd4da", path: "#f6f7f9",
-      text: "#4a5058", halo: "#eceff2", route: "#3e6ae1", routeCasing: "#ffffff"
+      minor: "#f8f9fb", major: "#ffffff", hwy: "#ffffff", casing: "#c3c9d1", rail: "#cfd4da", path: "#f6f7f9",
+      text: "#4a5058", textMinor: "#8b929c", halo: "#eceff2", route: "#3e6ae1", routeCasing: "#ffffff"
     },
     night: {
       land: "#1b1d21", land2: "#202328", park: "#1d2722", water: "#121c27", building: "#25282e",
-      minor: "#343840", major: "#3f444c", hwy: "#4c525b", casing: "#131518", rail: "#2c2f35", path: "#2b2e34",
-      text: "#9aa1ab", halo: "#1b1d21", route: "#4f8dff", routeCasing: "#0b1a3d"
+      minor: "#383c44", major: "#4a5059", hwy: "#5a616b", casing: "#131518", rail: "#2c2f35", path: "#2b2e34",
+      text: "#9aa1ab", textMinor: "#6c737d", halo: "#1b1d21", route: "#4f8dff", routeCasing: "#0b1a3d"
     }
   };
 
@@ -72,7 +72,10 @@
       }
 
       if (l.type === "symbol") {
-        paint["text-color"] = P.text;
+        // Quiet hierarchy: street names and POI labels recede, place names stay strong; POI icons are dimmed.
+        const quiet = sl === "transportation_name" || sl === "poi" || sl === "housenumber" || /road|street|poi|housenumber/i.test(id);
+        paint["text-color"] = quiet ? P.textMinor : P.text;
+        if (sl === "poi" || /poi/i.test(id)) paint["icon-opacity"] = night ? 0.35 : 0.6;
         paint["text-halo-color"] = P.halo;
         paint["text-halo-width"] = 1.5;
         delete paint["icon-color"];

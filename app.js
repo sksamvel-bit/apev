@@ -135,40 +135,32 @@ function initClock() {
 const OFM_STYLE_URL = "https://tiles.openfreemap.org/styles/liberty";
 const OFM_STYLE_CACHE_KEY = "tesla_nav_ofm_style_v1";
 const MAP_STYLE_KEYS = ["openfreemap", "google-roads"];
-const APP_VERSION = "3.10.13";
+const APP_VERSION = "3.10.15";
 const MAP_DEFAULT_ZOOM = 16;      // MapLibre zoom (Leaflet-equivalent 17)
 // Performance experiments (all default to the normal behaviour): ?labels=0 hides the base-map labels/icons, ?markers=0 skips the
 // charger DOM markers, ?pitch=N sets the heading-up tilt (0-60). Used to find what makes the car's browser slow.
 const PERF = (function () {
   const q = new URLSearchParams(location.search);
   const p = parseFloat(q.get("pitch"));
-  const lq = q.get("lite");   // ?lite=1 forces Lite, ?lite=0 forces the full map (and clears persisted Lite)
-  if (lq === "0") {
-    try { localStorage.removeItem("lite"); sessionStorage.removeItem("lite"); } catch (_) {}
-  } else if (lq === "1") {
-    try { sessionStorage.setItem("lite", "1"); } catch (_) {}
-  }
-  let stored = null;
-  try { stored = sessionStorage.getItem("lite") || localStorage.getItem("lite"); } catch (_) {}
-  return {
-    labels: q.get("labels") !== "0",
-    markers: q.get("markers") !== "0",
-    pitch: isFinite(p) && p >= 0 && p <= 60 ? p : null,
-    lite: lq === "1" || (lq == null && stored === "1"),
-    liteAuto: lq == null
-  };
+  // Lite is remembered only for this browser session (sessionStorage): an old permanent flag from earlier versions is wiped,
+  // so the full map is the normal start and auto-Lite re-decides after a few slow seconds.
+  let stored = null; try { stored = sessionStorage.getItem("lite"); localStorage.removeItem("lite"); } catch (_) {}
+  const lq = q.get("lite");   // ?lite=1 forces Lite, ?lite=0 forces the full map (and disables auto-Lite)
+  return { labels: q.get("labels") !== "0", markers: q.get("markers") !== "0", pitch: isFinite(p) && p >= 0 && p <= 60 ? p : null,
+           lite: lq === "1" || (lq == null && stored === "1"), liteAuto: lq == null };
 })();
 window.__perf = PERF;
 const MAP_HEADING_PITCH = PERF.pitch != null ? PERF.pitch : 45;
 
-// "Tesla look" (opt-in): ?style=tesla turns it on (session/URL only, not persisted).
+// "Tesla look" (opt-in, URL only): it is on ONLY while the address contains ?style=tesla. Nothing is remembered, so the plain
+// address always shows the original map. (An old remembered flag from v3.10.10-12 is wiped here.)
 const TESLA_LOOK = (function () {
+  let on = false;
   try {
-    const q = new URLSearchParams(location.search).get("style");
-    return q === "tesla" && !!window.TeslaStyle;
-  } catch (_) {
-    return false;
-  }
+    localStorage.removeItem("tesla_look");
+    on = new URLSearchParams(location.search).get("style") === "tesla";
+  } catch (_) {}
+  return on && !!window.TeslaStyle;
 })();
 window.__teslaLook = TESLA_LOOK;
 window.__night = false;
@@ -343,15 +335,7 @@ function initMap() {
   };
   window.__setLite = (on, persist) => {
     PERF.lite = !!on;
-    if (persist) {
-      try {
-        if (on) sessionStorage.setItem("lite", "1");
-        else {
-          localStorage.removeItem("lite");
-          sessionStorage.removeItem("lite");
-        }
-      } catch (_) {}
-    }
+    if (persist) { try { sessionStorage.setItem("lite", on ? "1" : "0"); } catch (_) {} }
     if (on) applyLite();
     else { detailOn = false; liteHidden.forEach((id) => { try { map.setLayoutProperty(id, "visibility", "visible"); } catch (_) {} }); liteHidden.clear(); }
   };
@@ -2180,12 +2164,12 @@ function initRemoteSession() {
     el._rc = window.__renderCount || 0; el._ft0 = now;
     if (cam) { el._fc = cam.frameCount; el._ft = now; }
     const lines = [
-      "v" + APP_VERSION + " DEBUG" + (PERF.lite ? " LITE" : "") + " look " + (TESLA_LOOK ? "TESLA" : "classic") + "  fixes:" + fx.length + "  age:" + (last ? f((now - last.t) / 1000) : "-") + "s",
+      "v" + APP_VERSION + " DEBUG" + (PERF.lite ? " LITE" : "") + "  fixes:" + fx.length + "  age:" + (last ? f((now - last.t) / 1000) : "-") + "s",
       "last fix: acc " + f(last && last.acc, 0) + "m  spd " + f(last && last.spd) + "  hdg " + f(last && last.hdg, 0),
       "gap " + f(dt) + "s  jump " + f(dist) + "m  => " + (dt && dist != null ? f(dist / dt * 3.6, 0) : "-") + " km/h",
       "follow " + isFollowCar + "  mode " + currentMapOrientation + "  fps " + f(fps, 0) + "  render " + f(rfps, 0) + "/s",
       "cost: jumpTo " + f(cam && cam.jumpMs, 1) + "ms  onFrame " + f(cam && cam.cbMs, 1) + "ms",
-      "flags: dpr " + f(map.getPixelRatio && map.getPixelRatio(), 2) + "  pitch " + (PERF.pitch != null ? PERF.pitch : "45*") + "  labels " + (PERF.labels ? "on" : "OFF") + "  markers " + (PERF.markers ? "on" : "OFF"),
+      "flags: dpr " + f(map.getPixelRatio && map.getPixelRatio(), 2) + "  pitch " + (PERF.pitch != null ? PERF.pitch : "45*") + "  labels " + (PERF.labels ? "on" : "OFF") + "  markers " + (PERF.markers ? "on" : "OFF") + "  look " + (window.__teslaLook ? "TESLA" : "classic"),
       "bearing " + f(map.getBearing(), 0) + "  pitch " + f(map.getPitch(), 0) + "  zoom " + f(map.getZoom(), 1) + "  pad " + padTop,
       "arrow offset from expected: dx " + f(dx, 0) + "  dy " + f(dy, 0) + " px",
       "heading used " + f(lastKnownValidHeading, 0) + "  speed " + currentSpeedKmh + " km/h"
