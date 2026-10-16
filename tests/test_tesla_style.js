@@ -72,4 +72,19 @@ test("diff: day->night changes only paint colors, same layer ids, and back again
   assert.ok(back.find((c) => c.id === "bg" && c.value === T.PALETTE.day.land));
 });
 
+test("mono mode: no colour (grey only), parks hidden, other modes unchanged", () => {
+  const m = T.apply(src, false, "mono");
+  assert.strictEqual(by(m, "park").layout.visibility, "none");
+  assert.strictEqual(by(m, "background").paint["background-color"], T.PALETTE_MONO.day.land);
+  assert.strictEqual(by(m, "road_motorway").paint["line-color"], T.PALETTE_MONO.day.hwy);
+  const grey = (h) => { const x = h.replace("#", ""); return x.slice(0, 2) === x.slice(2, 4) || h === T.PALETTE_MONO.day.water || h === T.PALETTE_MONO.night.water; };
+  ["land", "land2", "park", "building", "minor", "major", "hwy", "casing", "text", "textMinor"].forEach((k) => {
+    assert.ok(grey(T.PALETTE_MONO.day[k]) && grey(T.PALETTE_MONO.night[k]), k);
+  });
+  assert.strictEqual(T.apply(src, false).layers.find((l) => l.id === "park").layout.visibility, undefined);
+  const d = T.diff(src, false, true, "mono");
+  assert.ok(d.find((c) => c.id === "background" && c.value === T.PALETTE_MONO.night.land));
+  assert.strictEqual(T.routeColors(true, "mono").line, T.PALETTE_MONO.night.route);
+});
+
 console.log("\n" + passed + " tesla style tests passed" + (process.exitCode ? " - WITH FAILURES" : ""));

@@ -24,6 +24,25 @@
     }
   };
 
+  // "mono": no colour at all (white / light grey by day, black / dark grey by night), no park fills, flat map (see app.js).
+  const PALETTE_MONO = {
+    day: {
+      land: "#e9e9e9", land2: "#e4e4e4", park: "#e9e9e9", water: "#cfd3d8", building: "#dcdcdc",
+      minor: "#ffffff", major: "#ffffff", hwy: "#ffffff", casing: "#bdbdbd", rail: "#cfcfcf", path: "#f7f7f7",
+      text: "#2b2b2b", textMinor: "#707070", halo: "#e9e9e9", route: "#3e6ae1", routeCasing: "#ffffff"
+    },
+    night: {
+      land: "#0d0d0d", land2: "#121212", park: "#0d0d0d", water: "#1a1d21", building: "#1b1b1b",
+      minor: "#333333", major: "#454545", hwy: "#585858", casing: "#080808", rail: "#222222", path: "#262626",
+      text: "#c4c4c4", textMinor: "#7d7d7d", halo: "#0d0d0d", route: "#4f8dff", routeCasing: "#0b1a3d"
+    }
+  };
+
+  function pal(night, mode) {
+    const set = mode === "mono" ? PALETTE_MONO : PALETTE;
+    return night ? set.night : set.day;
+  }
+
   function roadClass(id) {
     id = String(id || "").toLowerCase();
     if (/casing|outline/.test(id)) return "casing";
@@ -35,8 +54,9 @@
   }
 
   /** Returns a recolored copy of `style` (never mutates the input). night: boolean. */
-  function apply(style, night) {
-    const P = night ? PALETTE.night : PALETTE.day;
+  function apply(style, night, mode) {
+    const P = pal(night, mode);
+    const mono = mode === "mono";
     const out = Object.assign({}, style);
     out.layers = (style.layers || []).map((l) => {
       const sl = l["source-layer"] || "";
@@ -54,7 +74,7 @@
         delete paint["fill-outline-color"];
         let c = P.land2;
         if (sl === "water" || /(^|[_-])water([_-]|$)/.test(id)) c = P.water;
-        else if (sl === "park" || sl === "landcover" || /park|wood|forest|grass|green/i.test(id)) c = P.park;
+        else if (sl === "park" || sl === "landcover" || /park|wood|forest|grass|green/i.test(id)) { c = P.park; if (mono) layout.visibility = "none"; }
         else if (sl === "building" || /building/.test(id)) c = P.building;
         paint["fill-color"] = c;
         return touch();
@@ -90,8 +110,8 @@
    * Day <-> night without reloading the style: the list of paint properties that differ between the two palettes.
    * [{id, prop, value}] to feed map.setPaintProperty (cheap; a full setStyle rebuild freezes the Atom MCU2 and blanks the map).
    */
-  function diff(base, fromNight, toNight) {
-    const a = apply(base, fromNight).layers, b = apply(base, toNight).layers;
+  function diff(base, fromNight, toNight, mode) {
+    const a = apply(base, fromNight, mode).layers, b = apply(base, toNight, mode).layers;
     const out = [];
     for (let i = 0; i < b.length; i++) {
       const pa = (a[i] && a[i].paint) || {}, pb = b[i].paint || {};
@@ -103,10 +123,10 @@
   }
 
   /** Colors the route layers use in the Tesla look. */
-  function routeColors(night) {
-    const P = night ? PALETTE.night : PALETTE.day;
+  function routeColors(night, mode) {
+    const P = pal(night, mode);
     return { line: P.route, casing: P.routeCasing };
   }
 
-  return { apply, diff, routeColors, roadClass, PALETTE };
+  return { apply, diff, routeColors, roadClass, PALETTE, PALETTE_MONO };
 });

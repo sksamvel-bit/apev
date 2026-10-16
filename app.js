@@ -135,7 +135,7 @@ function initClock() {
 const OFM_STYLE_URL = "https://tiles.openfreemap.org/styles/liberty";
 const OFM_STYLE_CACHE_KEY = "tesla_nav_ofm_style_v1";
 const MAP_STYLE_KEYS = ["openfreemap", "google-roads"];
-const APP_VERSION = "3.10.22";
+const APP_VERSION = "3.10.24";
 const MAP_DEFAULT_ZOOM = 16;      // MapLibre zoom (Leaflet-equivalent 17)
 // Performance experiments (all default to the normal behaviour): ?labels=0 hides the base-map labels/icons, ?markers=0 skips the
 // charger DOM markers, ?pitch=N sets the heading-up tilt (0-60). Used to find what makes the car's browser slow.
@@ -150,7 +150,10 @@ const PERF = (function () {
            lite: lq === "1" || (lq == null && stored === "1"), liteAuto: lq == null };
 })();
 window.__perf = PERF;
-const MAP_HEADING_PITCH = PERF.pitch != null ? PERF.pitch : 45;
+// ?style=mono is a flat map by default (pitch 0); ?pitch=N still overrides
+// Auto-flatten: if the map is still slow after Lite (see the governor in initMap), the tilt is dropped for the rest of the session
+let flatStored = false; try { flatStored = sessionStorage.getItem("flat") === "1"; } catch (_) {}
+let MAP_HEADING_PITCH = PERF.pitch != null ? PERF.pitch : (flatStored || new URLSearchParams(location.search).get("style") === "mono" ? 0 : 45);
 
 // "Tesla look" (opt-in, URL only): it is on ONLY while the address contains ?style=tesla. Nothing is remembered, so the plain
 // address always shows the original map. (An old remembered flag from v3.10.10-12 is wiped here.)
@@ -158,7 +161,9 @@ const TESLA_LOOK = (function () {
   let on = false;
   try {
     localStorage.removeItem("tesla_look");
-    on = new URLSearchParams(location.search).get("style") === "tesla";
+    const st = new URLSearchParams(location.search).get("style");
+    on = st === "tesla" || st === "mono";
+    window.__lookMode = on ? st : null;
   } catch (_) {}
   return on && !!window.TeslaStyle;
 })();
@@ -218,7 +223,7 @@ function tuneVectorStyle(style) {
   return out;
 }
 
-function teslaLook(style) { return TESLA_LOOK ? window.TeslaStyle.apply(style, window.__night) : style; }
+function teslaLook(style) { return TESLA_LOOK ? window.TeslaStyle.apply(style, window.__night, window.__lookMode) : style; }
 
 async function loadStyleJson(styleKey) {
   if (styleKey === "google-roads") return googleRasterStyle("m", "google-roads");
@@ -375,6 +380,22 @@ function initMap() {
       const now = performance.now(), fps = (window.__renderCount - lastCount) * 1000 / (now - lastT);
       lastCount = window.__renderCount; lastT = now;
       if (gov.sample(fps, currentSpeedKmh > 3)) window.__setLite(true, true);
+    }, 1000);
+  }
+  // Stage 2 (no driver action needed): Lite is on and the map is still below 8 fps for 8 moving seconds -> flat map (pitch 0).
+  if (PERF.liteAuto && PERF.pitch == null && MAP_HEADING_PITCH > 0) {
+    const gov2 = new window.MapGL.LiteGovernor({ minFps: 8, need: 8 });
+    let c2 = 0, t2 = performance.now();
+    const iv2 = setInterval(() => {
+      const now = performance.now(), fps = (window.__renderCount - c2) * 1000 / (now - t2);
+      c2 = window.__renderCount; t2 = now;
+      if (!PERF.lite) return;   // only after stage 1
+      if (gov2.sample(fps, currentSpeedKmh > 3)) {
+        clearInterval(iv2);
+        MAP_HEADING_PITCH = 0;
+        try { sessionStorage.setItem("flat", "1"); } catch (_) {}
+        try { if (mapCamera) { mapCamera.headingPitch = 0; if (typeof mapCamera.recenter === "function") mapCamera.recenter(currentPos, lastKnownValidHeading || currentHeading || 0, 0); } } catch (_) {}
+      }
     }, 1000);
   }
 
@@ -564,7 +585,7 @@ function applyNightMode(enable) {
     let patched = false;
     try {
       if (window.__teslaBase && map.isStyleLoaded()) {
-        for (const c of window.TeslaStyle.diff(window.__teslaBase, !enable, enable)) {
+        for (const c of window.TeslaStyle.diff(window.__teslaBase, !enable, enable, window.__lookMode)) {
           if (map.getLayer(c.id)) map.setPaintProperty(c.id, c.prop, c.value);
         }
         patched = true;
@@ -2204,7 +2225,7 @@ function initRemoteSession() {
       "gap " + f(dt) + "s  jump " + f(dist) + "m  => " + (dt && dist != null ? f(dist / dt * 3.6, 0) : "-") + " km/h",
       "follow " + isFollowCar + "  mode " + currentMapOrientation + "  fps " + f(fps, 0) + "  render " + f(rfps, 0) + "/s",
       "cost: jumpTo " + f(cam && cam.jumpMs, 1) + "ms  onFrame " + f(cam && cam.cbMs, 1) + "ms",
-      "flags: dpr " + f(map.getPixelRatio && map.getPixelRatio(), 2) + "  pitch " + (PERF.pitch != null ? PERF.pitch : "45*") + "  labels " + (PERF.labels ? "on" : "OFF") + "  markers " + (PERF.markers ? "on" : "OFF") + "  look " + (window.__teslaLook ? "TESLA" : "classic"),
+      "flags: dpr " + f(map.getPixelRatio && map.getPixelRatio(), 2) + "  pitch " + (PERF.pitch != null ? PERF.pitch : "45*") + "  labels " + (PERF.labels ? "on" : "OFF") + "  markers " + (PERF.markers ? "on" : "OFF") + "  look " + (window.__teslaLook ? (window.__lookMode === "mono" ? "MONO" : "TESLA") : "classic"),
       "bearing " + f(map.getBearing(), 0) + "  pitch " + f(map.getPitch(), 0) + "  zoom " + f(map.getZoom(), 1) + "  pad " + padTop,
       "arrow offset from expected: dx " + f(dx, 0) + "  dy " + f(dy, 0) + " px",
       "heading used " + f(lastKnownValidHeading, 0) + "  speed " + currentSpeedKmh + " km/h"

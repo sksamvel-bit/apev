@@ -86,7 +86,7 @@ class RoutingEngine {
         "route-source": { type: "geojson", data: this.routeGeo.upcoming }
       }),
       layers: () => {
-        const tl = typeof window !== "undefined" && window.__teslaLook && window.TeslaStyle ? window.TeslaStyle.routeColors(!!window.__night) : null;
+        const tl = typeof window !== "undefined" && window.__teslaLook && window.TeslaStyle ? window.TeslaStyle.routeColors(!!window.__night, window.__lookMode) : null;
         return [
         { id: "route-alt-casing", type: "line", source: "route-alt-source", layout: round,
           paint: { "line-color": "#ffffff", "line-width": 9, "line-opacity": 0.7 } },
