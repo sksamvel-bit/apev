@@ -18,7 +18,7 @@ process.on('unhandledRejection', e => console.error('[unhandled]', e && e.messag
 const STATIC_WHITELIST = new Set([
   'index.html','remote.html','style.css','qrcode.min.js',
   'maplibre-gl.js','maplibre-gl.css','map-gl.js',
-  'app.js','routing.js','traffic.js','traffic-signals.js','chargers.js','charger-list.js',
+  'app.js','routing.js','traffic.js','traffic-signals.js','chargers.js','charger-list.js','search.js',
   'battery.js','weather.js','speech.js','media-player.js','speed-limit.js',
   'sim-drive.js',
   'manifest.json','icon.svg','icon-192.png','icon-512.png','sw.js'
@@ -437,10 +437,12 @@ function searchRateLimited(ip) {
   return r.count > 30;
 }
 
-function searchNominatimProxy(query) {
+function searchNominatimProxy(query, bias) {
   return new Promise((resolve) => {
-    const qClean = (query || '').trim().toLowerCase();
-    if (!qClean || qClean.length < 2) return resolve([]);
+    // the result depends on the bias area, so it is part of the cache key (rounded to ~10 km)
+    const biasKey = bias ? '|' + bias.lat.toFixed(1) + ',' + bias.lon.toFixed(1) : '';
+    const qClean = (query || '').trim().toLowerCase() + biasKey;
+    if (!query || query.trim().length < 2) return resolve([]);
 
     const cached = searchCache.get(qClean);
     if (cached && (Date.now() - cached.timestamp < SEARCH_CACHE_TTL)) {
@@ -453,7 +455,7 @@ function searchNominatimProxy(query) {
     lastNominatimRequestTime = now + waitMs;
 
     setTimeout(() => {
-      const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&countrycodes=ge,am,tr,az&limit=6&addressdetails=1&accept-language=ka,en`;
+      const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&countrycodes=ge,am,tr,az&limit=6&addressdetails=1&accept-language=ka,en${bias ? `&viewbox=${(bias.lon - 0.5).toFixed(3)},${(bias.lat + 0.4).toFixed(3)},${(bias.lon + 0.5).toFixed(3)},${(bias.lat - 0.4).toFixed(3)}` : ''}`;   // viewbox = soft bias (not bounded) towards the car
       const req = https.get(url, {
         headers: {
           'User-Agent': 'TeslaNav/3.9 (+https://apev.onrender.com; automotive navigation client)'
@@ -1028,7 +1030,9 @@ const server = http.createServer((req, res) => {
       res.end(JSON.stringify([]));
       return;
     }
-    searchNominatimProxy(q).then(results => {
+    const bLat = parseFloat(urlObj.searchParams.get('lat')), bLon = parseFloat(urlObj.searchParams.get('lon'));
+    const bias = (Math.abs(bLat) <= 90 && Math.abs(bLon) <= 180) ? { lat: bLat, lon: bLon } : null;
+    searchNominatimProxy(q, bias).then(results => {
       res.writeHead(200, {
         'Content-Type': 'application/json; charset=utf-8',
         'Cache-Control': 'public, max-age=86400'

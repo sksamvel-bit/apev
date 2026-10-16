@@ -2367,3 +2367,7 @@ input {
 .cd-dist { font-size: 0.85rem; color: #fbbf24; font-weight: 700; }
 .cd-go { min-height: 36px; padding: 0 12px; border: 0; border-radius: 8px; background: linear-gradient(135deg, #059669, #10b981); color: #fff; font-weight: 600; }
 .cd-empty { padding: 24px; text-align: center; color: #94a3b8; }
+
+/* ---- search suggestions (local first) ---- */
+.search-item-emoji { font-size: 1.15rem; width: 28px; text-align: center; flex: none; }
+.search-item-dist { font-size: 0.8rem; color: #fbbf24; font-weight: 700; flex: none; margin-left: 8px; }

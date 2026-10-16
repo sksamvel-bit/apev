@@ -135,7 +135,7 @@ function initClock() {
 const OFM_STYLE_URL = "https://tiles.openfreemap.org/styles/liberty";
 const OFM_STYLE_CACHE_KEY = "tesla_nav_ofm_style_v1";
 const MAP_STYLE_KEYS = ["openfreemap", "google-roads"];
-const APP_VERSION = "3.10.8";
+const APP_VERSION = "3.10.9";
 const MAP_DEFAULT_ZOOM = 16;      // MapLibre zoom (Leaflet-equivalent 17)
 // Performance experiments (all default to the normal behaviour): ?labels=0 hides the base-map labels/icons, ?markers=0 skips the
 // charger DOM markers, ?pitch=N sets the heading-up tilt (0-60). Used to find what makes the car's browser slow.
@@ -1416,18 +1416,20 @@ function initSearch() {
       return;
     }
 
+    // typing never touches the network (the public geocoder forbids search-as-you-type): local suggestions only
     clearTimeout(debounceTimer);
-    debounceTimer = setTimeout(async () => {
-      if (query.length < 2) return;
-      try {
-        const url = `/api/search?q=${encodeURIComponent(query)}`;
-        const res = await fetch(url);
-        const data = await res.json();
-        renderSearchResults(data);
-      } catch (e) {
-        console.warn("Geocoding error:", e);
-      }
-    }, 320);
+    debounceTimer = setTimeout(() => {
+      onlineSearchToken++;
+      renderSuggestions(query, null);
+    }, 120);
+  });
+
+  searchInput.addEventListener("keydown", (e) => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      const q = searchInput.value.trim();
+      if (q.length >= 2) runOnlineSearch(q);
+    }
   });
 
   clearBtn.addEventListener("click", () => {
@@ -1501,7 +1503,8 @@ function renderFavoritesDropdown() {
 async function handleAddressSearchAndNavigate(query, label) {
   try {
     showToast(`იძებნება ${label}...`, "info", 2000);
-    const url = `/api/search?q=${encodeURIComponent(query)}`;
+    let url = `/api/search?q=${encodeURIComponent(query)}`;
+    if (currentPos && isFinite(currentPos.lat)) url += `&lat=${currentPos.lat.toFixed(3)}&lon=${currentPos.lng.toFixed(3)}`;
     const res = await fetch(url);
     const data = await res.json();
     if (data && data.length > 0) {
@@ -1515,40 +1518,109 @@ async function handleAddressSearchAndNavigate(query, label) {
   }
 }
 
-function renderSearchResults(items) {
-  const container = document.getElementById("search-results");
-  container.innerHTML = "";
+// ---- search: local suggestions as you type, online geocoder only on Enter / tap (see search.js) ----
+let onlineSearchToken = 0;
+const RECENTS_KEY = "tesla_nav_recents";
 
-  if (!items || items.length === 0) {
+function loadRecents() {
+  try { const l = JSON.parse(localStorage.getItem(RECENTS_KEY) || "[]"); return Array.isArray(l) ? l : []; } catch (_) { return []; }
+}
+function rememberDestination(title, subtitle, lat, lon) {
+  try {
+    const l = window.SearchUtil.addRecent(loadRecents(), { title, subtitle: subtitle || "", lat, lon, kind: "recent" });
+    localStorage.setItem(RECENTS_KEY, JSON.stringify(l));
+  } catch (_) {}
+}
+
+function localSearchItems() {
+  const items = loadRecents().map((r) => Object.assign({}, r, { kind: "recent" }));
+  const chs = (window.chargersEngine && window.chargersEngine.chargers) || [];
+  for (const st of chs) {
+    items.push({ title: st.name || "EV დამტენი", subtitle: [st.operator, st.power].filter(Boolean).join(" · "), lat: st.lat, lon: st.lon, kind: "charger" });
+  }
+  return items;
+}
+
+async function runOnlineSearch(query) {
+  const token = ++onlineSearchToken;
+  renderSuggestions(query, { loading: true });
+  try {
+    let url = `/api/search?q=${encodeURIComponent(query)}`;
+    if (currentPos && isFinite(currentPos.lat)) url += `&lat=${currentPos.lat.toFixed(3)}&lon=${currentPos.lng.toFixed(3)}`;
+    const res = await fetch(url);
+    const data = await res.json();
+    if (token !== onlineSearchToken) return;   // a newer query / typing replaced this one
+    renderSuggestions(query, { results: window.SearchUtil.sortByDistance(Array.isArray(data) ? data : [], currentPos) });
+  } catch (e) {
+    if (token !== onlineSearchToken) return;
+    renderSuggestions(query, { error: true });
+  }
+}
+
+function searchRow(icon, title, subtitle, km, onPick) {
+  const div = document.createElement("div");
+  div.className = "search-item";
+  const ic = document.createElement("span");
+  ic.className = "search-item-emoji";
+  ic.textContent = icon;
+  const info = document.createElement("div");
+  info.className = "search-item-info";
+  const t = document.createElement("div");
+  t.className = "search-item-title";
+  t.textContent = title;
+  info.appendChild(t);
+  if (subtitle) {
+    const st = document.createElement("div");
+    st.className = "search-item-subtitle";
+    st.textContent = subtitle;
+    info.appendChild(st);
+  }
+  div.appendChild(ic);
+  div.appendChild(info);
+  if (km != null && isFinite(km)) {
+    const d = document.createElement("div");
+    d.className = "search-item-dist";
+    d.textContent = "~" + window.SearchUtil.formatKm(km);
+    div.appendChild(d);
+  }
+  div.addEventListener("click", onPick);
+  return div;
+}
+
+/** online: null (typing) | { loading } | { results } | { error }. */
+function renderSuggestions(query, online) {
+  const container = document.getElementById("search-results");
+  const input = document.getElementById("search-input");
+  container.textContent = "";
+  const pick = (title, subtitle, lat, lon) => {
     container.classList.remove("show");
-    return;
+    input.value = title;
+    rememberDestination(title, subtitle, lat, lon);
+    prepareRoutePreview({ lat, lng: lon }, title, subtitle || title);
+  };
+
+  const local = window.SearchUtil.rankLocal(query, localSearchItems(), currentPos, 8);
+  const addLocal = (it) => container.appendChild(searchRow(it.kind === "recent" ? "🕘" : "⚡", it.title, it.subtitle, it.km, () => pick(it.title, it.subtitle, it.lat, it.lon)));
+  local.filter((it) => it.kind === "recent").slice(0, 3).forEach(addLocal);
+
+  if (online && online.results) {
+    for (const r of online.results) {
+      const title = String(r.display_name || "").split(",")[0] || query;
+      container.appendChild(searchRow("📍", title, r.display_name, r.km, () => pick(title, r.display_name, parseFloat(r.lat), parseFloat(r.lon))));
+    }
+    if (!online.results.length) container.appendChild(searchRow("🔍", "ვერაფერი მოიძებნა", "სცადეთ სხვა სიტყვა", null, () => {}));
+  } else if (online && online.loading) {
+    container.appendChild(searchRow("⏳", "იძებნება...", query, null, () => {}));
+  } else if (online && online.error) {
+    container.appendChild(searchRow("⚠️", "ძებნა ვერ შესრულდა", "შეეხეთ ხელახლა საცდელად", null, () => runOnlineSearch(query)));
+  } else if (query.length >= 2) {
+    container.appendChild(searchRow("🔎", "ძებნა ინტერნეტში: «" + query + "»", "Enter ან შეხება", null, () => runOnlineSearch(query)));
   }
 
-  items.forEach(item => {
-    const div = document.createElement("div");
-    div.className = "search-item";
-    const title = item.display_name.split(",")[0];
-    div.innerHTML = `
-      <svg class="search-item-icon" viewBox="0 0 24 24" fill="currentColor">
-        <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/>
-      </svg>
-      <div class="search-item-info">
-        <div class="search-item-title">${escapeHtml(title)}</div>
-        <div class="search-item-subtitle">${escapeHtml(item.display_name)}</div>
-      </div>
-    `;
+  // nearby charging stations matching the text (a city name matches dozens, so only the 3 nearest)
+  local.filter((it) => it.kind !== "recent").slice(0, 3).forEach(addLocal);
 
-    div.addEventListener("click", () => {
-      const latlng = { lat: parseFloat(item.lat), lng: parseFloat(item.lon) };
-      container.classList.remove("show");
-      document.getElementById("search-input").value = title;
-      prepareRoutePreview(latlng, title, item.display_name);
-    });
-
-    container.appendChild(div);
-  });
-
-  container.classList.add("show");
+  container.classList.toggle("show", container.childNodes.length > 0);
 }
 
 function escapeHtml(v) {
