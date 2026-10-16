@@ -280,16 +280,117 @@ function sendSSE(res, event, data) {
 
 // In-Memory Live EV Chargers Cache & Persistent Disk Storage (dachar.ge / Revolt / Georgia EV aggregator)
 const CHARGERS_CACHE_FILE = path.join(PUBLIC_DIR, 'chargers-cache.json');
+const CHARGERS_CACHE_TTL = 30 * 60 * 1000; // 30 minutes
 let cachedLiveChargers = null;
 let lastChargersFetch = 0;
-const CHARGERS_CACHE_TTL = 30 * 60 * 1000; // 30 minutes cache
+// Network tariff medians from GeoCharge.ge (/tarifebi/ snapshot: 2026-10-15)
+// Source: https://geocharge.ge/tarifebi/
+// NOTE: These are static network-level median fallback estimates for stations where
+// real-time Firestore pricing is unavailable. Real station-level prices take precedence.
+const GEOCHARGE_TARIFF_MEDIANS = {
+  martev: { dc: 0.80, ac: 0.65, name: 'mart EV' },
+  espace: { dc: 0.75, ac: 0.60, name: 'E-Space' },
+  evpower: { dc: 0.76, ac: null, name: 'EV Power' },
+  ecocars: { dc: 0.78, ac: 0.71, name: 'EcoCars' },
+  tegeta: { dc: 1.00, ac: 0.60, name: 'Tegeta' },
+  electrify: { dc: 0.57, ac: 0.45, name: 'Electrify Georgia' },
+  datene: { dc: 0.69, ac: 0.69, name: 'Da-Tene' },
+  solarauto: { dc: 0.70, ac: 0.70, name: 'Solar Station' },
+  moveo: { dc: 0.85, ac: 0.56, name: 'MOVEO' },
+  gadatene: { dc: 0.78, ac: null, name: 'Gadatene' }
+};
+
+function haversineMeters(lat1, lon1, lat2, lon2) {
+  const R = 6371000;
+  const dLat = (lat2 - lat1) * Math.PI / 180;
+  const dLon = (lon2 - lon1) * Math.PI / 180;
+  const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+            Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+            Math.sin(dLon/2) * Math.sin(dLon/2);
+  return 2 * R * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+}
+
+function isDuplicateStation(stA, stB, thresholdMeters = 30) {
+  if (!stA || !stB || !stA.lat || !stA.lng || !stB.lat || !stB.lng) return false;
+  // Strict safety check: ONLY duplicate if SAME operator AND within thresholdMeters!
+  // Different operators at the same parking/location are NEVER merged!
+  if (!stA.operator || !stB.operator || stA.operator.toLowerCase() !== stB.operator.toLowerCase()) return false;
+  return haversineMeters(stA.lat, stA.lng, stB.lat, stB.lng) <= thresholdMeters;
+}
+
+function deduplicateStations(stations, radiusMeters = 30) {
+  if (!Array.isArray(stations)) return [];
+  const result = [];
+  for (const st of stations) {
+    if (!st || !st.lat || !st.lng) continue;
+    const existing = result.find(r => isDuplicateStation(r, st, radiusMeters));
+
+    if (existing) {
+      // Keep maximum charging power
+      const pExisting = parseInt(existing.power, 10) || 0;
+      const pNew = parseInt(st.power, 10) || 0;
+      if (pNew > pExisting) {
+        existing.power = st.power;
+      }
+      // Merge unique connector types
+      const connSet = new Set((existing.type || '').split(',').map(s => s.trim()).filter(Boolean));
+      (st.type || '').split(',').map(s => s.trim()).filter(Boolean).forEach(c => connSet.add(c));
+      existing.type = Array.from(connSet).join(', ');
+      // Prefer Georgian address/name
+      const hasGeo = /[\u10A0-\u10FF]/.test(st.name || '');
+      const existingHasGeo = /[\u10A0-\u10FF]/.test(existing.name || '');
+      if (hasGeo && !existingHasGeo) {
+        existing.name = st.name;
+        existing.address = st.address;
+        existing.city = st.city;
+      }
+    } else {
+      result.push({ ...st });
+    }
+  }
+  return result;
+}
+
+function enrichStationTariff(station) {
+  if (!station) return station;
+  // If station already has a specific price per kWh (not generic), retain it
+  if (station.price && !station.price.includes('სტანდარტული') && !station.price.includes('უცნობი')) {
+    return station;
+  }
+
+  // Tbilisi City Hall (TTC) municipal chargers: verified 33 AC stations (22 kW)
+  if (station.operator === 'ttc') {
+    const kw = parseInt(station.power, 10) || 0;
+    if (kw <= 22) {
+      station.price = '0.00 ₾/kWh (მერია · უფასო)';
+      station.priceSource = 'თბილისის მერია (უფასო)';
+      return station;
+    }
+  }
+
+  const op = (station.operator || '').toLowerCase();
+  const median = GEOCHARGE_TARIFF_MEDIANS[op];
+  const kw = parseInt(station.power, 10) || 0;
+  const isDc = kw >= 50;
+
+  if (median) {
+    const rate = isDc ? (median.dc || median.ac) : (median.ac || median.dc);
+    if (rate != null) {
+      station.price = `~${rate.toFixed(2)} ₾/kWh (სავარაუდო)`;
+      station.priceSource = 'GeoCharge.ge (ქსელის მედიანა, 2026-10)';
+      return station;
+    }
+  }
+
+  return station;
+}
 
 // Load disk cache on boot if available
 try {
   if (fs.existsSync(CHARGERS_CACHE_FILE)) {
     const diskData = JSON.parse(fs.readFileSync(CHARGERS_CACHE_FILE, 'utf8'));
     if (diskData && Array.isArray(diskData.stations) && diskData.stations.length > 0) {
-      cachedLiveChargers = diskData.stations;
+      cachedLiveChargers = deduplicateStations(diskData.stations.map(enrichStationTariff), 30);
       lastChargersFetch = diskData.timestamp || Date.now();
       console.log(`[EV] Loaded ${cachedLiveChargers.length} charging stations from disk cache (chargers-cache.json)`);
     }
@@ -324,72 +425,6 @@ function fetchFirestorePage(pageToken) {
   });
 }
 
-// Network medians from GeoCharge.ge (Step 4 tariff enrichment)
-const GEOCHARGE_TARIFF_MEDIANS = {
-  martev: { dc: 0.80, ac: 0.65, name: 'mart EV' },
-  espace: { dc: 0.75, ac: 0.60, name: 'E-Space' },
-  evpower: { dc: 0.76, ac: null, name: 'EV Power' },
-  chargerplus: { dc: 0.85, ac: 0.65, name: 'Charger Plus' },
-  ecocars: { dc: 0.78, ac: 0.71, name: 'EcoCars' },
-  tegeta: { dc: 1.00, ac: 0.60, name: 'Tegeta' },
-  ttc: { dc: 0.00, ac: 0.00, name: 'თბილისის მერია (უფასო)' },
-  electrify: { dc: 0.57, ac: 0.45, name: 'Electrify Georgia' },
-  datene: { dc: 0.69, ac: 0.69, name: 'Da-Tene' },
-  solarauto: { dc: 0.70, ac: 0.70, name: 'Solar Station' },
-  moveo: { dc: 0.85, ac: 0.56, name: 'MOVEO' },
-  gadatene: { dc: 0.78, ac: null, name: 'Gadatene' },
-  greencharge: { dc: null, ac: 0.65, name: 'GreenCharge' }
-};
-
-function haversineMeters(lat1, lon1, lat2, lon2) {
-  const R = 6371000;
-  const dLat = (lat2 - lat1) * Math.PI / 180;
-  const dLon = (lon2 - lon1) * Math.PI / 180;
-  const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
-            Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
-            Math.sin(dLon/2) * Math.sin(dLon/2);
-  return 2 * R * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-}
-
-function isDuplicateStation(stA, stB, thresholdMeters = 50) {
-  if (!stA || !stB || !stA.lat || !stA.lng || !stB.lat || !stB.lng) return false;
-  const dist = haversineMeters(stA.lat, stA.lng, stB.lat, stB.lng);
-  if (dist > thresholdMeters) return false;
-  // If operators match or both names exist and share tokens
-  if (stA.operator && stB.operator && stA.operator.toLowerCase() === stB.operator.toLowerCase()) return true;
-  return dist < 20; // within 20m regardless of name
-}
-
-function enrichStationTariff(station) {
-  if (!station) return station;
-  // If station already has a specific price per kWh (not generic), retain it
-  if (station.price && !station.price.includes('სტანდარტული') && !station.price.includes('უცნობი')) {
-    return station;
-  }
-
-  // Tbilisi City Hall chargers are 100% free municipal service
-  if (station.operator === 'ttc') {
-    station.price = '0.00 ₾/kWh (უფასო)';
-    station.priceSource = 'GeoCharge.ge / მერია';
-    return station;
-  }
-
-  const op = (station.operator || '').toLowerCase();
-  const median = GEOCHARGE_TARIFF_MEDIANS[op];
-  const kw = parseInt(station.power, 10) || 0;
-  const isDc = kw >= 50;
-
-  if (median) {
-    const rate = isDc ? (median.dc || median.ac) : (median.ac || median.dc);
-    if (rate != null) {
-      station.price = `~${rate.toFixed(2)} ₾/kWh`;
-      station.priceSource = 'GeoCharge.ge (ქსელის მედიანა)';
-      return station;
-    }
-  }
-
-  return station;
-}
 
 async function getLiveGeorgiaChargers(forceRefresh = false) {
   const now = Date.now();
@@ -459,17 +494,18 @@ async function getLiveGeorgiaChargers(forceRefresh = false) {
       });
     }).filter(Boolean);
 
-    if (stations.length > 0) {
-      cachedLiveChargers = stations;
+    const dedupedStations = deduplicateStations(stations, 30);
+    if (dedupedStations.length > 0) {
+      cachedLiveChargers = dedupedStations;
       lastChargersFetch = now;
-      console.log(`[EV] Successfully synced ${stations.length} live EV charging stations across Georgia!`);
+      console.log(`[EV] Successfully synced ${dedupedStations.length} live EV charging stations across Georgia (${stations.length} raw stations deduplicated)!`);
 
       // Persist to disk for high-speed instant load & offline resilience
       fs.writeFile(CHARGERS_CACHE_FILE, JSON.stringify({
         source: 'dachar.ge & Revolt Georgia (GPS კოორდინატები); GeoCharge.ge (ტარიფები)',
-        count: stations.length,
+        count: dedupedStations.length,
         timestamp: now,
-        stations: stations
+        stations: dedupedStations
       }, null, 2), 'utf8', (err) => {
         if (err) console.warn('[EV] Cache file write notice:', err.message);
       });
@@ -1311,6 +1347,7 @@ if (typeof module !== 'undefined' && module.exports) {
   module.exports = {
     GEOCHARGE_TARIFF_MEDIANS,
     haversineMeters,
+    deduplicateStations,
     isDuplicateStation,
     enrichStationTariff,
     server
