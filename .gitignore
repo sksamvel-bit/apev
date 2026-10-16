@@ -2,3 +2,4 @@ node_modules/
 conversation-logs/
 FULL_CONVERSATION_TRANSCRIPT.md
 pin-bindings.json
+scripts/

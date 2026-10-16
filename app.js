@@ -135,7 +135,7 @@ function initClock() {
 const OFM_STYLE_URL = "https://tiles.openfreemap.org/styles/liberty";
 const OFM_STYLE_CACHE_KEY = "tesla_nav_ofm_style_v1";
 const MAP_STYLE_KEYS = ["openfreemap", "google-roads"];
-const APP_VERSION = "3.10.9";
+const APP_VERSION = "3.10.10";
 const MAP_DEFAULT_ZOOM = 16;      // MapLibre zoom (Leaflet-equivalent 17)
 // Performance experiments (all default to the normal behaviour): ?labels=0 hides the base-map labels/icons, ?markers=0 skips the
 // charger DOM markers, ?pitch=N sets the heading-up tilt (0-60). Used to find what makes the car's browser slow.
@@ -149,6 +149,21 @@ const PERF = (function () {
 })();
 window.__perf = PERF;
 const MAP_HEADING_PITCH = PERF.pitch != null ? PERF.pitch : 45;
+
+// "Tesla look" (opt-in): ?style=tesla turns it on and remembers it, ?style=classic goes back to the original map.
+const TESLA_LOOK = (function () {
+  let on = false;
+  try {
+    const q = new URLSearchParams(location.search).get("style");
+    if (q === "tesla") localStorage.setItem("tesla_look", "1");
+    else if (q === "classic") localStorage.setItem("tesla_look", "0");
+    on = localStorage.getItem("tesla_look") === "1";
+  } catch (_) {}
+  return on && !!window.TeslaStyle;
+})();
+window.__teslaLook = TESLA_LOOK;
+window.__night = false;
+if (TESLA_LOOK) document.body.classList.add("tesla-look");
 
 const layerRegistry = new window.MapGL.LayerRegistry();
 window.layerRegistry = layerRegistry;
@@ -199,6 +214,8 @@ function tuneVectorStyle(style) {
   return out;
 }
 
+function teslaLook(style) { return TESLA_LOOK ? window.TeslaStyle.apply(style, window.__night) : style; }
+
 async function loadStyleJson(styleKey) {
   if (styleKey === "google-roads") return googleRasterStyle("m", "google-roads");
   if (styleKey === "google-sat") return googleRasterStyle("y", "google-sat");
@@ -209,12 +226,12 @@ async function loadStyleJson(styleKey) {
     if (!res.ok) throw new Error("HTTP " + res.status);
     const json = await res.json();
     try { localStorage.setItem(OFM_STYLE_CACHE_KEY, JSON.stringify(json)); } catch (_) {}
-    return tuneVectorStyle(json);
+    return teslaLook(tuneVectorStyle(json));
   } catch (err) {
     // style server slow/unreachable: use the last good copy (the tiles themselves may still come from the browser cache)
     let cached = null;
     try { cached = JSON.parse(localStorage.getItem(OFM_STYLE_CACHE_KEY)); } catch (_) {}
-    if (cached && cached.layers) return tuneVectorStyle(cached);
+    if (cached && cached.layers) return teslaLook(tuneVectorStyle(cached));
     throw err;
   } finally {
     clearTimeout(timer);
@@ -522,8 +539,12 @@ function toggleNightMode() {
 }
 
 function applyNightMode(enable) {
+  const nightChanged = isNightMode !== enable;
   isNightMode = enable;
+  window.__night = enable;
   localStorage.setItem("tesla_nav_night_mode", isNightMode ? "true" : "false");
+  // Tesla look has its own dark palette: rebuild the style instead of filtering the canvas
+  if (TESLA_LOOK && nightChanged && map && currentMapStyle === "openfreemap") applyMapStyle(currentMapStyle);
   document.body.classList.toggle("night-mode-active", isNightMode);
 
   const btnNight = document.getElementById("btn-toggle-night");

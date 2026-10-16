@@ -56,14 +56,17 @@ class RoutingEngine {
         "route-passed-source": { type: "geojson", data: this.routeGeo.passed },
         "route-source": { type: "geojson", data: this.routeGeo.upcoming }
       }),
-      layers: () => [
+      layers: () => {
+        const tl = typeof window !== "undefined" && window.__teslaLook && window.TeslaStyle ? window.TeslaStyle.routeColors(!!window.__night) : null;
+        return [
         { id: "route-passed-line", type: "line", source: "route-passed-source", layout: round,
           paint: { "line-color": "#64748b", "line-width": 5, "line-opacity": 0.6 } },
         { id: "route-casing", type: "line", source: "route-source", layout: round,
-          paint: { "line-color": "#003b66", "line-width": 10, "line-opacity": 0.75 } },
+          paint: { "line-color": tl ? tl.casing : "#003b66", "line-width": 10, "line-opacity": 0.75 } },
         { id: "route-line", type: "line", source: "route-source", layout: round,
-          paint: { "line-color": "#00d2ff", "line-width": 6, "line-opacity": 0.95 } }
-      ]
+          paint: { "line-color": tl ? tl.line : "#00d2ff", "line-width": 6, "line-opacity": 0.95 } }
+        ];
+      }
     });
   }
 

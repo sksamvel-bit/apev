@@ -18,7 +18,7 @@ process.on('unhandledRejection', e => console.error('[unhandled]', e && e.messag
 const STATIC_WHITELIST = new Set([
   'index.html','remote.html','style.css','qrcode.min.js',
   'maplibre-gl.js','maplibre-gl.css','map-gl.js',
-  'app.js','routing.js','traffic.js','traffic-signals.js','chargers.js','charger-list.js','search.js',
+  'app.js','routing.js','traffic.js','traffic-signals.js','chargers.js','charger-list.js','search.js','tesla-style.js',
   'battery.js','weather.js','speech.js','media-player.js','speed-limit.js',
   'sim-drive.js',
   'manifest.json','icon.svg','icon-192.png','icon-512.png','sw.js'
@@ -322,6 +322,73 @@ function fetchFirestorePage(pageToken) {
   });
 }
 
+// Network medians from GeoCharge.ge (Step 4 tariff enrichment)
+const GEOCHARGE_TARIFF_MEDIANS = {
+  martev: { dc: 0.80, ac: 0.65, name: 'mart EV' },
+  espace: { dc: 0.75, ac: 0.60, name: 'E-Space' },
+  evpower: { dc: 0.76, ac: null, name: 'EV Power' },
+  chargerplus: { dc: 0.85, ac: 0.65, name: 'Charger Plus' },
+  ecocars: { dc: 0.78, ac: 0.71, name: 'EcoCars' },
+  tegeta: { dc: 1.00, ac: 0.60, name: 'Tegeta' },
+  ttc: { dc: 0.00, ac: 0.00, name: 'თბილისის მერია (უფასო)' },
+  electrify: { dc: 0.57, ac: 0.45, name: 'Electrify Georgia' },
+  datene: { dc: 0.69, ac: 0.69, name: 'Da-Tene' },
+  solarauto: { dc: 0.70, ac: 0.70, name: 'Solar Station' },
+  moveo: { dc: 0.85, ac: 0.56, name: 'MOVEO' },
+  gadatene: { dc: 0.78, ac: null, name: 'Gadatene' },
+  greencharge: { dc: null, ac: 0.65, name: 'GreenCharge' }
+};
+
+function haversineMeters(lat1, lon1, lat2, lon2) {
+  const R = 6371000;
+  const dLat = (lat2 - lat1) * Math.PI / 180;
+  const dLon = (lon2 - lon1) * Math.PI / 180;
+  const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+            Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+            Math.sin(dLon/2) * Math.sin(dLon/2);
+  return 2 * R * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+}
+
+function isDuplicateStation(stA, stB, thresholdMeters = 50) {
+  if (!stA || !stB || !stA.lat || !stA.lng || !stB.lat || !stB.lng) return false;
+  const dist = haversineMeters(stA.lat, stA.lng, stB.lat, stB.lng);
+  if (dist > thresholdMeters) return false;
+  // If operators match or both names exist and share tokens
+  if (stA.operator && stB.operator && stA.operator.toLowerCase() === stB.operator.toLowerCase()) return true;
+  return dist < 20; // within 20m regardless of name
+}
+
+function enrichStationTariff(station) {
+  if (!station) return station;
+  // If station already has a specific price per kWh (not generic), retain it
+  if (station.price && !station.price.includes('სტანდარტული') && !station.price.includes('უცნობი')) {
+    return station;
+  }
+
+  // Tbilisi City Hall chargers are 100% free municipal service
+  if (station.operator === 'ttc') {
+    station.price = '0.00 ₾/kWh (უფასო)';
+    station.priceSource = 'GeoCharge.ge / მერია';
+    return station;
+  }
+
+  const op = (station.operator || '').toLowerCase();
+  const median = GEOCHARGE_TARIFF_MEDIANS[op];
+  const kw = parseInt(station.power, 10) || 0;
+  const isDc = kw >= 50;
+
+  if (median) {
+    const rate = isDc ? (median.dc || median.ac) : (median.ac || median.dc);
+    if (rate != null) {
+      station.price = `~${rate.toFixed(2)} ₾/kWh`;
+      station.priceSource = 'GeoCharge.ge (ქსელის მედიანა)';
+      return station;
+    }
+  }
+
+  return station;
+}
+
 async function getLiveGeorgiaChargers(forceRefresh = false) {
   const now = Date.now();
   if (!forceRefresh && cachedLiveChargers && (now - lastChargersFetch < CHARGERS_CACHE_TTL)) {
@@ -376,7 +443,7 @@ async function getLiveGeorgiaChargers(forceRefresh = false) {
 
       const name = addr ? (city ? city + ', ' + addr : addr) : (city || (operator + ' Charger'));
 
-      return {
+      return enrichStationTariff({
         lat: Math.round(lat * 1000000) / 1000000,
         lng: Math.round(lng * 1000000) / 1000000,
         name: name,
@@ -387,7 +454,7 @@ async function getLiveGeorgiaChargers(forceRefresh = false) {
         type: connectorTypes.join(', ') || 'CCS2 / Type 2',
         price: priceGEL ? priceGEL + ' ₾/kWh' : 'სტანდარტული ტარიფი',
         hours: f.openingHours && f.openingHours.stringValue ? f.openingHours.stringValue : null // AUDIT FIX: no fake 24/7
-      };
+      });
     }).filter(Boolean);
 
     if (stations.length > 0) {
@@ -397,7 +464,7 @@ async function getLiveGeorgiaChargers(forceRefresh = false) {
 
       // Persist to disk for high-speed instant load & offline resilience
       fs.writeFile(CHARGERS_CACHE_FILE, JSON.stringify({
-        source: 'dachar.ge & Revolt Georgia EV Network',
+        source: 'dachar.ge & Revolt Georgia (GPS კოორდინატები); GeoCharge.ge (ტარიფები)',
         count: stations.length,
         timestamp: now,
         stations: stations
@@ -412,15 +479,17 @@ async function getLiveGeorgiaChargers(forceRefresh = false) {
   }
 }
 
-// Background automatic EV chargers synchronization (every 30 mins)
-setInterval(() => {
-  getLiveGeorgiaChargers(true).catch(e => console.warn('[EV Auto-Sync] Error:', e.message));
-}, CHARGERS_CACHE_TTL);
+// Background automatic EV chargers synchronization (every 30 mins, only when running as server)
+if (require.main === module) {
+  setInterval(() => {
+    getLiveGeorgiaChargers(true).catch(e => console.warn('[EV Auto-Sync] Error:', e.message));
+  }, CHARGERS_CACHE_TTL);
 
-// Initial background sync after 3 seconds
-setTimeout(() => {
-  getLiveGeorgiaChargers(false).catch(() => {});
-}, 3000);
+  // Initial background sync after 3 seconds
+  setTimeout(() => {
+    getLiveGeorgiaChargers(false).catch(() => {});
+  }, 3000);
+}
 
 // Server-side Geocoding Proxy (OSM Nominatim) with caching & rate limiting
 const searchCache = new Map();
@@ -1214,21 +1283,33 @@ const server = http.createServer((req, res) => {
 });
 
 const HOST = process.env.HOST || '0.0.0.0'; // set HOST=127.0.0.1 to keep it private
-server.listen(PORT, HOST, () => {
-  if (RAW_PINS.length === 0) console.warn('[Security] ACCESS_PIN is not set: the site is OPEN to everyone. Set ACCESS_PIN (and AUTH_SECRET) in production.');
-  if (!process.env.AUTH_SECRET && RAW_PINS.length > 0) console.warn('[Security] AUTH_SECRET is not set: logins are invalidated on every restart. Set AUTH_SECRET in production.');
-  const localIps = getLocalIpAddresses();
-  console.log('====================================================');
-  console.log('⚡ Tesla Model 3 Navigation Web Server is Running! ⚡');
-  console.log('====================================================');
-  console.log(`Local Access:   http://localhost:${PORT}`);
-  if (localIps.length > 0) {
-    console.log('\n🚗 Open in Tesla Model 3 Browser (via Wi-Fi / Hotspot):');
-    localIps.forEach(ip => {
-      console.log(`👉 http://${ip}:${PORT}`);
-    });
-  } else {
-    console.log(`Network Access: http://<your-ip>:${PORT}`);
-  }
-  console.log('====================================================');
-});
+if (require.main === module) {
+  server.listen(PORT, HOST, () => {
+    if (RAW_PINS.length === 0) console.warn('[Security] ACCESS_PIN is not set: the site is OPEN to everyone. Set ACCESS_PIN (and AUTH_SECRET) in production.');
+    if (!process.env.AUTH_SECRET && RAW_PINS.length > 0) console.warn('[Security] AUTH_SECRET is not set: logins are invalidated on every restart. Set AUTH_SECRET in production.');
+    const localIps = getLocalIpAddresses();
+    console.log('====================================================');
+    console.log('⚡ Tesla Model 3 Navigation Web Server is Running! ⚡');
+    console.log('====================================================');
+    console.log(`Local Access:   http://localhost:${PORT}`);
+    if (localIps.length > 0) {
+      console.log('\n🚗 Open in Tesla Model 3 Browser (via Wi-Fi / Hotspot):');
+      localIps.forEach(ip => {
+        console.log(`👉 http://${ip}:${PORT}`);
+      });
+    } else {
+      console.log(`Network Access: http://<your-ip>:${PORT}`);
+    }
+    console.log('====================================================');
+  });
+}
+
+if (typeof module !== 'undefined' && module.exports) {
+  module.exports = {
+    GEOCHARGE_TARIFF_MEDIANS,
+    haversineMeters,
+    isDuplicateStation,
+    enrichStationTariff,
+    server
+  };
+}

@@ -2371,3 +2371,8 @@ input {
 /* ---- search suggestions (local first) ---- */
 .search-item-emoji { font-size: 1.15rem; width: 28px; text-align: center; flex: none; }
 .search-item-dist { font-size: 0.8rem; color: #fbbf24; font-weight: 700; flex: none; margin-left: 8px; }
+
+/* ---- Tesla look (opt-in ?style=tesla): native dark palette, so the CSS invert filter is switched off; blue car arrow ---- */
+.tesla-look.map-style-openfreemap.night-mode-active .maplibregl-canvas { filter: none; }
+.tesla-look #navArrowGrad stop:first-child { stop-color: #6aa6ff; }
+.tesla-look #navArrowGrad stop:last-child { stop-color: #3e6ae1; }
