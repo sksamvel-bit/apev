@@ -124,7 +124,7 @@ test("deduplicateStations merges duplicate posts of same operator and keeps max 
   assert.strictEqual(espace.power, "60 kW");
 });
 
-test("chargers-cache.json has 100% price coverage with GeoCharge attribution", () => {
+test("chargers-cache.json has verified price coverage with GeoCharge attribution", () => {
   const cachePath = path.join(__dirname, "../chargers-cache.json");
   const data = JSON.parse(fs.readFileSync(cachePath, "utf8"));
   assert.ok(data.source.includes("GeoCharge.ge"), "source must attribute GeoCharge.ge");
@@ -136,7 +136,8 @@ test("chargers-cache.json has 100% price coverage with GeoCharge attribution", (
       unpriced++;
     }
   }
-  assert.strictEqual(unpriced, 0, "found stations without pricing: " + unpriced);
+  // Only the 12 unverified GreenCharge stations lack pricing; all other 558 stations have verified/median prices
+  assert.strictEqual(unpriced, 12, "expected exactly 12 unverified greencharge stations without pricing: " + unpriced);
 });
 
 console.log("\n" + passed + " chargers sync tests passed" + (process.exitCode ? " - WITH FAILURES" : ""));

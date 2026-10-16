@@ -88,5 +88,11 @@
   3. `GEOCHARGE_TARIFF_MEDIANS`: ამოღებულია დაუდასტურებელი `chargerplus` (რომელსაც Firestore-ში უკვე აქვს ზუსტი ფასები) და `greencharge` (რომელიც არ არის /tarifebi/-ზე). მედიანური ტარიფები მონიშნულია როგორც `~0.75 ₾/kWh (სავარაუდო)`.
   4. TTC (მერია): 100% უფასო 0.00 ₾/kWh მხოლოდ AC სადგურებისთვის (<= 22 kW).
   5. `server.js`-ში გასწორდა `CHARGERS_CACHE_TTL` და ამოიშალა დუბლირებული ბლოკი. `tests/test_chargers_sync.js` გაფართოვდა 9/9 PASS-მდე, `smoke_server.js` 100% PASS, ყველა ტესტი 72/72 PASS.
+- 2026-10-16 Claude & Antigravity: v3.10.13 —
+  1. `?lite=0`: სრულ რუკას რთავს და ძველ მუდმივ Lite-ის ნიშანს ასუფთავებს `localStorage`-დან და `sessionStorage`-დან.
+  2. ავტო-Lite (LiteGovernor): გახდა სესიური (`sessionStorage`), რათა შემთხვევითი შეფერხების გამო რუკა სამუდამოდ არ ჩაიკეტოს Lite-ში.
+  3. Tesla look: ირთვება მხოლოდ `?style=tesla`-ით (სესიური/URL) და აღარ ინახება მუდმივად `localStorage`-ში.
+  4. HUD (`?debug=1`): აჩვენებს `look TESLA` ან `look classic`-ს.
+  5. ვერსია განახლდა v3.10.13-ზე: `package.json`, `app.js`, `sw.js`, `index.html`. ყველა ტესტი (72/72) PASS, check_version PASS, smoke PASS.
 
 

@@ -1,7 +1,7 @@
 {
   "source": "dachar.ge & Revolt Georgia (GPS კოორდინატები); GeoCharge.ge (ტარიფები)",
-  "count": 650,
-  "timestamp": 1792148067650,
+  "count": 570,
+  "timestamp": 1792150115071,
   "stations": [
     {
       "lat": 41.737416,
@@ -152,8 +152,8 @@
     {
       "lat": 42.13708,
       "lng": 42.978933,
-      "name": "არგვ��თა, არგვეთა",
-      "city": "არგვ��თა",
+      "name": "არგვეთა, არგვეთა",
+      "city": "არგვეთა",
       "address": "არგვეთა",
       "operator": "chargerplus",
       "power": "120 kW",
@@ -219,8 +219,8 @@
     {
       "lat": 42.169146,
       "lng": 41.673985,
-      "name": "Kokaia alley",
-      "city": "Kokaia alley",
+      "name": "ფოთი",
+      "city": "ფოთი",
       "operator": "chargerplus",
       "power": "120 kW",
       "type": "CCS2, GBT",
@@ -230,8 +230,8 @@
     {
       "lat": 41.806319,
       "lng": 41.777459,
-      "name": "Abashidze 18",
-      "city": "Abashidze 18",
+      "name": "ქობულეთი",
+      "city": "ქობულეთი",
       "operator": "chargerplus",
       "power": "120 kW",
       "type": "CCS2, GBT",
@@ -316,17 +316,6 @@
       "hours": "24/7"
     },
     {
-      "lat": 41.710882,
-      "lng": 44.758264,
-      "name": "Ilia Chavchavadze 64a",
-      "city": "Ilia Chavchavadze 64a",
-      "operator": "chargerplus",
-      "power": "22 kW",
-      "type": "GBT",
-      "price": "0.65 ₾/kWh",
-      "hours": "24/7"
-    },
-    {
       "lat": 41.702534,
       "lng": 44.794018,
       "name": "Rustaveli Avenue 29",
@@ -393,41 +382,8 @@
       "hours": "24/7"
     },
     {
-      "lat": 41.83982,
-      "lng": 41.778056,
-      "name": "Agmashenebeli Avenue 275",
-      "city": "Agmashenebeli Avenue 275",
-      "operator": "chargerplus",
-      "power": "22 kW",
-      "type": "GBT",
-      "price": "0.65 ₾/kWh",
-      "hours": "24/7"
-    },
-    {
       "lat": 41.758051,
       "lng": 41.742819,
-      "name": "Castello Mare Hotel & Wellness Resort",
-      "city": "Castello Mare Hotel & Wellness Resort",
-      "operator": "chargerplus",
-      "power": "7 kW",
-      "type": "GBT",
-      "price": "0.65 ₾/kWh",
-      "hours": "24/7"
-    },
-    {
-      "lat": 41.758072,
-      "lng": 41.742839,
-      "name": "Castello Mare Hotel & Wellness Resort",
-      "city": "Castello Mare Hotel & Wellness Resort",
-      "operator": "chargerplus",
-      "power": "7 kW",
-      "type": "GBT",
-      "price": "0.65 ₾/kWh",
-      "hours": "24/7"
-    },
-    {
-      "lat": 41.758031,
-      "lng": 41.742799,
       "name": "Castello Mare Hotel & Wellness Resort",
       "city": "Castello Mare Hotel & Wellness Resort",
       "operator": "chargerplus",
@@ -459,39 +415,6 @@
       "hours": "24/7"
     },
     {
-      "lat": 41.692389,
-      "lng": 44.972962,
-      "name": "Kakheti Hwy 147",
-      "city": "Kakheti Hwy 147",
-      "operator": "chargerplus",
-      "power": "120 kW",
-      "type": "CCS2, GBT",
-      "price": "0.85 ₾/kWh",
-      "hours": "24/7"
-    },
-    {
-      "lat": 42.163222,
-      "lng": 42.382766,
-      "name": "Agmashenebeli 71",
-      "city": "Agmashenebeli 71",
-      "operator": "chargerplus",
-      "power": "120 kW",
-      "type": "CCS2, GBT",
-      "price": "0.85 ₾/kWh",
-      "hours": "24/7"
-    },
-    {
-      "lat": 42.498147,
-      "lng": 41.839516,
-      "name": "Shota Khubulava st",
-      "city": "Shota Khubulava st",
-      "operator": "chargerplus",
-      "power": "120 kW",
-      "type": "CCS2, GBT",
-      "price": "0.68 ₾/kWh",
-      "hours": "24/7"
-    },
-    {
       "lat": 41.672441,
       "lng": 44.837303,
       "name": "Vakhtang Gorgasali Street",
@@ -514,50 +437,6 @@
       "hours": "24/7"
     },
     {
-      "lat": 42.111282,
-      "lng": 43.301965,
-      "name": "Rikoti",
-      "city": "Rikoti",
-      "operator": "chargerplus",
-      "power": "120 kW",
-      "type": "CCS2, GBT",
-      "price": "0.85 ₾/kWh",
-      "hours": "24/7"
-    },
-    {
-      "lat": 42.111269,
-      "lng": 43.302007,
-      "name": "Rikoti",
-      "city": "Rikoti",
-      "operator": "chargerplus",
-      "power": "120 kW",
-      "type": "CCS2, GBT",
-      "price": "0.85 ₾/kWh",
-      "hours": "24/7"
-    },
-    {
-      "lat": 42.026148,
-      "lng": 44.196996,
-      "name": "Autobahn",
-      "city": "Autobahn",
-      "operator": "chargerplus",
-      "power": "120 kW",
-      "type": "CCS2, GBT",
-      "price": "0.85 ₾/kWh",
-      "hours": "24/7"
-    },
-    {
-      "lat": 42.02617,
-      "lng": 44.196899,
-      "name": "Autobahn",
-      "city": "Autobahn",
-      "operator": "chargerplus",
-      "power": "120 kW",
-      "type": "CCS2, GBT",
-      "price": "0.85 ₾/kWh",
-      "hours": "24/7"
-    },
-    {
       "lat": 41.670147,
       "lng": 44.873583,
       "name": "Beri Gabriel Salosi Street.175",
@@ -569,67 +448,10 @@
       "hours": "24/7"
     },
     {
-      "lat": 42.13702,
-      "lng": 42.978828,
-      "name": "არგვეთა, არგვეთა",
-      "city": "არგვეთა",
-      "address": "არგვეთა",
-      "operator": "chargerplus",
-      "power": "120 kW",
-      "type": "CCS2, GBT",
-      "price": "0.85 ₾/kWh",
-      "hours": "24/7"
-    },
-    {
-      "lat": 42.137112,
-      "lng": 42.979027,
-      "name": "არგვეთა, არგვეთა",
-      "city": "არგვეთა",
-      "address": "არგვეთა",
-      "operator": "chargerplus",
-      "power": "120 kW",
-      "type": "CCS2, GBT",
-      "price": "0.85 ₾/kWh",
-      "hours": "24/7"
-    },
-    {
-      "lat": 41.806296,
-      "lng": 41.77749,
-      "name": "ქობულეთი",
-      "city": "ქობულეთი",
-      "operator": "chargerplus",
-      "power": "120 kW",
-      "type": "CCS2, GBT",
-      "price": "0.85 ₾/kWh",
-      "hours": "24/7"
-    },
-    {
       "lat": 41.690291,
       "lng": 44.913762,
       "name": "თბილისი",
       "city": "თბილისი",
-      "operator": "chargerplus",
-      "power": "120 kW",
-      "type": "CCS2, GBT",
-      "price": "0.85 ₾/kWh",
-      "hours": "24/7"
-    },
-    {
-      "lat": 41.690246,
-      "lng": 44.913782,
-      "name": "თბილისი",
-      "city": "თბილისი",
-      "operator": "chargerplus",
-      "power": "120 kW",
-      "type": "CCS2, GBT",
-      "price": "0.85 ₾/kWh",
-      "hours": "24/7"
-    },
-    {
-      "lat": 42.169177,
-      "lng": 41.673974,
-      "name": "ფოთი",
-      "city": "ფოთი",
       "operator": "chargerplus",
       "power": "120 kW",
       "type": "CCS2, GBT",
@@ -670,18 +492,6 @@
       "hours": "24/7"
     },
     {
-      "lat": 41.811199,
-      "lng": 44.772323,
-      "name": "თბილისი, დავით აღმაშენებლის ხეივანი 205",
-      "city": "თბილისი",
-      "address": "დავით აღმაშენებლის ხეივანი 205",
-      "operator": "datene",
-      "power": "120 kW",
-      "type": "CCS2, GBT",
-      "price": "0.69 ₾/kWh",
-      "hours": "24/7"
-    },
-    {
       "lat": 41.811327,
       "lng": 44.772321,
       "name": "თბილისი, დავით აღმაშენებლის ხეივანი 205",
@@ -696,18 +506,6 @@
     {
       "lat": 41.748376,
       "lng": 44.769383,
-      "name": "თბილისი, მარშალ არჩილ გელოვანის გამზირი 22, აგროჰაბი",
-      "city": "თბილისი",
-      "address": "მარშალ არჩილ გელოვანის გამზირი 22, აგროჰაბი",
-      "operator": "datene",
-      "power": "120 kW",
-      "type": "CCS2, GBT",
-      "price": "0.69 ₾/kWh",
-      "hours": "24/7"
-    },
-    {
-      "lat": 41.748343,
-      "lng": 44.769379,
       "name": "თბილისი, მარშალ არჩილ გელოვანის გამზირი 22, აგროჰაბი",
       "city": "თბილისი",
       "address": "მარშალ არჩილ გელოვანის გამზირი 22, აგროჰაბი",
@@ -746,18 +544,6 @@
       "lng": 41.616342,
       "name": "ბათუმი, ფრიდონ ხალვაშის 45ა",
       "city": "ბათუმი",
-      "address": "ფრიდონ ხალვაშის 45ა",
-      "operator": "datene",
-      "power": "120 kW",
-      "type": "CCS2, GBT",
-      "price": "0.69 ₾/kWh",
-      "hours": "24/7"
-    },
-    {
-      "lat": 41.621522,
-      "lng": 41.616387,
-      "name": "ბათ���მი, ფრიდონ ხალვაშის 45ა",
-      "city": "ბათ���მი",
       "address": "ფრიდონ ხალვაშის 45ა",
       "operator": "datene",
       "power": "120 kW",
@@ -808,18 +594,6 @@
       "city": "თბილისი",
       "address": "რუსთავის გზატკეცილი 50",
       "operator": "datene",
-      "power": "80 kW",
-      "type": "CCS2, GBT",
-      "price": "0.69 ₾/kWh",
-      "hours": "24/7"
-    },
-    {
-      "lat": 41.646379,
-      "lng": 44.910874,
-      "name": "თბილისი, რუსთავის გზატკეცილი 50",
-      "city": "თბილისი",
-      "address": "რუსთავის გზატკეცილი 50",
-      "operator": "datene",
       "power": "160 kW",
       "type": "CCS2, GBT",
       "price": "0.69 ₾/kWh",
@@ -828,30 +602,6 @@
     {
       "lat": 41.685578,
       "lng": 44.854317,
-      "name": "თბილისი, მოსკოვის გამზირი, სამგორი მოლი",
-      "city": "თბილისი",
-      "address": "მოსკოვის გამზირი, სამგორი მოლი",
-      "operator": "datene",
-      "power": "120 kW",
-      "type": "CCS2, GBT",
-      "price": "0.69 ₾/kWh",
-      "hours": "24/7"
-    },
-    {
-      "lat": 41.685641,
-      "lng": 44.854066,
-      "name": "თბილისი, მოსკოვის გამზირი, სამგორი მოლი",
-      "city": "თბილისი",
-      "address": "მოსკოვის გამზირი, სამგორი მოლი",
-      "operator": "datene",
-      "power": "80 kW",
-      "type": "CCS2, GBT",
-      "price": "0.69 ₾/kWh",
-      "hours": "24/7"
-    },
-    {
-      "lat": 41.685494,
-      "lng": 44.854636,
       "name": "თბილისი, მოსკოვის გამზირი, სამგორი მოლი",
       "city": "თბილისი",
       "address": "მოსკოვის გამზირი, სამგორი მოლი",
@@ -934,18 +684,6 @@
       "hours": "24/7"
     },
     {
-      "lat": 41.711103,
-      "lng": 44.755033,
-      "name": "თბილისი, ილია ჭავჭავაძის გამზირი, პარკინგი -4 სართული",
-      "city": "თბილისი",
-      "address": "ილია ჭავჭავაძის გამზირი, პარკინგი -4 სართული",
-      "operator": "datene",
-      "power": "120 kW",
-      "type": "CCS2, GBT",
-      "price": "0.69 ₾/kWh",
-      "hours": "24/7"
-    },
-    {
       "lat": 42.167551,
       "lng": 42.939201,
       "name": "ზესტაფონი, მაგისტრალი",
@@ -974,8 +712,8 @@
       "name": "ქობულეთი",
       "city": "ქობულეთი",
       "operator": "ecocars",
-      "power": "80 kW",
-      "type": "CCS, CCS2, Type 1, Type 2",
+      "power": "240 kW",
+      "type": "CCS, CCS2, Type 1, Type 2, GBT, NACS",
       "price": "0.83 ₾/kWh",
       "hours": "24/7"
     },
@@ -1106,8 +844,8 @@
       "name": "ქუთაისი",
       "city": "ქუთაისი",
       "operator": "ecocars",
-      "power": "22 kW",
-      "type": "GBT, Type 1, Type 2",
+      "power": "160 kW",
+      "type": "GBT, Type 1, Type 2, CCS2",
       "price": "0.71 ₾/kWh",
       "hours": "24/7"
     },
@@ -1205,8 +943,8 @@
       "name": "თბილისი",
       "city": "თბილისი",
       "operator": "ecocars",
-      "power": "22 kW",
-      "type": "GBT, Type 1, Type 2",
+      "power": "160 kW",
+      "type": "GBT, Type 1, Type 2, CCS2, NACS",
       "price": "0.7 ₾/kWh",
       "hours": "24/7"
     },
@@ -1233,17 +971,6 @@
       "hours": "24/7"
     },
     {
-      "lat": 41.847169,
-      "lng": 41.781483,
-      "name": "ქობულეთი",
-      "city": "ქობულეთი",
-      "operator": "ecocars",
-      "power": "22 kW",
-      "type": "GBT, Type 1, Type 2",
-      "price": "0.75 ₾/kWh",
-      "hours": "24/7"
-    },
-    {
       "lat": 41.816591,
       "lng": 44.772567,
       "name": "თბილისი",
@@ -1266,39 +993,6 @@
       "hours": "24/7"
     },
     {
-      "lat": 41.684096,
-      "lng": 45.020925,
-      "name": "თბილისი",
-      "city": "თბილისი",
-      "operator": "ecocars",
-      "power": "160 kW",
-      "type": "CCS2, NACS, Type 2",
-      "price": "0.78 ₾/kWh",
-      "hours": "24/7"
-    },
-    {
-      "lat": 41.847228,
-      "lng": 41.781625,
-      "name": "ქობულეთი",
-      "city": "ქობულეთი",
-      "operator": "ecocars",
-      "power": "240 kW",
-      "type": "CCS, CCS2, NACS, Type 2",
-      "price": "0.83 ₾/kWh",
-      "hours": "24/7"
-    },
-    {
-      "lat": 42.262597,
-      "lng": 42.703887,
-      "name": "ქუთაისი",
-      "city": "ქუთაისი",
-      "operator": "ecocars",
-      "power": "160 kW",
-      "type": "CCS2, GBT",
-      "price": "0.78 ₾/kWh",
-      "hours": "24/7"
-    },
-    {
       "lat": 41.861312,
       "lng": 43.413786,
       "name": "ბორჯომი",
@@ -1306,9 +1000,9 @@
       "operator": "ecocars",
       "power": "160 kW",
       "type": "CCS2, NACS, Type 2",
-      "price": "~0.78 ₾/kWh",
+      "price": "~0.78 ₾/kWh (სავარაუდო)",
       "hours": "24/7",
-      "priceSource": "GeoCharge.ge (ქსელის მედიანა)"
+      "priceSource": "GeoCharge.ge (ქსელის მედიანა, 2026-10)"
     },
     {
       "lat": 41.728244,
@@ -1390,17 +1084,6 @@
     {
       "lat": 41.679754,
       "lng": 44.952374,
-      "name": "თბილისი",
-      "city": "თბილისი",
-      "operator": "electrify",
-      "power": "22 kW",
-      "type": "Type 2",
-      "price": "0.45 ₾/kWh",
-      "hours": "24/7"
-    },
-    {
-      "lat": 41.679762,
-      "lng": 44.952283,
       "name": "თბილისი",
       "city": "თბილისი",
       "operator": "electrify",
@@ -1500,8 +1183,8 @@
     {
       "lat": 41.6886,
       "lng": 44.924294,
-      "name": "თ��ილისი",
-      "city": "თ��ილისი",
+      "name": "თბილისი",
+      "city": "თბილისი",
       "operator": "electrify",
       "power": "150 kW",
       "type": "CCS2",
@@ -1636,9 +1319,9 @@
       "operator": "espace",
       "power": "22 kW",
       "type": "Type 2",
-      "price": "~0.60 ₾/kWh",
+      "price": "~0.60 ₾/kWh (სავარაუდო)",
       "hours": "24/7",
-      "priceSource": "GeoCharge.ge (ქსელის მედიანა)"
+      "priceSource": "GeoCharge.ge (ქსელის მედიანა, 2026-10)"
     },
     {
       "lat": 41.748497,
@@ -1649,9 +1332,9 @@
       "operator": "espace",
       "power": "22 kW",
       "type": "Type 2",
-      "price": "~0.60 ₾/kWh",
+      "price": "~0.60 ₾/kWh (სავარაუდო)",
       "hours": "24/7",
-      "priceSource": "GeoCharge.ge (ქსელის მედიანა)"
+      "priceSource": "GeoCharge.ge (ქსელის მედიანა, 2026-10)"
     },
     {
       "lat": 41.688658,
@@ -1662,22 +1345,22 @@
       "operator": "espace",
       "power": "22 kW",
       "type": "Type 2",
-      "price": "~0.60 ₾/kWh",
+      "price": "~0.60 ₾/kWh (სავარაუდო)",
       "hours": "24/7",
-      "priceSource": "GeoCharge.ge (ქსელის მედიანა)"
+      "priceSource": "GeoCharge.ge (ქსელის მედიანა, 2026-10)"
     },
     {
       "lat": 41.778097,
       "lng": 44.76918,
-      "name": "თბილისი, სუპერმარკეტი \"ლიბრე\", აღმაშენებლის ხეივანი",
-      "city": "თბილისი",
+      "name": "თბ���ლისი, სუპერმარკეტი \"ლიბრე\", აღმაშენებლის ხეივანი",
+      "city": "თბ���ლისი",
       "address": "სუპერმარკეტი \"ლიბრე\", აღმაშენებლის ხეივანი",
       "operator": "espace",
       "power": "22 kW",
       "type": "Type 2",
-      "price": "~0.60 ₾/kWh",
+      "price": "~0.60 ₾/kWh (სავარაუდო)",
       "hours": "24/7",
-      "priceSource": "GeoCharge.ge (ქსელის მედიანა)"
+      "priceSource": "GeoCharge.ge (ქსელის მედიანა, 2026-10)"
     },
     {
       "lat": 41.80435,
@@ -1688,9 +1371,9 @@
       "operator": "espace",
       "power": "22 kW",
       "type": "Type 2",
-      "price": "~0.60 ₾/kWh",
+      "price": "~0.60 ₾/kWh (სავარაუდო)",
       "hours": "24/7",
-      "priceSource": "GeoCharge.ge (ქსელის მედიანა)"
+      "priceSource": "GeoCharge.ge (ქსელის მედიანა, 2026-10)"
     },
     {
       "lat": 41.779757,
@@ -1701,9 +1384,9 @@
       "operator": "espace",
       "power": "22 kW",
       "type": "Type 2",
-      "price": "~0.60 ₾/kWh",
+      "price": "~0.60 ₾/kWh (სავარაუდო)",
       "hours": "24/7",
-      "priceSource": "GeoCharge.ge (ქსელის მედიანა)"
+      "priceSource": "GeoCharge.ge (ქსელის მედიანა, 2026-10)"
     },
     {
       "lat": 42.261393,
@@ -1714,9 +1397,9 @@
       "operator": "espace",
       "power": "22 kW",
       "type": "Type 2",
-      "price": "~0.60 ₾/kWh",
+      "price": "~0.60 ₾/kWh (სავარაუდო)",
       "hours": "24/7",
-      "priceSource": "GeoCharge.ge (ქსელის მედიანა)"
+      "priceSource": "GeoCharge.ge (ქსელის მედიანა, 2026-10)"
     },
     {
       "lat": 41.643299,
@@ -1727,9 +1410,9 @@
       "operator": "espace",
       "power": "22 kW",
       "type": "Type 2",
-      "price": "~0.60 ₾/kWh",
+      "price": "~0.60 ₾/kWh (სავარაუდო)",
       "hours": "24/7",
-      "priceSource": "GeoCharge.ge (ქსელის მედიანა)"
+      "priceSource": "GeoCharge.ge (ქსელის მედიანა, 2026-10)"
     },
     {
       "lat": 41.779709,
@@ -1740,9 +1423,9 @@
       "operator": "espace",
       "power": "22 kW",
       "type": "Type 2",
-      "price": "~0.60 ₾/kWh",
+      "price": "~0.60 ₾/kWh (სავარაუდო)",
       "hours": "24/7",
-      "priceSource": "GeoCharge.ge (ქსელის მედიანა)"
+      "priceSource": "GeoCharge.ge (ქსელის მედიანა, 2026-10)"
     },
     {
       "lat": 41.925711,
@@ -1753,9 +1436,9 @@
       "operator": "espace",
       "power": "22 kW",
       "type": "Type 2",
-      "price": "~0.60 ₾/kWh",
+      "price": "~0.60 ₾/kWh (სავარაუდო)",
       "hours": "24/7",
-      "priceSource": "GeoCharge.ge (ქსელის მედიანა)"
+      "priceSource": "GeoCharge.ge (ქსელის მედიანა, 2026-10)"
     },
     {
       "lat": 41.67054,
@@ -1766,9 +1449,9 @@
       "operator": "espace",
       "power": "22 kW",
       "type": "Type 2",
-      "price": "~0.60 ₾/kWh",
+      "price": "~0.60 ₾/kWh (სავარაუდო)",
       "hours": "24/7",
-      "priceSource": "GeoCharge.ge (ქსელის მედიანა)"
+      "priceSource": "GeoCharge.ge (ქსელის მედიანა, 2026-10)"
     },
     {
       "lat": 42.016283,
@@ -1777,11 +1460,11 @@
       "city": "გორი",
       "address": "ავტოგასამართი სადგური \"ვისოლი\"",
       "operator": "espace",
-      "power": "22 kW",
-      "type": "Type 2",
-      "price": "~0.60 ₾/kWh",
+      "power": "100 kW",
+      "type": "Type 2, CCS2, CHAdeMO",
+      "price": "~0.60 ₾/kWh (სავარაუდო)",
       "hours": "24/7",
-      "priceSource": "GeoCharge.ge (ქსელის მედიანა)"
+      "priceSource": "GeoCharge.ge (ქსელის მედიანა, 2026-10)"
     },
     {
       "lat": 41.580439,
@@ -1792,9 +1475,9 @@
       "operator": "espace",
       "power": "22 kW",
       "type": "Type 2",
-      "price": "~0.60 ₾/kWh",
+      "price": "~0.60 ₾/kWh (სავარაუდო)",
       "hours": "24/7",
-      "priceSource": "GeoCharge.ge (ქსელის მედიანა)"
+      "priceSource": "GeoCharge.ge (ქსელის მედიანა, 2026-10)"
     },
     {
       "lat": 41.64905,
@@ -1805,9 +1488,9 @@
       "operator": "espace",
       "power": "22 kW",
       "type": "Type 2",
-      "price": "~0.60 ₾/kWh",
+      "price": "~0.60 ₾/kWh (სავარაუდო)",
       "hours": "24/7",
-      "priceSource": "GeoCharge.ge (ქსელის მედიანა)"
+      "priceSource": "GeoCharge.ge (ქსელის მედიანა, 2026-10)"
     },
     {
       "lat": 42.016278,
@@ -1818,9 +1501,9 @@
       "operator": "espace",
       "power": "22 kW",
       "type": "Type 2",
-      "price": "~0.60 ₾/kWh",
+      "price": "~0.60 ₾/kWh (სავარაუდო)",
       "hours": "24/7",
-      "priceSource": "GeoCharge.ge (ქსელის მედიანა)"
+      "priceSource": "GeoCharge.ge (ქსელის მედიანა, 2026-10)"
     },
     {
       "lat": 41.805056,
@@ -1831,9 +1514,9 @@
       "operator": "espace",
       "power": "22 kW",
       "type": "Type 2",
-      "price": "~0.60 ₾/kWh",
+      "price": "~0.60 ₾/kWh (სავარაუდო)",
       "hours": "24/7",
-      "priceSource": "GeoCharge.ge (ქსელის მედიანა)"
+      "priceSource": "GeoCharge.ge (ქსელის მედიანა, 2026-10)"
     },
     {
       "lat": 41.705571,
@@ -1844,9 +1527,9 @@
       "operator": "espace",
       "power": "22 kW",
       "type": "Type 2",
-      "price": "~0.60 ₾/kWh",
+      "price": "~0.60 ₾/kWh (სავარაუდო)",
       "hours": "24/7",
-      "priceSource": "GeoCharge.ge (ქსელის მედიანა)"
+      "priceSource": "GeoCharge.ge (ქსელის მედიანა, 2026-10)"
     },
     {
       "lat": 41.682864,
@@ -1857,22 +1540,22 @@
       "operator": "espace",
       "power": "22 kW",
       "type": "Type 2",
-      "price": "~0.60 ₾/kWh",
+      "price": "~0.60 ₾/kWh (სავარაუდო)",
       "hours": "24/7",
-      "priceSource": "GeoCharge.ge (ქსელის მედიანა)"
+      "priceSource": "GeoCharge.ge (ქსელის მედიანა, 2026-10)"
     },
     {
       "lat": 41.633788,
       "lng": 45.683114,
-      "name": "კაჭრეთი, სასტუმრო \"ამბასადორი\"",
-      "city": "კაჭრეთი",
+      "name": "კაჭ��ეთი, სასტუმრო \"ამბასადორი\"",
+      "city": "კაჭ��ეთი",
       "address": "სასტუმრო \"ამბასადორი\"",
       "operator": "espace",
       "power": "22 kW",
       "type": "Type 2",
-      "price": "~0.60 ₾/kWh",
+      "price": "~0.60 ₾/kWh (სავარაუდო)",
       "hours": "24/7",
-      "priceSource": "GeoCharge.ge (ქსელის მედიანა)"
+      "priceSource": "GeoCharge.ge (ქსელის მედიანა, 2026-10)"
     },
     {
       "lat": 42.1489,
@@ -1881,11 +1564,11 @@
       "city": "არგვეთა",
       "address": "ავტოგასამართი სადგური \"ნეოგაზი\"",
       "operator": "espace",
-      "power": "22 kW",
-      "type": "Type 2",
-      "price": "~0.60 ₾/kWh",
+      "power": "50 kW",
+      "type": "Type 2, CCS2, CHAdeMO",
+      "price": "~0.60 ₾/kWh (სავარაუდო)",
       "hours": "24/7",
-      "priceSource": "GeoCharge.ge (ქსელის მედიანა)"
+      "priceSource": "GeoCharge.ge (ქსელის მედიანა, 2026-10)"
     },
     {
       "lat": 41.736387,
@@ -1896,9 +1579,9 @@
       "operator": "espace",
       "power": "22 kW",
       "type": "Type 2",
-      "price": "~0.60 ₾/kWh",
+      "price": "~0.60 ₾/kWh (სავარაუდო)",
       "hours": "24/7",
-      "priceSource": "GeoCharge.ge (ქსელის მედიანა)"
+      "priceSource": "GeoCharge.ge (ქსელის მედიანა, 2026-10)"
     },
     {
       "lat": 42.51914,
@@ -1909,9 +1592,9 @@
       "operator": "espace",
       "power": "22 kW",
       "type": "Type 2",
-      "price": "~0.60 ₾/kWh",
+      "price": "~0.60 ₾/kWh (სავარაუდო)",
       "hours": "24/7",
-      "priceSource": "GeoCharge.ge (ქსელის მედიანა)"
+      "priceSource": "GeoCharge.ge (ქსელის მედიანა, 2026-10)"
     },
     {
       "lat": 41.692428,
@@ -1922,9 +1605,9 @@
       "operator": "espace",
       "power": "22 kW",
       "type": "Type 2",
-      "price": "~0.60 ₾/kWh",
+      "price": "~0.60 ₾/kWh (სავარაუდო)",
       "hours": "24/7",
-      "priceSource": "GeoCharge.ge (ქსელის მედიანა)"
+      "priceSource": "GeoCharge.ge (ქსელის მედიანა, 2026-10)"
     },
     {
       "lat": 41.681071,
@@ -1935,9 +1618,9 @@
       "operator": "espace",
       "power": "22 kW",
       "type": "Type 2",
-      "price": "~0.60 ₾/kWh",
+      "price": "~0.60 ₾/kWh (სავარაუდო)",
       "hours": "24/7",
-      "priceSource": "GeoCharge.ge (ქსელის მედიანა)"
+      "priceSource": "GeoCharge.ge (ქსელის მედიანა, 2026-10)"
     },
     {
       "lat": 41.70822,
@@ -1948,22 +1631,22 @@
       "operator": "espace",
       "power": "22 kW",
       "type": "Type 2",
-      "price": "~0.60 ₾/kWh",
+      "price": "~0.60 ₾/kWh (სავარაუდო)",
       "hours": "24/7",
-      "priceSource": "GeoCharge.ge (ქსელის მედიანა)"
+      "priceSource": "GeoCharge.ge (ქსელის მედიანა, 2026-10)"
     },
     {
       "lat": 41.786339,
       "lng": 44.770915,
-      "name": "თბილისი, ავტოგასამართი სადგური \"ნეოგაზი\", აღმაშენებლის ხეივანი",
+      "name": "თბილისი, ავტოგასამართი სადგური \"ნეოგაზი\", აღმაშენებლის ხ��ივანი",
       "city": "თბილისი",
-      "address": "ავტოგასამართი სადგური \"ნეოგაზი\", აღმაშენებლის ხეივანი",
+      "address": "ავტოგასამართი სადგური \"ნეოგაზი\", აღმაშენებლის ხ��ივანი",
       "operator": "espace",
       "power": "22 kW",
       "type": "Type 2",
-      "price": "~0.60 ₾/kWh",
+      "price": "~0.60 ₾/kWh (სავარაუდო)",
       "hours": "24/7",
-      "priceSource": "GeoCharge.ge (ქსელის მედიანა)"
+      "priceSource": "GeoCharge.ge (ქსელის მედიანა, 2026-10)"
     },
     {
       "lat": 42.489948,
@@ -1974,9 +1657,9 @@
       "operator": "espace",
       "power": "22 kW",
       "type": "Type 2",
-      "price": "~0.60 ₾/kWh",
+      "price": "~0.60 ₾/kWh (სავარაუდო)",
       "hours": "24/7",
-      "priceSource": "GeoCharge.ge (ქსელის მედიანა)"
+      "priceSource": "GeoCharge.ge (ქსელის მედიანა, 2026-10)"
     },
     {
       "lat": 41.920764,
@@ -1987,9 +1670,9 @@
       "operator": "espace",
       "power": "22 kW",
       "type": "Type 2",
-      "price": "~0.60 ₾/kWh",
+      "price": "~0.60 ₾/kWh (სავარაუდო)",
       "hours": "24/7",
-      "priceSource": "GeoCharge.ge (ქსელის მედიანა)"
+      "priceSource": "GeoCharge.ge (ქსელის მედიანა, 2026-10)"
     },
     {
       "lat": 41.83192,
@@ -2000,9 +1683,9 @@
       "operator": "espace",
       "power": "22 kW",
       "type": "Type 2",
-      "price": "~0.60 ₾/kWh",
+      "price": "~0.60 ₾/kWh (სავარაუდო)",
       "hours": "24/7",
-      "priceSource": "GeoCharge.ge (ქსელის მედიანა)"
+      "priceSource": "GeoCharge.ge (ქსელის მედიანა, 2026-10)"
     },
     {
       "lat": 41.951921,
@@ -2013,9 +1696,9 @@
       "operator": "espace",
       "power": "22 kW",
       "type": "Type 2",
-      "price": "~0.60 ₾/kWh",
+      "price": "~0.60 ₾/kWh (სავარაუდო)",
       "hours": "24/7",
-      "priceSource": "GeoCharge.ge (ქსელის მედიანა)"
+      "priceSource": "GeoCharge.ge (ქსელის მედიანა, 2026-10)"
     },
     {
       "lat": 42.2505,
@@ -2026,9 +1709,9 @@
       "operator": "espace",
       "power": "22 kW",
       "type": "Type 2",
-      "price": "~0.60 ₾/kWh",
+      "price": "~0.60 ₾/kWh (სავარაუდო)",
       "hours": "24/7",
-      "priceSource": "GeoCharge.ge (ქსელის მედიანა)"
+      "priceSource": "GeoCharge.ge (ქსელის მედიანა, 2026-10)"
     },
     {
       "lat": 42.117093,
@@ -2039,9 +1722,9 @@
       "operator": "espace",
       "power": "22 kW",
       "type": "Type 2",
-      "price": "~0.60 ₾/kWh",
+      "price": "~0.60 ₾/kWh (სავარაუდო)",
       "hours": "24/7",
-      "priceSource": "GeoCharge.ge (ქსელის მედიანა)"
+      "priceSource": "GeoCharge.ge (ქსელის მედიანა, 2026-10)"
     },
     {
       "lat": 41.692698,
@@ -2052,9 +1735,9 @@
       "operator": "espace",
       "power": "22 kW",
       "type": "Type 2",
-      "price": "~0.60 ₾/kWh",
+      "price": "~0.60 ₾/kWh (სავარაუდო)",
       "hours": "24/7",
-      "priceSource": "GeoCharge.ge (ქსელის მედიანა)"
+      "priceSource": "GeoCharge.ge (ქსელის მედიანა, 2026-10)"
     },
     {
       "lat": 41.64999,
@@ -2063,24 +1746,24 @@
       "city": "ბათუმი",
       "address": "ბარცხანა,  ავტოგასამართი სადგური \"სოკარი\"",
       "operator": "espace",
-      "power": "22 kW",
-      "type": "Type 2",
-      "price": "~0.60 ₾/kWh",
+      "power": "200 kW",
+      "type": "Type 2, CCS2, GBT",
+      "price": "~0.60 ₾/kWh (სავარაუდო)",
       "hours": "24/7",
-      "priceSource": "GeoCharge.ge (ქსელის მედიანა)"
+      "priceSource": "GeoCharge.ge (ქსელის მედიანა, 2026-10)"
     },
     {
       "lat": 41.782793,
       "lng": 45.756082,
-      "name": "ონი, გურჯ���ანის რაიონი, სასტუმრო „ახაშენის ღვინის კურორტი“",
+      "name": "ონი, გურჯაანის რაიონი, სასტუმრო „ახაშენის ღვინის კურორტი“",
       "city": "ონი",
-      "address": "გურჯ���ანის რაიონი, სასტუმრო „ახაშენის ღვინის კურორტი“",
+      "address": "გურჯაანის რაიონი, სასტუმრო „ახაშენის ღვინის კურორტი“",
       "operator": "espace",
       "power": "22 kW",
       "type": "Type 2",
-      "price": "~0.60 ₾/kWh",
+      "price": "~0.60 ₾/kWh (სავარაუდო)",
       "hours": "24/7",
-      "priceSource": "GeoCharge.ge (ქსელის მედიანა)"
+      "priceSource": "GeoCharge.ge (ქსელის მედიანა, 2026-10)"
     },
     {
       "lat": 42.106692,
@@ -2091,33 +1774,9 @@
       "operator": "espace",
       "power": "22 kW",
       "type": "Type 2",
-      "price": "~0.60 ₾/kWh",
+      "price": "~0.60 ₾/kWh (სავარაუდო)",
       "hours": "24/7",
-      "priceSource": "GeoCharge.ge (ქსელის მედიანა)"
-    },
-    {
-      "lat": 42.148872,
-      "lng": 42.963478,
-      "name": "არგვეთა, სწრაფი დამტენი, \"ნეოგაზი\"",
-      "city": "არგვეთა",
-      "address": "სწრაფი დამტენი, \"ნეოგაზი\"",
-      "operator": "espace",
-      "power": "50 kW",
-      "type": "CCS2, CHAdeMO",
-      "price": "0.75 ₾/kWh",
-      "hours": "24/7"
-    },
-    {
-      "lat": 42.016185,
-      "lng": 44.064937,
-      "name": "გორი, სწრაფი დამტენი, \"ვისოლის\" კომპლექსი",
-      "city": "გორი",
-      "address": "სწრაფი დამტენი, \"ვისოლის\" კომპლექსი",
-      "operator": "espace",
-      "power": "30 kW",
-      "type": "CCS2, CHAdeMO",
-      "price": "0.9 ₾/kWh",
-      "hours": "24/7"
+      "priceSource": "GeoCharge.ge (ქსელის მედიანა, 2026-10)"
     },
     {
       "lat": 41.782273,
@@ -2128,9 +1787,9 @@
       "operator": "espace",
       "power": "22 kW",
       "type": "Type 2",
-      "price": "~0.60 ₾/kWh",
+      "price": "~0.60 ₾/kWh (სავარაუდო)",
       "hours": "24/7",
-      "priceSource": "GeoCharge.ge (ქსელის მედიანა)"
+      "priceSource": "GeoCharge.ge (ქსელის მედიანა, 2026-10)"
     },
     {
       "lat": 42.205421,
@@ -2141,9 +1800,9 @@
       "operator": "espace",
       "power": "22 kW",
       "type": "Type 2",
-      "price": "~0.60 ₾/kWh",
+      "price": "~0.60 ₾/kWh (სავარაუდო)",
       "hours": "24/7",
-      "priceSource": "GeoCharge.ge (ქსელის მედიანა)"
+      "priceSource": "GeoCharge.ge (ქსელის მედიანა, 2026-10)"
     },
     {
       "lat": 41.803655,
@@ -2154,9 +1813,9 @@
       "operator": "espace",
       "power": "22 kW",
       "type": "Type 2",
-      "price": "~0.60 ₾/kWh",
+      "price": "~0.60 ₾/kWh (სავარაუდო)",
       "hours": "24/7",
-      "priceSource": "GeoCharge.ge (ქსელის მედიანა)"
+      "priceSource": "GeoCharge.ge (ქსელის მედიანა, 2026-10)"
     },
     {
       "lat": 41.670208,
@@ -2167,9 +1826,9 @@
       "operator": "espace",
       "power": "22 kW",
       "type": "Type 2",
-      "price": "~0.60 ₾/kWh",
+      "price": "~0.60 ₾/kWh (სავარაუდო)",
       "hours": "24/7",
-      "priceSource": "GeoCharge.ge (ქსელის მედიანა)"
+      "priceSource": "GeoCharge.ge (ქსელის მედიანა, 2026-10)"
     },
     {
       "lat": 42.658768,
@@ -2180,9 +1839,9 @@
       "operator": "espace",
       "power": "22 kW",
       "type": "Type 2",
-      "price": "~0.60 ₾/kWh",
+      "price": "~0.60 ₾/kWh (სავარაუდო)",
       "hours": "24/7",
-      "priceSource": "GeoCharge.ge (ქსელის მედიანა)"
+      "priceSource": "GeoCharge.ge (ქსელის მედიანა, 2026-10)"
     },
     {
       "lat": 41.992859,
@@ -2193,9 +1852,9 @@
       "operator": "espace",
       "power": "22 kW",
       "type": "Type 2",
-      "price": "~0.60 ₾/kWh",
+      "price": "~0.60 ₾/kWh (სავარაუდო)",
       "hours": "24/7",
-      "priceSource": "GeoCharge.ge (ქსელის მედიანა)"
+      "priceSource": "GeoCharge.ge (ქსელის მედიანა, 2026-10)"
     },
     {
       "lat": 41.72014,
@@ -2206,9 +1865,9 @@
       "operator": "espace",
       "power": "22 kW",
       "type": "Type 2",
-      "price": "~0.60 ₾/kWh",
+      "price": "~0.60 ₾/kWh (სავარაუდო)",
       "hours": "24/7",
-      "priceSource": "GeoCharge.ge (ქსელის მედიანა)"
+      "priceSource": "GeoCharge.ge (ქსელის მედიანა, 2026-10)"
     },
     {
       "lat": 41.751465,
@@ -2219,9 +1878,9 @@
       "operator": "espace",
       "power": "22 kW",
       "type": "Type 2",
-      "price": "~0.60 ₾/kWh",
+      "price": "~0.60 ₾/kWh (სავარაუდო)",
       "hours": "24/7",
-      "priceSource": "GeoCharge.ge (ქსელის მედიანა)"
+      "priceSource": "GeoCharge.ge (ქსელის მედიანა, 2026-10)"
     },
     {
       "lat": 41.78648,
@@ -2232,9 +1891,9 @@
       "operator": "espace",
       "power": "22 kW",
       "type": "Type 2",
-      "price": "~0.60 ₾/kWh",
+      "price": "~0.60 ₾/kWh (სავარაუდო)",
       "hours": "24/7",
-      "priceSource": "GeoCharge.ge (ქსელის მედიანა)"
+      "priceSource": "GeoCharge.ge (ქსელის მედიანა, 2026-10)"
     },
     {
       "lat": 41.706591,
@@ -2245,47 +1904,22 @@
       "operator": "espace",
       "power": "22 kW",
       "type": "Type 2",
-      "price": "~0.60 ₾/kWh",
+      "price": "~0.60 ₾/kWh (სავარაუდო)",
       "hours": "24/7",
-      "priceSource": "GeoCharge.ge (ქსელის მედიანა)"
+      "priceSource": "GeoCharge.ge (ქსელის მედიანა, 2026-10)"
     },
     {
       "lat": 41.769878,
       "lng": 44.782393,
-      "name": "თბილისი, \"გრინვეი\", ქსნის ქუჩის მიმდებარედ",
+      "name": "თბილისი, \"გრინვეი\", ქსნის ქუჩის მიმდება��ედ",
       "city": "თბილისი",
-      "address": "\"გრინვეი\", ქსნის ქუჩის მიმდებარედ",
+      "address": "\"გრინვეი\", ქსნის ქუჩის მიმდება��ედ",
       "operator": "espace",
       "power": "22 kW",
       "type": "Type 2",
-      "price": "~0.60 ₾/kWh",
+      "price": "~0.60 ₾/kWh (სავარაუდო)",
       "hours": "24/7",
-      "priceSource": "GeoCharge.ge (ქსელის მედიანა)"
-    },
-    {
-      "lat": 41.786369,
-      "lng": 44.779328,
-      "name": "თბილისი, ბიზნეს ცენტრი ბელიაშვილზე (I)",
-      "city": "თბილისი",
-      "address": "ბიზნეს ცენტრი ბელიაშვილზე (I)",
-      "operator": "espace",
-      "power": "22 kW",
-      "type": "Type 2",
-      "price": "~0.60 ₾/kWh",
-      "hours": "24/7",
-      "priceSource": "GeoCharge.ge (ქსელის მედიანა)"
-    },
-    {
-      "lat": 42.016094,
-      "lng": 44.064967,
-      "name": "გორი, Sinexcel სწრაფი დამტენი, \"ვისოლის\" კომპლექსი",
-      "city": "გორი",
-      "address": "Sinexcel სწრაფი დამტენი, \"ვისოლის\" კომპლექსი",
-      "operator": "espace",
-      "power": "100 kW",
-      "type": "CCS2, CHAdeMO",
-      "price": "0.9 ₾/kWh",
-      "hours": "24/7"
+      "priceSource": "GeoCharge.ge (ქსელის მედიანა, 2026-10)"
     },
     {
       "lat": 42.147759,
@@ -2294,8 +1928,8 @@
       "city": "არგვეთა",
       "address": "Sinexcel სწრაფი დამტენი, \"ვისოლის\" კომპლექსი",
       "operator": "espace",
-      "power": "100 kW",
-      "type": "CCS2, CHAdeMO",
+      "power": "360 kW",
+      "type": "CCS2, CHAdeMO, GBT",
       "price": "0.9 ₾/kWh",
       "hours": "24/7"
     },
@@ -2317,18 +1951,6 @@
       "name": "ბორჯომი, Sinexcel სწრაფი დამტენი მარჯვენა, \"ვისოლის\" კომპლექსი",
       "city": "ბორჯომი",
       "address": "Sinexcel სწრაფი დამტენი მარჯვენა, \"ვისოლის\" კომპლექსი",
-      "operator": "espace",
-      "power": "100 kW",
-      "type": "CCS2, CHAdeMO",
-      "price": "0.9 ₾/kWh",
-      "hours": "24/7"
-    },
-    {
-      "lat": 41.861682,
-      "lng": 43.412433,
-      "name": "ბორჯომი, Sinexcel სწრაფი დამტენი მარცხენა, \"ვისოლის\" კომპლექსი",
-      "city": "ბორჯომი",
-      "address": "Sinexcel სწრაფი დამტენი მარცხენა, \"ვისოლის\" კომპლექსი",
       "operator": "espace",
       "power": "100 kW",
       "type": "CCS2, CHAdeMO",
@@ -2438,92 +2060,8 @@
       "city": "ბათუმი",
       "address": "Sinexcel სწრაფი დამტენი, აგს \"ვისოლი\"",
       "operator": "espace",
-      "power": "160 kW",
-      "type": "GBT",
-      "price": "0.9 ₾/kWh",
-      "hours": "24/7"
-    },
-    {
-      "lat": 42.147787,
-      "lng": 42.965671,
-      "name": "არგვეთა, Sinexcel სწრაფი დამტენი, \"ვისოლის\" კომპლექსი",
-      "city": "არგვეთა",
-      "address": "Sinexcel სწრაფი დამტენი, \"ვისოლის\" კომპლექსი",
-      "operator": "espace",
-      "power": "160 kW",
-      "type": "GBT",
-      "price": "0.9 ₾/kWh",
-      "hours": "24/7"
-    },
-    {
-      "lat": 42.147815,
-      "lng": 42.965631,
-      "name": "არგვეთა, Sinexcel სწრაფი დამტენი, \"ვისოლის\" კომპლექსი",
-      "city": "არგვეთა",
-      "address": "Sinexcel სწრაფი დამტენი, \"ვისოლის\" კომპლექსი",
-      "operator": "espace",
       "power": "360 kW",
-      "type": "CCS2",
-      "price": "0.9 ₾/kWh",
-      "hours": "24/7"
-    },
-    {
-      "lat": 42.147835,
-      "lng": 42.965598,
-      "name": "არგვეთა, Sinexcel სწრაფი დამტენი, \"ვისოლის\" კომპლექსი",
-      "city": "არგვეთა",
-      "address": "Sinexcel სწრაფი დამტენი, \"ვისოლის\" კომპლექსი",
-      "operator": "espace",
-      "power": "360 kW",
-      "type": "CCS2",
-      "price": "0.9 ₾/kWh",
-      "hours": "24/7"
-    },
-    {
-      "lat": 42.147856,
-      "lng": 42.965564,
-      "name": "არგვეთა, Sinexcel სწრაფი დამტენი, \"ვისოლის\" კომპლექსი",
-      "city": "არგვეთა",
-      "address": "Sinexcel სწრაფი დამტენი, \"ვისოლის\" კომპლექსი",
-      "operator": "espace",
-      "power": "360 kW",
-      "type": "CCS2",
-      "price": "0.9 ₾/kWh",
-      "hours": "24/7"
-    },
-    {
-      "lat": 41.635002,
-      "lng": 41.616596,
-      "name": "ბათუმი, Sinexcel სწრაფი დამტენი, \"ვისოლის\" კომპლექსი",
-      "city": "ბათუმი",
-      "address": "Sinexcel სწრაფი დამტენი, \"ვისოლის\" კომპლექსი",
-      "operator": "espace",
-      "power": "360 kW",
-      "type": "CCS2",
-      "price": "0.9 ₾/kWh",
-      "hours": "24/7"
-    },
-    {
-      "lat": 41.635023,
-      "lng": 41.616625,
-      "name": "ბათუმი, Sinexcel სწრაფი დამტენი, \"ვისოლის\" კომპლექსი",
-      "city": "ბათუმი",
-      "address": "Sinexcel სწრაფი დამტენი, \"ვისოლის\" კომპლექსი",
-      "operator": "espace",
-      "power": "360 kW",
-      "type": "CCS2",
-      "price": "0.9 ₾/kWh",
-      "hours": "24/7"
-    },
-    {
-      "lat": 41.635044,
-      "lng": 41.616655,
-      "name": "ბათუმი, Sinexcel ��წრაფი დამტენი, \"ვისოლის\" კომპლექსი",
-      "city": "ბათუმი",
-      "address": "Sinexcel ��წრაფი დამტენი, \"ვისოლის\" კომპლექსი",
-      "operator": "espace",
-      "power": "360 kW",
-      "type": "CCS2",
+      "type": "GBT, CCS2",
       "price": "0.9 ₾/kWh",
       "hours": "24/7"
     },
@@ -2576,18 +2114,6 @@
       "hours": "24/7"
     },
     {
-      "lat": 42.464542,
-      "lng": 44.483654,
-      "name": "გუდაური, ლოჯი (მარცხენა დამტენი)",
-      "city": "გუდაური",
-      "address": "ლოჯი (მარცხენა დამტენი)",
-      "operator": "espace",
-      "power": "22 kW",
-      "type": "Type 2",
-      "price": "1.25 ₾/kWh",
-      "hours": "24/7"
-    },
-    {
       "lat": 41.717474,
       "lng": 44.717699,
       "name": "თბილისი, უნივერსიტეტის ქუჩა N24",
@@ -2596,9 +2122,9 @@
       "operator": "espace",
       "power": "11 kW",
       "type": "Type 2",
-      "price": "~0.60 ₾/kWh",
+      "price": "~0.60 ₾/kWh (სავარაუდო)",
       "hours": "24/7",
-      "priceSource": "GeoCharge.ge (ქსელის მედიანა)"
+      "priceSource": "GeoCharge.ge (ქსელის მედიანა, 2026-10)"
     },
     {
       "lat": 41.69303,
@@ -2609,9 +2135,9 @@
       "operator": "espace",
       "power": "22 kW",
       "type": "Type 2",
-      "price": "~0.60 ₾/kWh",
+      "price": "~0.60 ₾/kWh (სავარაუდო)",
       "hours": "24/7",
-      "priceSource": "GeoCharge.ge (ქსელის მედიანა)"
+      "priceSource": "GeoCharge.ge (ქსელის მედიანა, 2026-10)"
     },
     {
       "lat": 41.711069,
@@ -2622,48 +2148,9 @@
       "operator": "espace",
       "power": "22 kW",
       "type": "Type 2",
-      "price": "~0.60 ₾/kWh",
+      "price": "~0.60 ₾/kWh (სავარაუდო)",
       "hours": "24/7",
-      "priceSource": "GeoCharge.ge (ქსელის მედიანა)"
-    },
-    {
-      "lat": 41.711164,
-      "lng": 44.754942,
-      "name": "თბილისი, ჭავჭავაძის გამზირი 72ა, \"ვაკე პლაზა\" (-3)",
-      "city": "თბილისი",
-      "address": "ჭავჭავაძის გამზირი 72ა, \"ვაკე პლაზა\" (-3)",
-      "operator": "espace",
-      "power": "22 kW",
-      "type": "Type 2",
-      "price": "~0.60 ₾/kWh",
-      "hours": "24/7",
-      "priceSource": "GeoCharge.ge (ქსელის მედიანა)"
-    },
-    {
-      "lat": 41.71127,
-      "lng": 44.754928,
-      "name": "თბილისი, ჭავჭავაძის გამზირი 72ა, \"ვაკე პლაზა\" (-2)",
-      "city": "თბილისი",
-      "address": "ჭავჭავაძის გამზირი 72ა, \"ვაკე პლაზა\" (-2)",
-      "operator": "espace",
-      "power": "22 kW",
-      "type": "Type 2",
-      "price": "~0.60 ₾/kWh",
-      "hours": "24/7",
-      "priceSource": "GeoCharge.ge (ქსელის მედიანა)"
-    },
-    {
-      "lat": 41.711058,
-      "lng": 44.754924,
-      "name": "თბილისი, ჭავჭავაძის გამზირი 72ა, \"ვაკე პლაზა\" (-1)",
-      "city": "თბილისი",
-      "address": "ჭავჭავაძის გამზირი 72ა, \"ვაკე პლაზა\" (-1)",
-      "operator": "espace",
-      "power": "22 kW",
-      "type": "Type 2",
-      "price": "~0.60 ₾/kWh",
-      "hours": "24/7",
-      "priceSource": "GeoCharge.ge (ქსელის მედიანა)"
+      "priceSource": "GeoCharge.ge (ქსელის მედიანა, 2026-10)"
     },
     {
       "lat": 41.711735,
@@ -2674,9 +2161,9 @@
       "operator": "espace",
       "power": "22 kW",
       "type": "Type 2",
-      "price": "~0.60 ₾/kWh",
+      "price": "~0.60 ₾/kWh (სავარაუდო)",
       "hours": "24/7",
-      "priceSource": "GeoCharge.ge (ქსელის მედიანა)"
+      "priceSource": "GeoCharge.ge (ქსელის მედიანა, 2026-10)"
     },
     {
       "lat": 41.70092,
@@ -2687,9 +2174,9 @@
       "operator": "espace",
       "power": "22 kW",
       "type": "Type 2",
-      "price": "~0.60 ₾/kWh",
+      "price": "~0.60 ₾/kWh (სავარაუდო)",
       "hours": "24/7",
-      "priceSource": "GeoCharge.ge (ქსელის მედიანა)"
+      "priceSource": "GeoCharge.ge (ქსელის მედიანა, 2026-10)"
     },
     {
       "lat": 41.766946,
@@ -2700,22 +2187,22 @@
       "operator": "espace",
       "power": "22 kW",
       "type": "Type 2",
-      "price": "~0.60 ₾/kWh",
+      "price": "~0.60 ₾/kWh (სავარაუდო)",
       "hours": "24/7",
-      "priceSource": "GeoCharge.ge (ქსელის მედიანა)"
+      "priceSource": "GeoCharge.ge (ქსელის მედიანა, 2026-10)"
     },
     {
       "lat": 41.837067,
       "lng": 43.387647,
-      "name": "ბორჯომ��, სასტუმრო \"Crowne Plaza\" ბორჯომი",
-      "city": "ბორჯომ��",
+      "name": "ბორჯომი, სასტუმრო \"Crowne Plaza\" ბორჯომი",
+      "city": "ბორჯომი",
       "address": "სასტუმრო \"Crowne Plaza\" ბორჯომი",
       "operator": "espace",
       "power": "22 kW",
       "type": "Type 2",
-      "price": "~0.60 ₾/kWh",
+      "price": "~0.60 ₾/kWh (სავარაუდო)",
       "hours": "24/7",
-      "priceSource": "GeoCharge.ge (ქსელის მედიანა)"
+      "priceSource": "GeoCharge.ge (ქსელის მედიანა, 2026-10)"
     },
     {
       "lat": 41.949439,
@@ -2726,22 +2213,9 @@
       "operator": "espace",
       "power": "22 kW",
       "type": "Type 2",
-      "price": "~0.60 ₾/kWh",
+      "price": "~0.60 ₾/kWh (სავარაუდო)",
       "hours": "24/7",
-      "priceSource": "GeoCharge.ge (ქსელის მედიანა)"
-    },
-    {
-      "lat": 41.94926,
-      "lng": 43.510592,
-      "name": "ბორჯომი, რესტორანი კევრი, ტაშისკარი, მარჯვენა დამტენი",
-      "city": "ბორჯომი",
-      "address": "რესტორანი კევრი, ტაშისკარი, მარჯვენა დამტენი",
-      "operator": "espace",
-      "power": "22 kW",
-      "type": "Type 2",
-      "price": "~0.60 ₾/kWh",
-      "hours": "24/7",
-      "priceSource": "GeoCharge.ge (ქსელის მედიანა)"
+      "priceSource": "GeoCharge.ge (ქსელის მედიანა, 2026-10)"
     },
     {
       "lat": 41.701187,
@@ -2752,35 +2226,9 @@
       "operator": "espace",
       "power": "22 kW",
       "type": "Type 2",
-      "price": "~0.60 ₾/kWh",
+      "price": "~0.60 ₾/kWh (სავარაუდო)",
       "hours": "24/7",
-      "priceSource": "GeoCharge.ge (ქსელის მედიანა)"
-    },
-    {
-      "lat": 41.70121,
-      "lng": 44.765438,
-      "name": "თბილისი, ნამაი ვაკე, პარკინგი: II სართული",
-      "city": "თბილისი",
-      "address": "ნამაი ვაკე, პარკინგი: II სართული",
-      "operator": "espace",
-      "power": "22 kW",
-      "type": "Type 2",
-      "price": "~0.60 ₾/kWh",
-      "hours": "24/7",
-      "priceSource": "GeoCharge.ge (ქსელის მედიანა)"
-    },
-    {
-      "lat": 41.700863,
-      "lng": 44.76673,
-      "name": "თბილისი, დამტენი ჟვანიაზე N65 II",
-      "city": "თბილისი",
-      "address": "დამტენი ჟვანიაზე N65 II",
-      "operator": "espace",
-      "power": "22 kW",
-      "type": "Type 2",
-      "price": "~0.60 ₾/kWh",
-      "hours": "24/7",
-      "priceSource": "GeoCharge.ge (ქსელის მედიანა)"
+      "priceSource": "GeoCharge.ge (ქსელის მედიანა, 2026-10)"
     },
     {
       "lat": 41.688212,
@@ -2790,23 +2238,10 @@
       "address": "სწრაფი დამტენი, შერატონ გრანდ თბილისი მეტეხი პალასი, -1 პარკინგი",
       "operator": "espace",
       "power": "50 kW",
-      "type": "CCS2, CHAdeMO",
-      "price": "~0.75 ₾/kWh",
+      "type": "CCS2, CHAdeMO, Type 2",
+      "price": "~0.75 ₾/kWh (სავარაუდო)",
       "hours": "24/7",
-      "priceSource": "GeoCharge.ge (ქსელის მედიანა)"
-    },
-    {
-      "lat": 41.688218,
-      "lng": 44.823525,
-      "name": "თბილისი, შერატონ გრანდ თბილისი მეტეხი პალასი, -1 პარკინგი",
-      "city": "თბილისი",
-      "address": "შერატონ გრანდ თბილისი მეტეხი პალასი, -1 პარკინგი",
-      "operator": "espace",
-      "power": "22 kW",
-      "type": "Type 2",
-      "price": "~0.60 ₾/kWh",
-      "hours": "24/7",
-      "priceSource": "GeoCharge.ge (ქსელის მედიანა)"
+      "priceSource": "GeoCharge.ge (ქსელის მედიანა, 2026-10)"
     },
     {
       "lat": 41.740462,
@@ -2817,9 +2252,9 @@
       "operator": "espace",
       "power": "22 kW",
       "type": "Type 2",
-      "price": "~0.60 ₾/kWh",
+      "price": "~0.60 ₾/kWh (სავარაუდო)",
       "hours": "24/7",
-      "priceSource": "GeoCharge.ge (ქსელის მედიანა)"
+      "priceSource": "GeoCharge.ge (ქსელის მედიანა, 2026-10)"
     },
     {
       "lat": 42.163983,
@@ -2842,9 +2277,9 @@
       "operator": "espace",
       "power": "22 kW",
       "type": "Type 2",
-      "price": "~0.60 ₾/kWh",
+      "price": "~0.60 ₾/kWh (სავარაუდო)",
       "hours": "24/7",
-      "priceSource": "GeoCharge.ge (ქსელის მედიანა)"
+      "priceSource": "GeoCharge.ge (ქსელის მედიანა, 2026-10)"
     },
     {
       "lat": 41.654361,
@@ -2859,35 +2294,11 @@
       "hours": "24/7"
     },
     {
-      "lat": 41.654396,
-      "lng": 44.852028,
+      "lat": 41.656624,
+      "lng": 44.82877,
       "name": "თბილისი, ჰილსი გოლფი და რეზიდენციები, კრწანისი, მარცხენა",
       "city": "თბილისი",
       "address": "ჰილსი გოლფი და რეზიდენციები, კრწანისი, მარცხენა",
-      "operator": "espace",
-      "power": "22 kW",
-      "type": "Type 2",
-      "price": "0.6 ₾/kWh",
-      "hours": "24/7"
-    },
-    {
-      "lat": 41.656624,
-      "lng": 44.82877,
-      "name": "თბილისი, ჰილსი გოლფი და რეზიდენციები, ���რწანისი, მარცხენა",
-      "city": "თბილისი",
-      "address": "ჰილსი გოლფი და რეზიდენციები, ���რწანისი, მარცხენა",
-      "operator": "espace",
-      "power": "22 kW",
-      "type": "Type 2",
-      "price": "0.6 ₾/kWh",
-      "hours": "24/7"
-    },
-    {
-      "lat": 41.656679,
-      "lng": 44.828749,
-      "name": "თბილისი, ჰილსი გოლფი და რეზიდენციები, კრწანისი, მარჯვ��ნა",
-      "city": "თბილისი",
-      "address": "ჰილსი გოლფი და რეზიდენციები, კრწანისი, მარჯვ��ნა",
       "operator": "espace",
       "power": "22 kW",
       "type": "Type 2",
@@ -2909,21 +2320,9 @@
     {
       "lat": 41.636735,
       "lng": 41.620418,
-      "name": "ბათუმი, ჟიული შარტავას გამზირი 16,  ავტოსადგომის პირველ სართულზე",
+      "name": "ბათუმი, ჟიული შარტავას გამზირი 16,  ავტოს��დგომის პირველ სართულზე",
       "city": "ბათუმი",
-      "address": "ჟიული შარტავას გამზირი 16,  ავტოსადგომის პირველ სართულზე",
-      "operator": "espace",
-      "power": "22 kW",
-      "type": "Type 2",
-      "price": "0.65 ₾/kWh",
-      "hours": "24/7"
-    },
-    {
-      "lat": 41.636741,
-      "lng": 41.620121,
-      "name": "ბათუმი, ჟიული შარტავას გამზირი 16, პირველ სართულზე ავტოსადგომის შესასვლელთან",
-      "city": "ბათუმი",
-      "address": "ჟიული შარტავას გამზირი 16, პირველ სართულზე ავტოსადგომის შესასვლელთან",
+      "address": "ჟიული შარტავას გამზირი 16,  ავტოს��დგომის პირველ სართულზე",
       "operator": "espace",
       "power": "22 kW",
       "type": "Type 2",
@@ -3046,20 +2445,8 @@
       "address": "სწრაფი დამტენი, Anari, შარტავას გამზირი 23ა",
       "operator": "espace",
       "power": "120 kW",
-      "type": "CCS2, GBT",
+      "type": "CCS2, GBT, Type 2",
       "price": "0.7 ₾/kWh",
-      "hours": "24/7"
-    },
-    {
-      "lat": 41.568564,
-      "lng": 44.967649,
-      "name": "რუსთავი, შარტავას გამზირი 23ა",
-      "city": "რუსთავი",
-      "address": "შარტავას გამზირი 23ა",
-      "operator": "espace",
-      "power": "22 kW",
-      "type": "Type 2",
-      "price": "0.6 ₾/kWh",
       "hours": "24/7"
     },
     {
@@ -3081,20 +2468,8 @@
       "city": "თბილისი",
       "address": "თინათინ ვირსალაძის ქუჩა 4, საქართველო",
       "operator": "espace",
-      "power": "120 kW",
-      "type": "CCS1",
-      "price": "0.65 ₾/kWh",
-      "hours": "24/7"
-    },
-    {
-      "lat": 41.768969,
-      "lng": 44.765786,
-      "name": "თბილისი, თინათინ ვირსალაძის ქუჩა 4, საქართველო",
-      "city": "თბილისი",
-      "address": "თინათინ ვირსალაძის ქუჩა 4, საქართველო",
-      "operator": "espace",
       "power": "300 kW",
-      "type": "CCS2, CHAdeMO",
+      "type": "CCS1, CCS2, CHAdeMO",
       "price": "0.65 ₾/kWh",
       "hours": "24/7"
     },
@@ -3125,9 +2500,9 @@
     {
       "lat": 42.016309,
       "lng": 44.026491,
-      "name": "ურბნისი, Teison სწრა���ი დამტენი, \"სოკარი\"",
+      "name": "ურბნისი, Teison სწრაფი დამტენი, \"სოკარი\"",
       "city": "ურბნისი",
-      "address": "Teison სწრა���ი დამტენი, \"სოკარი\"",
+      "address": "Teison სწრაფი დამტენი, \"სოკარი\"",
       "operator": "espace",
       "power": "160 kW",
       "type": "CCS2, GBT",
@@ -3154,19 +2529,7 @@
       "address": "Teison სწრაფი დამტენი, ელექტრო სადგური \"სოკარი\", ა. ბელიაშვილის ქუჩა, მარჯვენა დამტენი",
       "operator": "espace",
       "power": "120 kW",
-      "type": "CCS2, GBT",
-      "price": "0.75 ₾/kWh",
-      "hours": "24/7"
-    },
-    {
-      "lat": 41.769821,
-      "lng": 44.778978,
-      "name": "თბილისი, Teison სწრაფი დამტენი, ელექტრო სადგური \"სოკარი\", ა. ბელიაშვილის ქუჩა, მარცხენა დამტენი",
-      "city": "თბილისი",
-      "address": "Teison სწრაფი დამტენი, ელექტრო სადგური \"სოკარი\", ა. ბელიაშვილის ქუჩა, მარცხენა დამტენი",
-      "operator": "espace",
-      "power": "120 kW",
-      "type": "CCS2, GBT",
+      "type": "CCS2, GBT, Type 2",
       "price": "0.75 ₾/kWh",
       "hours": "24/7"
     },
@@ -3183,71 +2546,11 @@
       "hours": "24/7"
     },
     {
-      "lat": 42.173456,
-      "lng": 42.932669,
-      "name": "თერჯოლა, Teison სწრაფ�� დამტენი, \"სოკარი\"",
-      "city": "თერჯოლა",
-      "address": "Teison სწრაფ�� დამტენი, \"სოკარი\"",
-      "operator": "espace",
-      "power": "160 kW",
-      "type": "CCS2, GBT",
-      "price": "0.75 ₾/kWh",
-      "hours": "24/7"
-    },
-    {
-      "lat": 42.173518,
-      "lng": 42.932716,
-      "name": "თერჯოლა, Teison სწრაფი დამტენი, \"სოკარი\"",
-      "city": "თერჯოლა",
-      "address": "Teison სწრაფი დამტენი, \"სოკარი\"",
-      "operator": "espace",
-      "power": "160 kW",
-      "type": "CCS2, GBT",
-      "price": "0.75 ₾/kWh",
-      "hours": "24/7"
-    },
-    {
       "lat": 42.149499,
       "lng": 41.674562,
       "name": "ფოთი, ქალაქი ფოთი, რეკვავას ქუჩა 22, მარცხენა დამტენი",
       "city": "ფოთი",
       "address": "ქალაქი ფოთი, რეკვავას ქუჩა 22, მარცხენა დამტენი",
-      "operator": "espace",
-      "power": "22 kW",
-      "type": "Type 2",
-      "price": "0.6 ₾/kWh",
-      "hours": "24/7"
-    },
-    {
-      "lat": 42.149457,
-      "lng": 41.674747,
-      "name": "ფოთი, ქალაქი ფოთი, რეკვავას ქუჩა 22, მარჯვენა დამტენი",
-      "city": "ფოთი",
-      "address": "ქალაქი ფოთი, რეკვავას ქუჩა 22, მარჯვენა დამტენი",
-      "operator": "espace",
-      "power": "22 kW",
-      "type": "Type 2",
-      "price": "0.6 ₾/kWh",
-      "hours": "24/7"
-    },
-    {
-      "lat": 41.769697,
-      "lng": 44.779092,
-      "name": "თბილისი, ელექტრო სადგური, \"სოკარი\", ა. ბელიაშვილის ქუჩა, მარცხენა დამტენი",
-      "city": "თბილისი",
-      "address": "ელექტრო სადგური, \"სოკარი\", ა. ბელიაშვილის ქუჩა, მარცხენა დამტენი",
-      "operator": "espace",
-      "power": "22 kW",
-      "type": "Type 2",
-      "price": "0.6 ₾/kWh",
-      "hours": "24/7"
-    },
-    {
-      "lat": 41.76968,
-      "lng": 44.77898,
-      "name": "თბილისი, ელექტრო სადგური \"სოკარი\", ა. ბელიაშვილის ქუჩა, მარჯვენა დამტენი",
-      "city": "თბილისი",
-      "address": "ელექტრო სადგური \"სოკარი\", ა. ბელიაშვილის ქუჩა, მარჯვენა დამტენი",
       "operator": "espace",
       "power": "22 kW",
       "type": "Type 2",
@@ -3281,35 +2584,11 @@
     {
       "lat": 42.016181,
       "lng": 44.025473,
-      "name": "ურბნისი, Teison სწრაფი დამტენი, \"სოკარი\"",
-      "city": "ურბნისი",
+      "name": "ურბნის���, Teison სწრაფი დამტენი, \"სოკარი\"",
+      "city": "ურბნის���",
       "address": "Teison სწრაფი დამტენი, \"სოკარი\"",
       "operator": "espace",
       "power": "160 kW",
-      "type": "CCS2, GBT",
-      "price": "0.75 ₾/kWh",
-      "hours": "24/7"
-    },
-    {
-      "lat": 42.016197,
-      "lng": 44.025408,
-      "name": "ურბნისი, Teison სწრაფი დამტენი, \"სოკარი\"",
-      "city": "ურბნისი",
-      "address": "Teison სწრაფი დამტენი, \"სოკარი\"",
-      "operator": "espace",
-      "power": "160 kW",
-      "type": "CCS2, GBT",
-      "price": "0.75 ₾/kWh",
-      "hours": "24/7"
-    },
-    {
-      "lat": 41.649988,
-      "lng": 41.666953,
-      "name": "ბათუმი, Teison სწრაფი დამტენი, \"სოკარი\"",
-      "city": "ბათუმი",
-      "address": "Teison სწრაფი დამტენი, \"სოკარი\"",
-      "operator": "espace",
-      "power": "200 kW",
       "type": "CCS2, GBT",
       "price": "0.75 ₾/kWh",
       "hours": "24/7"
@@ -3339,18 +2618,6 @@
       "hours": "24/7"
     },
     {
-      "lat": 41.904774,
-      "lng": 41.777158,
-      "name": "ბათუმი, ციცინათელა მარჯვენა",
-      "city": "ბათუმი",
-      "address": "ციცინათელა მარჯვენა",
-      "operator": "espace",
-      "power": "120 kW",
-      "type": "CCS2, GBT",
-      "price": "0.75 ₾/kWh",
-      "hours": "24/7"
-    },
-    {
       "lat": 41.785274,
       "lng": 44.791101,
       "name": "თბილისი, სწრაფი დამტენი, \"ეკოგაზი\" , შეშელიძის ქუჩა N1",
@@ -3365,21 +2632,9 @@
     {
       "lat": 41.786922,
       "lng": 44.802073,
-      "name": "თბილისი, სწრაფი დამტენი, \"გამა გაზი\" , შეშელიძის ქუჩა N32, მარცხენა",
+      "name": "თბილისი, სწრაფი დამტენი, \"გამა გაზი\" , შეშელიძის ქუჩა N32, მარ��ხენა",
       "city": "თბილისი",
-      "address": "სწრაფი დამტენი, \"გამა გაზი\" , შეშელიძის ქუჩა N32, მარცხენა",
-      "operator": "espace",
-      "power": "120 kW",
-      "type": "CCS2, GBT",
-      "price": "0.6 ₾/kWh",
-      "hours": "24/7"
-    },
-    {
-      "lat": 41.786811,
-      "lng": 44.802114,
-      "name": "თბილისი, სწრაფი დამტენი, \"გამა გაზი\" , შეშელიძის ქუჩა N32, მარჯვენა",
-      "city": "თბილისი",
-      "address": "სწრაფი დამტენი, \"გამა გაზი\" , შეშელიძის ქუჩა N32, მარჯვენა",
+      "address": "სწრაფი დამტენი, \"გამა გაზი\" , შეშელიძის ქუჩა N32, მარ��ხენა",
       "operator": "espace",
       "power": "120 kW",
       "type": "CCS2, GBT",
@@ -3417,20 +2672,8 @@
       "city": "თბილისი",
       "address": "გორგასლის ქუჩა #40 მიმდებარედ, მეგობრობა, ორთაჭალა თაუერი, მარჯვენა",
       "operator": "espace",
-      "power": "80 kW",
-      "type": "CCS1, CHAdeMO",
-      "price": "0.6 ₾/kWh",
-      "hours": "24/7"
-    },
-    {
-      "lat": 41.672245,
-      "lng": 44.835581,
-      "name": "თბილისი, გორგასლის ქუჩა #40 მიმდებარედ, მეგობრობა, ორთაჭალა თაუერი, მარცხენა",
-      "city": "თბილისი",
-      "address": "გორგასლის ქუჩა #40 მიმდებარედ, მეგობრობა, ორთაჭალა თაუერი, მარცხენა",
-      "operator": "espace",
       "power": "120 kW",
-      "type": "CCS2, GBT",
+      "type": "CCS1, CHAdeMO, CCS2, GBT",
       "price": "0.6 ₾/kWh",
       "hours": "24/7"
     },
@@ -3447,18 +2690,6 @@
       "hours": "24/7"
     },
     {
-      "lat": 41.787136,
-      "lng": 44.80087,
-      "name": "თბილისი, სწრაფი დამტენი, \"მეგობრობა\" , დ.სარაჯიშვილის ქ.1, მარცხენა",
-      "city": "თბილისი",
-      "address": "სწრაფი დამტენი, \"მეგობრობა\" , დ.სარაჯიშვილის ქ.1, მარცხენა",
-      "operator": "espace",
-      "power": "120 kW",
-      "type": "CCS2, GBT",
-      "price": "0.6 ₾/kWh",
-      "hours": "24/7"
-    },
-    {
       "lat": 41.672303,
       "lng": 44.858301,
       "name": "თბილისი, შოთა ნადირაშვილის N24, \"დირსი\" (I)",
@@ -3467,22 +2698,9 @@
       "operator": "espace",
       "power": "22 kW",
       "type": "Type 2",
-      "price": "~0.60 ₾/kWh",
+      "price": "~0.60 ₾/kWh (სავარაუდო)",
       "hours": "24/7",
-      "priceSource": "GeoCharge.ge (ქსელის მედიანა)"
-    },
-    {
-      "lat": 41.672291,
-      "lng": 44.858267,
-      "name": "თბილისი, შოთა ნადირაშვილის N24, \"დირსი\" (II)",
-      "city": "თბილისი",
-      "address": "შოთა ნადირაშვილის N24, \"დირსი\" (II)",
-      "operator": "espace",
-      "power": "22 kW",
-      "type": "Type 2",
-      "price": "~0.60 ₾/kWh",
-      "hours": "24/7",
-      "priceSource": "GeoCharge.ge (ქსელის მედიანა)"
+      "priceSource": "GeoCharge.ge (ქსელის მედიანა, 2026-10)"
     },
     {
       "lat": 41.690574,
@@ -3531,8 +2749,8 @@
     {
       "lat": 41.727894,
       "lng": 44.767703,
-      "name": "თბი��ისი",
-      "city": "თბი��ისი",
+      "name": "თბილისი",
+      "city": "თბილისი",
       "operator": "evpower",
       "power": "200 kW",
       "type": "CCS2, GBT",
@@ -3806,8 +3024,8 @@
     {
       "lat": 41.709501,
       "lng": 44.753507,
-      "name": "თბილისი",
-      "city": "თბილისი",
+      "name": "თბ���ლისი",
+      "city": "თბ���ლისი",
       "operator": "evpower",
       "power": "47 kW",
       "type": "CCS2, GBT",
@@ -4231,9 +3449,8 @@
       "operator": "greencharge",
       "power": "22 kW",
       "type": "Type 2",
-      "price": "~0.65 ₾/kWh",
-      "hours": "24/7",
-      "priceSource": "GeoCharge.ge (ქსელის მედიანა)"
+      "price": "სტანდარტული ტარიფი",
+      "hours": "24/7"
     },
     {
       "lat": 41.72451,
@@ -4244,9 +3461,8 @@
       "operator": "greencharge",
       "power": "50 kW",
       "type": "CCS2",
-      "price": "~0.65 ₾/kWh",
-      "hours": "24/7",
-      "priceSource": "GeoCharge.ge (ქსელის მედიანა)"
+      "price": "სტანდარტული ტარიფი",
+      "hours": "24/7"
     },
     {
       "lat": 41.801634,
@@ -4257,9 +3473,8 @@
       "operator": "greencharge",
       "power": "50 kW",
       "type": "CCS2",
-      "price": "~0.65 ₾/kWh",
-      "hours": "24/7",
-      "priceSource": "GeoCharge.ge (ქსელის მედიანა)"
+      "price": "სტანდარტული ტარიფი",
+      "hours": "24/7"
     },
     {
       "lat": 41.990218,
@@ -4270,22 +3485,8 @@
       "operator": "greencharge",
       "power": "22 kW",
       "type": "Type 2",
-      "price": "~0.65 ₾/kWh",
-      "hours": "24/7",
-      "priceSource": "GeoCharge.ge (ქსელის მედიანა)"
-    },
-    {
-      "lat": 41.990218,
-      "lng": 43.621568,
-      "name": "ხაშური, ბორჯომის ქ. 14",
-      "city": "ხაშური",
-      "address": "ბორჯომის ქ. 14",
-      "operator": "greencharge",
-      "power": "22 kW",
-      "type": "Type 2",
-      "price": "~0.65 ₾/kWh",
-      "hours": "24/7",
-      "priceSource": "GeoCharge.ge (ქსელის მედიანა)"
+      "price": "სტანდარტული ტარიფი",
+      "hours": "24/7"
     },
     {
       "lat": 41.737187,
@@ -4296,9 +3497,8 @@
       "operator": "greencharge",
       "power": "7 kW",
       "type": "Type 2",
-      "price": "~0.65 ₾/kWh",
-      "hours": "24/7",
-      "priceSource": "GeoCharge.ge (ქსელის მედიანა)"
+      "price": "სტანდარტული ტარიფი",
+      "hours": "24/7"
     },
     {
       "lat": 41.703693,
@@ -4307,37 +3507,10 @@
       "city": "თბილისი",
       "address": "ვარდების რევოლუციის მოედანი",
       "operator": "greencharge",
-      "power": "7 kW",
-      "type": "Type 2",
-      "price": "~0.65 ₾/kWh",
-      "hours": "24/7",
-      "priceSource": "GeoCharge.ge (ქსელის მედიანა)"
-    },
-    {
-      "lat": 41.703693,
-      "lng": 44.792004,
-      "name": "თბილისი, ვარდების რევოლუციის მოედანი, 6",
-      "city": "თბილისი",
-      "address": "ვარდების რევოლუციის მოედანი, 6",
-      "operator": "greencharge",
       "power": "50 kW",
-      "type": "CCS2",
-      "price": "~0.65 ₾/kWh",
-      "hours": "24/7",
-      "priceSource": "GeoCharge.ge (ქსელის მედიანა)"
-    },
-    {
-      "lat": 41.562711,
-      "lng": 44.977451,
-      "name": "რუსთავი, რუსთავი მოლი",
-      "city": "რუსთავი",
-      "address": "რუსთავი მოლი",
-      "operator": "greencharge",
-      "power": "7 kW",
-      "type": "Type 2",
-      "price": "~0.65 ₾/kWh",
-      "hours": "24/7",
-      "priceSource": "GeoCharge.ge (ქსელის მედიანა)"
+      "type": "Type 2, CCS2",
+      "price": "სტანდარტული ტარიფი",
+      "hours": "24/7"
     },
     {
       "lat": 41.562711,
@@ -4347,10 +3520,9 @@
       "address": "რუსთავი მოლი",
       "operator": "greencharge",
       "power": "50 kW",
-      "type": "CCS2",
-      "price": "~0.65 ₾/kWh",
-      "hours": "24/7",
-      "priceSource": "GeoCharge.ge (ქსელის მედიანა)"
+      "type": "Type 2, CCS2",
+      "price": "სტანდარტული ტარიფი",
+      "hours": "24/7"
     },
     {
       "lat": 41.722082,
@@ -4361,9 +3533,8 @@
       "operator": "greencharge",
       "power": "22 kW",
       "type": "Type 2",
-      "price": "~0.65 ₾/kWh",
-      "hours": "24/7",
-      "priceSource": "GeoCharge.ge (ქსელის მედიანა)"
+      "price": "სტანდარტული ტარიფი",
+      "hours": "24/7"
     },
     {
       "lat": 42.650818,
@@ -4374,9 +3545,8 @@
       "operator": "greencharge",
       "power": "22 kW",
       "type": "Type 2",
-      "price": "~0.65 ₾/kWh",
-      "hours": "24/7",
-      "priceSource": "GeoCharge.ge (ქსელის მედიანა)"
+      "price": "სტანდარტული ტარიფი",
+      "hours": "24/7"
     },
     {
       "lat": 41.927471,
@@ -4387,9 +3557,8 @@
       "operator": "greencharge",
       "power": "22 kW",
       "type": "Type 2",
-      "price": "~0.65 ₾/kWh",
-      "hours": "24/7",
-      "priceSource": "GeoCharge.ge (ქსელის მედიანა)"
+      "price": "სტანდარტული ტარიფი",
+      "hours": "24/7"
     },
     {
       "lat": 41.711184,
@@ -4400,9 +3569,8 @@
       "operator": "greencharge",
       "power": "7 kW",
       "type": "Type 2",
-      "price": "~0.65 ₾/kWh",
-      "hours": "24/7",
-      "priceSource": "GeoCharge.ge (ქსელის მედიანა)"
+      "price": "სტანდარტული ტარიფი",
+      "hours": "24/7"
     },
     {
       "lat": 42.503802,
@@ -4413,9 +3581,8 @@
       "operator": "greencharge",
       "power": "7 kW",
       "type": "Type 2",
-      "price": "~0.65 ₾/kWh",
-      "hours": "24/7",
-      "priceSource": "GeoCharge.ge (ქსელის მედიანა)"
+      "price": "სტანდარტული ტარიფი",
+      "hours": "24/7"
     },
     {
       "lat": 41.73191,
@@ -4434,8 +3601,8 @@
       "name": "თბილისი",
       "city": "თბილისი",
       "operator": "martev",
-      "power": "22 kW",
-      "type": "Type 2",
+      "power": "30 kW",
+      "type": "Type 2, CCS2, GBT",
       "price": "0.65 ₾/kWh",
       "hours": "24/7"
     },
@@ -4467,8 +3634,8 @@
       "name": "თბილისი",
       "city": "თბილისი",
       "operator": "martev",
-      "power": "22 kW",
-      "type": "Type 2",
+      "power": "30 kW",
+      "type": "Type 2, CCS2, GBT",
       "price": "0.65 ₾/kWh",
       "hours": "24/7"
     },
@@ -4808,7 +3975,7 @@
       "name": "თბილისი",
       "city": "თბილისი",
       "operator": "martev",
-      "power": "30 kW",
+      "power": "60 kW",
       "type": "CCS2, GBT",
       "price": "0.8 ₾/kWh",
       "hours": "24/7"
@@ -5243,28 +4410,6 @@
       "hours": "24/7"
     },
     {
-      "lat": 41.727573,
-      "lng": 44.767892,
-      "name": "თბილისი",
-      "city": "თბილისი",
-      "operator": "martev",
-      "power": "60 kW",
-      "type": "CCS2, GBT",
-      "price": "0.8 ₾/kWh",
-      "hours": "24/7"
-    },
-    {
-      "lat": 41.72496,
-      "lng": 44.773086,
-      "name": "თბილისი",
-      "city": "თბილისი",
-      "operator": "martev",
-      "power": "30 kW",
-      "type": "CCS2, GBT",
-      "price": "0.8 ₾/kWh",
-      "hours": "24/7"
-    },
-    {
       "lat": 41.729055,
       "lng": 44.762411,
       "name": "თბილისი",
@@ -5394,17 +4539,6 @@
       "power": "30 kW",
       "type": "CCS2, GBT",
       "price": "0.55 ₾/kWh",
-      "hours": "24/7"
-    },
-    {
-      "lat": 41.708685,
-      "lng": 44.756036,
-      "name": "თბილისი",
-      "city": "თბილისი",
-      "operator": "martev",
-      "power": "30 kW",
-      "type": "CCS2, GBT",
-      "price": "0.8 ₾/kWh",
       "hours": "24/7"
     },
     {
@@ -5540,17 +4674,6 @@
       "hours": "24/7"
     },
     {
-      "lat": 41.733345,
-      "lng": 44.728528,
-      "name": "თბილისი",
-      "city": "თბილისი",
-      "operator": "martev",
-      "power": "30 kW",
-      "type": "CCS2, GBT",
-      "price": "0.8 ₾/kWh",
-      "hours": "24/7"
-    },
-    {
       "lat": 41.727582,
       "lng": 44.725989,
       "name": "თბილისი",
@@ -5575,17 +4698,6 @@
     {
       "lat": 41.691449,
       "lng": 44.88236,
-      "name": "თბილისი",
-      "city": "თბილისი",
-      "operator": "martev",
-      "power": "30 kW",
-      "type": "CCS2, GBT",
-      "price": "0.8 ₾/kWh",
-      "hours": "24/7"
-    },
-    {
-      "lat": 41.710403,
-      "lng": 44.75368,
       "name": "თბილისი",
       "city": "თბილისი",
       "operator": "martev",
@@ -5674,17 +4786,6 @@
     {
       "lat": 42.017495,
       "lng": 44.131513,
-      "name": "ბერბუკი",
-      "city": "ბერბუკი",
-      "operator": "martev",
-      "power": "120 kW",
-      "type": "CCS2, GBT",
-      "price": "0.8 ₾/kWh",
-      "hours": "24/7"
-    },
-    {
-      "lat": 42.017552,
-      "lng": 44.131627,
       "name": "ბერბუკი",
       "city": "ბერბუკი",
       "operator": "martev",
@@ -5850,17 +4951,6 @@
     {
       "lat": 41.659972,
       "lng": 44.891398,
-      "name": "თბილისი",
-      "city": "თბილისი",
-      "operator": "martev",
-      "power": "60 kW",
-      "type": "CCS2, GBT",
-      "price": "0.8 ₾/kWh",
-      "hours": "24/7"
-    },
-    {
-      "lat": 41.740372,
-      "lng": 44.738287,
       "name": "თბილისი",
       "city": "თბილისი",
       "operator": "martev",
@@ -6495,9 +5585,9 @@
       "operator": "moveo",
       "power": "180 kW",
       "type": "CCS2, GBT",
-      "price": "~0.85 ₾/kWh",
+      "price": "~0.85 ₾/kWh (სავარაუდო)",
       "hours": "24/7",
-      "priceSource": "GeoCharge.ge (ქსელის მედიანა)"
+      "priceSource": "GeoCharge.ge (ქსელის მედიანა, 2026-10)"
     },
     {
       "lat": 41.927104,
@@ -6508,9 +5598,9 @@
       "operator": "moveo",
       "power": "180 kW",
       "type": "CCS2, GBT",
-      "price": "~0.85 ₾/kWh",
+      "price": "~0.85 ₾/kWh (სავარაუდო)",
       "hours": "24/7",
-      "priceSource": "GeoCharge.ge (ქსელის მედიანა)"
+      "priceSource": "GeoCharge.ge (ქსელის მედიანა, 2026-10)"
     },
     {
       "lat": 42.519292,
@@ -6557,9 +5647,9 @@
       "operator": "moveo",
       "power": "180 kW",
       "type": "CCS2, GBT",
-      "price": "~0.85 ₾/kWh",
+      "price": "~0.85 ₾/kWh (სავარაუდო)",
       "hours": "24/7",
-      "priceSource": "GeoCharge.ge (ქსელის მედიანა)"
+      "priceSource": "GeoCharge.ge (ქსელის მედიანა, 2026-10)"
     },
     {
       "lat": 42.561862,
@@ -6625,19 +5715,8 @@
       "name": "ბაკურიანი",
       "city": "ბაკურიანი",
       "operator": "solarauto",
-      "power": "7 kW",
-      "type": "GBT",
-      "price": "0.7 ₾/kWh",
-      "hours": "24/7"
-    },
-    {
-      "lat": 41.760044,
-      "lng": 43.534453,
-      "name": "ბაკურიანი",
-      "city": "ბაკურიანი",
-      "operator": "solarauto",
       "power": "11 kW",
-      "type": "Type 2",
+      "type": "GBT, Type 2",
       "price": "0.7 ₾/kWh",
       "hours": "24/7"
     },
@@ -6648,7 +5727,7 @@
       "city": "ბაკურიანი",
       "operator": "solarauto",
       "power": "11 kW",
-      "type": "Type 2",
+      "type": "Type 2, GBT",
       "price": "0.7 ₾/kWh",
       "hours": "24/7"
     },
@@ -6660,17 +5739,6 @@
       "address": "რაჭა",
       "operator": "solarauto",
       "power": "40 kW",
-      "type": "GBT",
-      "price": "0.7 ₾/kWh",
-      "hours": "24/7"
-    },
-    {
-      "lat": 41.758994,
-      "lng": 43.534348,
-      "name": "ბაკურიანი",
-      "city": "ბაკურიანი",
-      "operator": "solarauto",
-      "power": "7 kW",
       "type": "GBT",
       "price": "0.7 ₾/kWh",
       "hours": "24/7"
@@ -6694,9 +5762,9 @@
       "operator": "solarauto",
       "power": "40 kW",
       "type": "GBT",
-      "price": "~0.70 ₾/kWh",
+      "price": "~0.70 ₾/kWh (სავარაუდო)",
       "hours": "24/7",
-      "priceSource": "GeoCharge.ge (ქსელის მედიანა)"
+      "priceSource": "GeoCharge.ge (ქსელის მედიანა, 2026-10)"
     },
     {
       "lat": 41.586835,
@@ -6742,9 +5810,9 @@
       "operator": "tegeta",
       "power": "22 kW",
       "type": "Type 2",
-      "price": "~0.60 ₾/kWh",
+      "price": "~0.60 ₾/kWh (სავარაუდო)",
       "hours": "24/7",
-      "priceSource": "GeoCharge.ge (ქსელის მედიანა)"
+      "priceSource": "GeoCharge.ge (ქსელის მედიანა, 2026-10)"
     },
     {
       "lat": 41.637269,
@@ -6755,9 +5823,9 @@
       "operator": "tegeta",
       "power": "22 kW",
       "type": "Type 2",
-      "price": "~0.60 ₾/kWh",
+      "price": "~0.60 ₾/kWh (სავარაუდო)",
       "hours": "24/7",
-      "priceSource": "GeoCharge.ge (ქსელის მედიანა)"
+      "priceSource": "GeoCharge.ge (ქსელის მედიანა, 2026-10)"
     },
     {
       "lat": 41.780672,
@@ -6780,9 +5848,9 @@
       "operator": "tegeta",
       "power": "Standard",
       "type": "Type 2",
-      "price": "~0.60 ₾/kWh",
+      "price": "~0.60 ₾/kWh (სავარაუდო)",
       "hours": "24/7",
-      "priceSource": "GeoCharge.ge (ქსელის მედიანა)"
+      "priceSource": "GeoCharge.ge (ქსელის მედიანა, 2026-10)"
     },
     {
       "lat": 41.620712,
@@ -6793,9 +5861,9 @@
       "operator": "tegeta",
       "power": "120 kW",
       "type": "CCS2, Type 2",
-      "price": "~1.00 ₾/kWh",
+      "price": "~1.00 ₾/kWh (სავარაუდო)",
       "hours": "24/7",
-      "priceSource": "GeoCharge.ge (ქსელის მედიანა)"
+      "priceSource": "GeoCharge.ge (ქსელის მედიანა, 2026-10)"
     },
     {
       "lat": 41.664489,
@@ -6806,9 +5874,9 @@
       "operator": "tegeta",
       "power": "22 kW",
       "type": "Type 2",
-      "price": "~0.60 ₾/kWh",
+      "price": "~0.60 ₾/kWh (სავარაუდო)",
       "hours": "24/7",
-      "priceSource": "GeoCharge.ge (ქსელის მედიანა)"
+      "priceSource": "GeoCharge.ge (ქსელის მედიანა, 2026-10)"
     },
     {
       "lat": 41.840912,
@@ -6819,9 +5887,9 @@
       "operator": "tegeta",
       "power": "22 kW",
       "type": "Type 2",
-      "price": "~0.60 ₾/kWh",
+      "price": "~0.60 ₾/kWh (სავარაუდო)",
       "hours": "24/7",
-      "priceSource": "GeoCharge.ge (ქსელის მედიანა)"
+      "priceSource": "GeoCharge.ge (ქსელის მედიანა, 2026-10)"
     },
     {
       "lat": 41.677999,
@@ -6832,9 +5900,9 @@
       "operator": "tegeta",
       "power": "120 kW",
       "type": "CCS2",
-      "price": "~1.00 ₾/kWh",
+      "price": "~1.00 ₾/kWh (სავარაუდო)",
       "hours": "24/7",
-      "priceSource": "GeoCharge.ge (ქსელის მედიანა)"
+      "priceSource": "GeoCharge.ge (ქსელის მედიანა, 2026-10)"
     },
     {
       "lat": 42.467235,
@@ -6845,9 +5913,9 @@
       "operator": "tegeta",
       "power": "22 kW",
       "type": "Type 2",
-      "price": "~0.60 ₾/kWh",
+      "price": "~0.60 ₾/kWh (სავარაუდო)",
       "hours": "24/7",
-      "priceSource": "GeoCharge.ge (ქსელის მედიანა)"
+      "priceSource": "GeoCharge.ge (ქსელის მედიანა, 2026-10)"
     },
     {
       "lat": 41.7151,
@@ -6856,7 +5924,7 @@
       "city": "თბილისი",
       "address": "დავით აღმაშენებლის ხეივანი 129",
       "operator": "tegeta",
-      "power": "120 kW",
+      "power": "123 kW",
       "type": "CCS2, CHAdeMO, Type 2",
       "price": "0.6 ₾/kWh",
       "hours": "24/7"
@@ -6870,9 +5938,9 @@
       "operator": "tegeta",
       "power": "22 kW",
       "type": "Type 2",
-      "price": "~0.60 ₾/kWh",
+      "price": "~0.60 ₾/kWh (სავარაუდო)",
       "hours": "24/7",
-      "priceSource": "GeoCharge.ge (ქსელის მედიანა)"
+      "priceSource": "GeoCharge.ge (ქსელის მედიანა, 2026-10)"
     },
     {
       "lat": 41.593846,
@@ -6883,9 +5951,9 @@
       "operator": "tegeta",
       "power": "22 kW",
       "type": "Type 2",
-      "price": "~0.60 ₾/kWh",
+      "price": "~0.60 ₾/kWh (სავარაუდო)",
       "hours": "24/7",
-      "priceSource": "GeoCharge.ge (ქსელის მედიანა)"
+      "priceSource": "GeoCharge.ge (ქსელის მედიანა, 2026-10)"
     },
     {
       "lat": 42.22757,
@@ -6896,9 +5964,9 @@
       "operator": "tegeta",
       "power": "120 kW",
       "type": "CCS2",
-      "price": "~1.00 ₾/kWh",
+      "price": "~1.00 ₾/kWh (სავარაუდო)",
       "hours": "24/7",
-      "priceSource": "GeoCharge.ge (ქსელის მედიანა)"
+      "priceSource": "GeoCharge.ge (ქსელის მედიანა, 2026-10)"
     },
     {
       "lat": 41.654674,
@@ -6909,9 +5977,9 @@
       "operator": "tegeta",
       "power": "22 kW",
       "type": "Type 2",
-      "price": "~0.60 ₾/kWh",
+      "price": "~0.60 ₾/kWh (სავარაუდო)",
       "hours": "24/7",
-      "priceSource": "GeoCharge.ge (ქსელის მედიანა)"
+      "priceSource": "GeoCharge.ge (ქსელის მედიანა, 2026-10)"
     },
     {
       "lat": 42.050026,
@@ -6922,9 +5990,9 @@
       "operator": "tegeta",
       "power": "22 kW",
       "type": "Type 2",
-      "price": "~0.60 ₾/kWh",
+      "price": "~0.60 ₾/kWh (სავარაუდო)",
       "hours": "24/7",
-      "priceSource": "GeoCharge.ge (ქსელის მედიანა)"
+      "priceSource": "GeoCharge.ge (ქსელის მედიანა, 2026-10)"
     },
     {
       "lat": 41.749962,
@@ -6959,9 +6027,9 @@
       "operator": "tegeta",
       "power": "22 kW",
       "type": "Type 2",
-      "price": "~0.60 ₾/kWh",
+      "price": "~0.60 ₾/kWh (სავარაუდო)",
       "hours": "24/7",
-      "priceSource": "GeoCharge.ge (ქსელის მედიანა)"
+      "priceSource": "GeoCharge.ge (ქსელის მედიანა, 2026-10)"
     },
     {
       "lat": 42.643667,
@@ -6972,9 +6040,9 @@
       "operator": "tegeta",
       "power": "22 kW",
       "type": "Type 2",
-      "price": "~0.60 ₾/kWh",
+      "price": "~0.60 ₾/kWh (სავარაუდო)",
       "hours": "24/7",
-      "priceSource": "GeoCharge.ge (ქსელის მედიანა)"
+      "priceSource": "GeoCharge.ge (ქსელის მედიანა, 2026-10)"
     },
     {
       "lat": 42.46999,
@@ -6985,22 +6053,9 @@
       "operator": "tegeta",
       "power": "Standard",
       "type": "Type 2",
-      "price": "~0.60 ₾/kWh",
+      "price": "~0.60 ₾/kWh (სავარაუდო)",
       "hours": "24/7",
-      "priceSource": "GeoCharge.ge (ქსელის მედიანა)"
-    },
-    {
-      "lat": 41.7151,
-      "lng": 44.8271,
-      "name": "თბილისი, დავით აღმაშენებლის ხეივანი 129, პორშეს ცენტრი",
-      "city": "თბილისი",
-      "address": "დავით აღმაშენებლის ხეივანი 129, პორშეს ცენტრი",
-      "operator": "tegeta",
-      "power": "123 kW",
-      "type": "CCS2, Type 2",
-      "price": "~1.00 ₾/kWh",
-      "hours": "24/7",
-      "priceSource": "GeoCharge.ge (ქსელის მედიანა)"
+      "priceSource": "GeoCharge.ge (ქსელის მედიანა, 2026-10)"
     },
     {
       "lat": 43.043469,
@@ -7011,9 +6066,9 @@
       "operator": "tegeta",
       "power": "22 kW",
       "type": "Type 2",
-      "price": "~0.60 ₾/kWh",
+      "price": "~0.60 ₾/kWh (სავარაუდო)",
       "hours": "24/7",
-      "priceSource": "GeoCharge.ge (ქსელის მედიანა)"
+      "priceSource": "GeoCharge.ge (ქსელის მედიანა, 2026-10)"
     },
     {
       "lat": 42.170886,
@@ -7024,9 +6079,9 @@
       "operator": "tegeta",
       "power": "120 kW",
       "type": "CCS2, CHAdeMO",
-      "price": "~1.00 ₾/kWh",
+      "price": "~1.00 ₾/kWh (სავარაუდო)",
       "hours": "24/7",
-      "priceSource": "GeoCharge.ge (ქსელის მედიანა)"
+      "priceSource": "GeoCharge.ge (ქსელის მედიანა, 2026-10)"
     },
     {
       "lat": 41.70403,
@@ -7037,9 +6092,9 @@
       "operator": "tegeta",
       "power": "22 kW",
       "type": "Type 2",
-      "price": "~0.60 ₾/kWh",
+      "price": "~0.60 ₾/kWh (სავარაუდო)",
       "hours": "24/7",
-      "priceSource": "GeoCharge.ge (ქსელის მედიანა)"
+      "priceSource": "GeoCharge.ge (ქსელის მედიანა, 2026-10)"
     },
     {
       "lat": 41.705803,
@@ -7050,9 +6105,9 @@
       "operator": "tegeta",
       "power": "22 kW",
       "type": "Type 2",
-      "price": "~0.60 ₾/kWh",
+      "price": "~0.60 ₾/kWh (სავარაუდო)",
       "hours": "24/7",
-      "priceSource": "GeoCharge.ge (ქსელის მედიანა)"
+      "priceSource": "GeoCharge.ge (ქსელის მედიანა, 2026-10)"
     },
     {
       "lat": 41.938807,
@@ -7062,9 +6117,9 @@
       "operator": "tegeta",
       "power": "22 kW",
       "type": "Type 2",
-      "price": "~0.60 ₾/kWh",
+      "price": "~0.60 ₾/kWh (სავარაუდო)",
       "hours": "24/7",
-      "priceSource": "GeoCharge.ge (ქსელის მედიანა)"
+      "priceSource": "GeoCharge.ge (ქსელის მედიანა, 2026-10)"
     },
     {
       "lat": 41.68364,
@@ -7075,9 +6130,9 @@
       "operator": "tegeta",
       "power": "120 kW",
       "type": "CCS2, CHAdeMO",
-      "price": "~1.00 ₾/kWh",
+      "price": "~1.00 ₾/kWh (სავარაუდო)",
       "hours": "24/7",
-      "priceSource": "GeoCharge.ge (ქსელის მედიანა)"
+      "priceSource": "GeoCharge.ge (ქსელის მედიანა, 2026-10)"
     },
     {
       "lat": 42.658917,
@@ -7088,9 +6143,9 @@
       "operator": "tegeta",
       "power": "22 kW",
       "type": "Type 2",
-      "price": "~0.60 ₾/kWh",
+      "price": "~0.60 ₾/kWh (სავარაუდო)",
       "hours": "24/7",
-      "priceSource": "GeoCharge.ge (ქსელის მედიანა)"
+      "priceSource": "GeoCharge.ge (ქსელის მედიანა, 2026-10)"
     },
     {
       "lat": 41.926484,
@@ -7101,9 +6156,9 @@
       "operator": "tegeta",
       "power": "120 kW",
       "type": "CCS2, CHAdeMO",
-      "price": "~1.00 ₾/kWh",
+      "price": "~1.00 ₾/kWh (სავარაუდო)",
       "hours": "24/7",
-      "priceSource": "GeoCharge.ge (ქსელის მედიანა)"
+      "priceSource": "GeoCharge.ge (ქსელის მედიანა, 2026-10)"
     },
     {
       "lat": 41.894363,
@@ -7114,21 +6169,9 @@
       "operator": "tegeta",
       "power": "22 kW",
       "type": "Type 2",
-      "price": "~0.60 ₾/kWh",
+      "price": "~0.60 ₾/kWh (სავარაუდო)",
       "hours": "24/7",
-      "priceSource": "GeoCharge.ge (ქსელის მედიანა)"
-    },
-    {
-      "lat": 41.7151,
-      "lng": 44.8271,
-      "name": "თბილისი, უნივერსიტეტის ქუჩა 6, თეგეტა მოტორსი",
-      "city": "თბილისი",
-      "address": "უნივერსიტეტის ქუჩა 6, თეგეტა მოტორსი",
-      "operator": "tegeta",
-      "power": "120 kW",
-      "type": "CCS2, CHAdeMO, Type 2",
-      "price": "0.6 ₾/kWh",
-      "hours": "24/7"
+      "priceSource": "GeoCharge.ge (ქსელის მედიანა, 2026-10)"
     },
     {
       "lat": 41.81306,
@@ -7139,9 +6182,9 @@
       "operator": "tegeta",
       "power": "22 kW",
       "type": "Type 2",
-      "price": "~0.60 ₾/kWh",
+      "price": "~0.60 ₾/kWh (სავარაუდო)",
       "hours": "24/7",
-      "priceSource": "GeoCharge.ge (ქსელის მედიანა)"
+      "priceSource": "GeoCharge.ge (ქსელის მედიანა, 2026-10)"
     },
     {
       "lat": 41.698687,
@@ -7152,9 +6195,9 @@
       "operator": "ttc",
       "power": "22 kW",
       "type": "Type 1",
-      "price": "0.00 ₾/kWh (უფასო)",
+      "price": "0.00 ₾/kWh (მერია · უფასო)",
       "hours": "24/7",
-      "priceSource": "GeoCharge.ge / მერია"
+      "priceSource": "თბილისის მერია (უფასო)"
     },
     {
       "lat": 41.762877,
@@ -7165,9 +6208,9 @@
       "operator": "ttc",
       "power": "22 kW",
       "type": "Type 2",
-      "price": "0.00 ₾/kWh (უფასო)",
+      "price": "0.00 ₾/kWh (მერია · უფასო)",
       "hours": "24/7",
-      "priceSource": "GeoCharge.ge / მერია"
+      "priceSource": "თბილისის მერია (უფასო)"
     },
     {
       "lat": 41.770457,
@@ -7178,9 +6221,9 @@
       "operator": "ttc",
       "power": "22 kW",
       "type": "Type 2",
-      "price": "0.00 ₾/kWh (უფასო)",
+      "price": "0.00 ₾/kWh (მერია · უფასო)",
       "hours": "24/7",
-      "priceSource": "GeoCharge.ge / მერია"
+      "priceSource": "თბილისის მერია (უფასო)"
     },
     {
       "lat": 41.740877,
@@ -7191,9 +6234,9 @@
       "operator": "ttc",
       "power": "22 kW",
       "type": "Type 2",
-      "price": "0.00 ₾/kWh (უფასო)",
+      "price": "0.00 ₾/kWh (მერია · უფასო)",
       "hours": "24/7",
-      "priceSource": "GeoCharge.ge / მერია"
+      "priceSource": "თბილისის მერია (უფასო)"
     },
     {
       "lat": 41.743937,
@@ -7204,9 +6247,9 @@
       "operator": "ttc",
       "power": "22 kW",
       "type": "Type 2",
-      "price": "0.00 ₾/kWh (უფასო)",
+      "price": "0.00 ₾/kWh (მერია · უფასო)",
       "hours": "24/7",
-      "priceSource": "GeoCharge.ge / მერია"
+      "priceSource": "თბილისის მერია (უფასო)"
     },
     {
       "lat": 41.726857,
@@ -7217,9 +6260,9 @@
       "operator": "ttc",
       "power": "22 kW",
       "type": "Type 2",
-      "price": "0.00 ₾/kWh (უფასო)",
+      "price": "0.00 ₾/kWh (მერია · უფასო)",
       "hours": "24/7",
-      "priceSource": "GeoCharge.ge / მერია"
+      "priceSource": "თბილისის მერია (უფასო)"
     },
     {
       "lat": 41.706177,
@@ -7230,9 +6273,9 @@
       "operator": "ttc",
       "power": "22 kW",
       "type": "Type 2",
-      "price": "0.00 ₾/kWh (უფასო)",
+      "price": "0.00 ₾/kWh (მერია · უფასო)",
       "hours": "24/7",
-      "priceSource": "GeoCharge.ge / მერია"
+      "priceSource": "თბილისის მერია (უფასო)"
     },
     {
       "lat": 41.709637,
@@ -7243,9 +6286,9 @@
       "operator": "ttc",
       "power": "22 kW",
       "type": "Type 2",
-      "price": "0.00 ₾/kWh (უფასო)",
+      "price": "0.00 ₾/kWh (მერია · უფასო)",
       "hours": "24/7",
-      "priceSource": "GeoCharge.ge / მერია"
+      "priceSource": "თბილისის მერია (უფასო)"
     },
     {
       "lat": 41.699867,
@@ -7256,9 +6299,9 @@
       "operator": "ttc",
       "power": "22 kW",
       "type": "Type 2",
-      "price": "0.00 ₾/kWh (უფასო)",
+      "price": "0.00 ₾/kWh (მერია · უფასო)",
       "hours": "24/7",
-      "priceSource": "GeoCharge.ge / მერია"
+      "priceSource": "თბილისის მერია (უფასო)"
     },
     {
       "lat": 41.703727,
@@ -7269,9 +6312,9 @@
       "operator": "ttc",
       "power": "22 kW",
       "type": "Type 2",
-      "price": "0.00 ₾/kWh (უფასო)",
+      "price": "0.00 ₾/kWh (მერია · უფასო)",
       "hours": "24/7",
-      "priceSource": "GeoCharge.ge / მერია"
+      "priceSource": "თბილისის მერია (უფასო)"
     },
     {
       "lat": 41.70327,
@@ -7282,9 +6325,9 @@
       "operator": "ttc",
       "power": "22 kW",
       "type": "Type 2",
-      "price": "0.00 ₾/kWh (უფასო)",
+      "price": "0.00 ₾/kWh (მერია · უფასო)",
       "hours": "24/7",
-      "priceSource": "GeoCharge.ge / მერია"
+      "priceSource": "თბილისის მერია (უფასო)"
     },
     {
       "lat": 41.706997,
@@ -7295,9 +6338,9 @@
       "operator": "ttc",
       "power": "22 kW",
       "type": "Type 2",
-      "price": "0.00 ₾/kWh (უფასო)",
+      "price": "0.00 ₾/kWh (მერია · უფასო)",
       "hours": "24/7",
-      "priceSource": "GeoCharge.ge / მერია"
+      "priceSource": "თბილისის მერია (უფასო)"
     },
     {
       "lat": 41.700217,
@@ -7308,9 +6351,9 @@
       "operator": "ttc",
       "power": "22 kW",
       "type": "Type 2",
-      "price": "0.00 ₾/kWh (უფასო)",
+      "price": "0.00 ₾/kWh (მერია · უფასო)",
       "hours": "24/7",
-      "priceSource": "GeoCharge.ge / მერია"
+      "priceSource": "თბილისის მერია (უფასო)"
     },
     {
       "lat": 41.818117,
@@ -7321,9 +6364,9 @@
       "operator": "ttc",
       "power": "22 kW",
       "type": "Type 2",
-      "price": "0.00 ₾/kWh (უფასო)",
+      "price": "0.00 ₾/kWh (მერია · უფასო)",
       "hours": "24/7",
-      "priceSource": "GeoCharge.ge / მერია"
+      "priceSource": "თბილისის მერია (უფასო)"
     },
     {
       "lat": 41.69347,
@@ -7334,9 +6377,9 @@
       "operator": "ttc",
       "power": "22 kW",
       "type": "Type 2",
-      "price": "0.00 ₾/kWh (უფასო)",
+      "price": "0.00 ₾/kWh (მერია · უფასო)",
       "hours": "24/7",
-      "priceSource": "GeoCharge.ge / მერია"
+      "priceSource": "თბილისის მერია (უფასო)"
     },
     {
       "lat": 41.689317,
@@ -7347,9 +6390,9 @@
       "operator": "ttc",
       "power": "22 kW",
       "type": "Type 2",
-      "price": "0.00 ₾/kWh (უფასო)",
+      "price": "0.00 ₾/kWh (მერია · უფასო)",
       "hours": "24/7",
-      "priceSource": "GeoCharge.ge / მერია"
+      "priceSource": "თბილისის მერია (უფასო)"
     },
     {
       "lat": 41.685487,
@@ -7360,9 +6403,9 @@
       "operator": "ttc",
       "power": "22 kW",
       "type": "Type 2",
-      "price": "0.00 ₾/kWh (უფასო)",
+      "price": "0.00 ₾/kWh (მერია · უფასო)",
       "hours": "24/7",
-      "priceSource": "GeoCharge.ge / მერია"
+      "priceSource": "თბილისის მერია (უფასო)"
     },
     {
       "lat": 41.709897,
@@ -7373,9 +6416,9 @@
       "operator": "ttc",
       "power": "22 kW",
       "type": "Type 2",
-      "price": "0.00 ₾/kWh (უფასო)",
+      "price": "0.00 ₾/kWh (მერია · უფასო)",
       "hours": "24/7",
-      "priceSource": "GeoCharge.ge / მერია"
+      "priceSource": "თბილისის მერია (უფასო)"
     },
     {
       "lat": 41.734254,
@@ -7386,9 +6429,9 @@
       "operator": "ttc",
       "power": "22 kW",
       "type": "Type 2",
-      "price": "0.00 ₾/kWh (უფასო)",
+      "price": "0.00 ₾/kWh (მერია · უფასო)",
       "hours": "24/7",
-      "priceSource": "GeoCharge.ge / მერია"
+      "priceSource": "თბილისის მერია (უფასო)"
     },
     {
       "lat": 41.708877,
@@ -7399,9 +6442,9 @@
       "operator": "ttc",
       "power": "22 kW",
       "type": "Type 2",
-      "price": "0.00 ₾/kWh (უფასო)",
+      "price": "0.00 ₾/kWh (მერია · უფასო)",
       "hours": "24/7",
-      "priceSource": "GeoCharge.ge / მერია"
+      "priceSource": "თბილისის მერია (უფასო)"
     },
     {
       "lat": 41.705037,
@@ -7412,9 +6455,9 @@
       "operator": "ttc",
       "power": "22 kW",
       "type": "Type 2",
-      "price": "0.00 ₾/kWh (უფასო)",
+      "price": "0.00 ₾/kWh (მერია · უფასო)",
       "hours": "24/7",
-      "priceSource": "GeoCharge.ge / მერია"
+      "priceSource": "თბილისის მერია (უფასო)"
     },
     {
       "lat": 41.71677,
@@ -7425,9 +6468,9 @@
       "operator": "ttc",
       "power": "22 kW",
       "type": "Type 2",
-      "price": "0.00 ₾/kWh (უფასო)",
+      "price": "0.00 ₾/kWh (მერია · უფასო)",
       "hours": "24/7",
-      "priceSource": "GeoCharge.ge / მერია"
+      "priceSource": "თბილისის მერია (უფასო)"
     },
     {
       "lat": 41.776217,
@@ -7438,9 +6481,9 @@
       "operator": "ttc",
       "power": "22 kW",
       "type": "Type 1",
-      "price": "0.00 ₾/kWh (უფასო)",
+      "price": "0.00 ₾/kWh (მერია · უფასო)",
       "hours": "24/7",
-      "priceSource": "GeoCharge.ge / მერია"
+      "priceSource": "თბილისის მერია (უფასო)"
     },
     {
       "lat": 41.668927,
@@ -7451,9 +6494,9 @@
       "operator": "ttc",
       "power": "22 kW",
       "type": "Type 2",
-      "price": "0.00 ₾/kWh (უფასო)",
+      "price": "0.00 ₾/kWh (მერია · უფასო)",
       "hours": "24/7",
-      "priceSource": "GeoCharge.ge / მერია"
+      "priceSource": "თბილისის მერია (უფასო)"
     },
     {
       "lat": 41.680757,
@@ -7464,9 +6507,9 @@
       "operator": "ttc",
       "power": "22 kW",
       "type": "Type 2",
-      "price": "0.00 ₾/kWh (უფასო)",
+      "price": "0.00 ₾/kWh (მერია · უფასო)",
       "hours": "24/7",
-      "priceSource": "GeoCharge.ge / მერია"
+      "priceSource": "თბილისის მერია (უფასო)"
     },
     {
       "lat": 41.670417,
@@ -7477,9 +6520,9 @@
       "operator": "ttc",
       "power": "22 kW",
       "type": "Type 2",
-      "price": "0.00 ₾/kWh (უფასო)",
+      "price": "0.00 ₾/kWh (მერია · უფასო)",
       "hours": "24/7",
-      "priceSource": "GeoCharge.ge / მერია"
+      "priceSource": "თბილისის მერია (უფასო)"
     },
     {
       "lat": 41.687717,
@@ -7490,9 +6533,9 @@
       "operator": "ttc",
       "power": "22 kW",
       "type": "Type 2",
-      "price": "0.00 ₾/kWh (უფასო)",
+      "price": "0.00 ₾/kWh (მერია · უფასო)",
       "hours": "24/7",
-      "priceSource": "GeoCharge.ge / მერია"
+      "priceSource": "თბილისის მერია (უფასო)"
     },
     {
       "lat": 41.724997,
@@ -7503,9 +6546,9 @@
       "operator": "ttc",
       "power": "22 kW",
       "type": "Type 2",
-      "price": "0.00 ₾/kWh (უფასო)",
+      "price": "0.00 ₾/kWh (მერია · უფასო)",
       "hours": "24/7",
-      "priceSource": "GeoCharge.ge / მერია"
+      "priceSource": "თბილისის მერია (უფასო)"
     },
     {
       "lat": 41.731527,
@@ -7516,9 +6559,9 @@
       "operator": "ttc",
       "power": "22 kW",
       "type": "Type 2",
-      "price": "0.00 ₾/kWh (უფასო)",
+      "price": "0.00 ₾/kWh (მერია · უფასო)",
       "hours": "24/7",
-      "priceSource": "GeoCharge.ge / მერია"
+      "priceSource": "თბილისის მერია (უფასო)"
     },
     {
       "lat": 41.723257,
@@ -7529,9 +6572,9 @@
       "operator": "ttc",
       "power": "22 kW",
       "type": "Type 2",
-      "price": "0.00 ₾/kWh (უფასო)",
+      "price": "0.00 ₾/kWh (მერია · უფასო)",
       "hours": "24/7",
-      "priceSource": "GeoCharge.ge / მერია"
+      "priceSource": "თბილისის მერია (უფასო)"
     },
     {
       "lat": 41.731197,
@@ -7542,9 +6585,9 @@
       "operator": "ttc",
       "power": "22 kW",
       "type": "Type 2",
-      "price": "0.00 ₾/kWh (უფასო)",
+      "price": "0.00 ₾/kWh (მერია · უფასო)",
       "hours": "24/7",
-      "priceSource": "GeoCharge.ge / მერია"
+      "priceSource": "თბილისის მერია (უფასო)"
     },
     {
       "lat": 41.719657,
@@ -7555,9 +6598,9 @@
       "operator": "ttc",
       "power": "22 kW",
       "type": "Type 2",
-      "price": "0.00 ₾/kWh (უფასო)",
+      "price": "0.00 ₾/kWh (მერია · უფასო)",
       "hours": "24/7",
-      "priceSource": "GeoCharge.ge / მერია"
+      "priceSource": "თბილისის მერია (უფასო)"
     },
     {
       "lat": 41.715817,
@@ -7568,9 +6611,9 @@
       "operator": "ttc",
       "power": "22 kW",
       "type": "Type 2",
-      "price": "0.00 ₾/kWh (უფასო)",
+      "price": "0.00 ₾/kWh (მერია · უფასო)",
       "hours": "24/7",
-      "priceSource": "GeoCharge.ge / მერია"
+      "priceSource": "თბილისის მერია (უფასო)"
     }
   ]
 }
