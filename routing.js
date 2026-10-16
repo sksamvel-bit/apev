@@ -427,7 +427,17 @@ class RoutingEngine {
     this.speech.speak(text);
   }
 
+  /** Remove the grey alternatives (lines + labels) without touching the active route. */
+  clearAlternatives() {
+    this.altRoutes = [];
+    this.altCtx = null;
+    this.altGeo = RoutingEngine.emptyGeo();
+    this.pushAltData();
+    this.clearAltMarkers();
+  }
+
   startNavigation(silent = false) {
+    this.clearAlternatives(); // driving: only the chosen route stays on the map (fewer layers/markers on the MCU2)
     this.isNavigating = true;
     this.announced = new Set();
     if (this.steps.length > 0) {
@@ -659,11 +669,7 @@ class RoutingEngine {
     this.isRerouting = false;
     this.lastClosestIndex = 0;
     this.setRouteData([], []);
-    this.altRoutes = [];
-    this.altCtx = null;
-    this.altGeo = RoutingEngine.emptyGeo();
-    this.pushAltData();
-    this.clearAltMarkers();
+    this.clearAlternatives();
     if (this.trafficEngine) {
       this.trafficEngine.clearRouteTraffic();
     }

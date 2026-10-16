@@ -37,11 +37,13 @@ global.fetch = async (u) => { urls.push(u); return { ok: true, json: async () =>
   ok(/alternatives=false/.test(urls[urls.length - 1]) && eng.altRoutes.length === 0, 'navigation / reroute never requests alternatives and clears the grey lines');
 
   await eng.calculateRoute({ lat: 41.70, lng: 44.80 }, { lat: 41.72, lng: 44.80 }, false);
+  ok(eng.altGeo.features.length === 1, 'preview shows the alternative again');
   eng.startNavigation();
+  ok(eng.altGeo.features.length === 0 && eng.altRoutes.length === 0 && eng.activeRoute, 'starting navigation hides the alternatives but keeps the route');
   ok(eng.selectAlternative(1) === null, 'no switching while navigating');
 
   eng.clearRoute();
   ok(eng.altGeo.features.length === 0, 'clearing the route clears the alternatives');
   process.exitCode = fails ? 1 : 0;
-  console.log(fails ? fails + ' route alternative tests FAILED' : '7 route alternative tests passed');
+  console.log(fails ? fails + ' route alternative tests FAILED' : '9 route alternative tests passed');
 })();
