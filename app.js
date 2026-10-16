@@ -135,7 +135,7 @@ function initClock() {
 const OFM_STYLE_URL = "https://tiles.openfreemap.org/styles/liberty";
 const OFM_STYLE_CACHE_KEY = "tesla_nav_ofm_style_v1";
 const MAP_STYLE_KEYS = ["openfreemap", "google-roads"];
-const APP_VERSION = "3.10.24";
+const APP_VERSION = "3.10.25";
 const MAP_DEFAULT_ZOOM = 16;      // MapLibre zoom (Leaflet-equivalent 17)
 // Performance experiments (all default to the normal behaviour): ?labels=0 hides the base-map labels/icons, ?markers=0 skips the
 // charger DOM markers, ?pitch=N sets the heading-up tilt (0-60). Used to find what makes the car's browser slow.
@@ -151,9 +151,13 @@ const PERF = (function () {
 })();
 window.__perf = PERF;
 // ?style=mono is a flat map by default (pitch 0); ?pitch=N still overrides
+// Look: since v3.10.25 the grey "mono" flat map is the default; ?style=classic = the old coloured map, ?style=tesla = the Tesla palette.
+const LOOK_PARAM = (function () {
+  try { const st = new URLSearchParams(location.search).get("style"); return st === "classic" || st === "tesla" ? st : "mono"; } catch (_) { return "mono"; }
+})();
 // Auto-flatten: if the map is still slow after Lite (see the governor in initMap), the tilt is dropped for the rest of the session
 let flatStored = false; try { flatStored = sessionStorage.getItem("flat") === "1"; } catch (_) {}
-let MAP_HEADING_PITCH = PERF.pitch != null ? PERF.pitch : (flatStored || new URLSearchParams(location.search).get("style") === "mono" ? 0 : 45);
+let MAP_HEADING_PITCH = PERF.pitch != null ? PERF.pitch : (flatStored || LOOK_PARAM === "mono" ? 0 : 45);
 
 // "Tesla look" (opt-in, URL only): it is on ONLY while the address contains ?style=tesla. Nothing is remembered, so the plain
 // address always shows the original map. (An old remembered flag from v3.10.10-12 is wiped here.)
@@ -161,9 +165,8 @@ const TESLA_LOOK = (function () {
   let on = false;
   try {
     localStorage.removeItem("tesla_look");
-    const st = new URLSearchParams(location.search).get("style");
-    on = st === "tesla" || st === "mono";
-    window.__lookMode = on ? st : null;
+    on = LOOK_PARAM !== "classic";
+    window.__lookMode = on ? LOOK_PARAM : null;
   } catch (_) {}
   return on && !!window.TeslaStyle;
 })();
