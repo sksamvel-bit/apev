@@ -70,19 +70,21 @@ class MediaPlayerEngine {
 
   // ---------- history (localStorage, never required) ----------
   loadHistory() {
+    this.storageOk = true;
     try {
       if (typeof localStorage === "undefined" || typeof window === "undefined") return [];
       const arr = JSON.parse(localStorage.getItem(HISTORY_KEY) || "[]");
       return Array.isArray(arr) ? arr.filter((x) => x && /^[\w-]{11}$/.test(x.id || "")).slice(0, HISTORY_MAX) : [];
-    } catch (_) { return []; }
+    } catch (_) { this.storageOk = false; return []; }
   }
 
   saveHistory() {
     try {
       if (typeof localStorage !== "undefined" && typeof window !== "undefined") {
         localStorage.setItem(HISTORY_KEY, JSON.stringify(this.history));
+        this.storageOk = localStorage.getItem(HISTORY_KEY) !== null;
       }
-    } catch (_) { /* private mode / quota: history is optional */ }
+    } catch (_) { this.storageOk = false; /* private mode / quota: history then lives only until the page is closed */ }
   }
 
   addToHistory(item) {
@@ -90,7 +92,13 @@ class MediaPlayerEngine {
     this.history = [{ id: item.id, title: item.title || "", channel: item.channel || "", length: item.length || "" }]
       .concat(this.history.filter((h) => h.id !== item.id)).slice(0, HISTORY_MAX);
     this.saveHistory();
+    this.updateHistoryCount();
     if (this.tab === "history") this.renderList("media-list", this.history, "history");
+  }
+
+  updateHistoryCount() {
+    const th = this.$("media-tab-history");
+    if (th) th.textContent = this.history.length ? "ისტორია (" + this.history.length + ")" : "ისტორია";
   }
 
   // ---------- UI wiring ----------
@@ -113,6 +121,7 @@ class MediaPlayerEngine {
       this.updateProgress(f * this.duration, this.duration);
     });
 
+    this.updateHistoryCount();
     on("media-tab-popular", "click", () => this.showTab("popular"));
     on("media-tab-history", "click", () => this.showTab("history"));
 
@@ -301,7 +310,9 @@ class MediaPlayerEngine {
     if (!items || !items.length) {
       const empty = document.createElement("div");
       empty.className = "media-empty";
-      empty.textContent = source === "history" ? "ისტორია ცარიელია" : "შედეგი ვერ მოიძებნა";
+      empty.textContent = source === "history"
+        ? (this.storageOk === false ? "ბრაუზერი მეხსიერებას არ აძლევს საიტს: ისტორია მხოლოდ ამ გვერდის გახსნამდე ინახება" : "ისტორია ცარიელია: აქ გამოჩნდება ის, რასაც დაუკრავთ")
+        : "შედეგი ვერ მოიძებნა";
       box.appendChild(empty);
       return;
     }

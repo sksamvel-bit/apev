@@ -218,4 +218,11 @@ test("server clamps the result count (n) to 1..15 and keys the cache by it", () 
   assert.ok(/const key = query\.toLowerCase\(\) \+ '\|' \+ max;/.test(src));
 });
 
+
+test("history reports whether browser storage works (diagnostic for the car)", () => {
+  const { player } = createMockPlayer();
+  assert.strictEqual(player.storageOk, true);
+  player.updateHistoryCount(); // no DOM in node: must not throw
+});
+
 console.log("\n" + passed + " media player tests passed");

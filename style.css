@@ -1706,11 +1706,10 @@ button svg * {
 .media-player-card {
   --yt-bg: #ffffff; --yt-text: #1a1d21; --yt-muted: #6b7280; --yt-line: #e5e7eb; --yt-soft: #f3f4f6; --yt-active: #fdecec; --yt-red: #e82127;
   position: absolute;
-  left: calc(50% - 40px);
+  right: 104px; /* sits right next to the side dock */
   top: 62px;
-  width: min(940px, calc(100vw - 190px));
+  width: min(940px, calc(100vw - 124px));
   height: min(620px, calc(100vh - 80px));
-  transform: translateX(-50%);
   background: var(--yt-bg);
   color: var(--yt-text);
   border: 1px solid var(--yt-line);
@@ -1800,7 +1799,7 @@ button svg * {
 }
 /* narrow window: stack the panes and scroll the card */
 @media (max-width: 760px) {
-  .media-player-card { left: calc(50% - 40px); width: calc(100vw - 120px); height: calc(100vh - 80px); }
+  .media-player-card { width: calc(100vw - 124px); height: calc(100vh - 80px); }
   .media-panes { flex-direction: column; overflow-y: auto; }
   .media-pane-left { flex: 0 0 auto; }
   .media-pane-right { border-left: none; padding-left: 0; flex: 0 0 auto; }

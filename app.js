@@ -135,7 +135,7 @@ function initClock() {
 const OFM_STYLE_URL = "https://tiles.openfreemap.org/styles/liberty";
 const OFM_STYLE_CACHE_KEY = "tesla_nav_ofm_style_v1";
 const MAP_STYLE_KEYS = ["openfreemap", "google-roads"];
-const APP_VERSION = "3.10.26";
+const APP_VERSION = "3.10.27";
 const MAP_DEFAULT_ZOOM = 16;      // MapLibre zoom (Leaflet-equivalent 17)
 // Performance experiments (all default to the normal behaviour): ?labels=0 hides the base-map labels/icons, ?markers=0 skips the
 // charger DOM markers, ?pitch=N sets the heading-up tilt (0-60). Used to find what makes the car's browser slow.
@@ -1763,10 +1763,10 @@ function launchTeslaTheaterMode() {
     liveUrl = "https://apev.onrender.com";
   }
   const theaterUrl = `https://www.youtube.com/redirect?q=${encodeURIComponent(liveUrl)}`;
-  showToast("გადადის Tesla Theater სრულ ეკრანზე (გაჩერებულზე)...", "info", 3500);
+  showToast("YouTube-ი ჰკითხავს, გსურთ თუ არა გვერდის დატოვება: დააჭირეთ „GO TO SITE“ / „გადასვლა“ და საიტი სრულ ეკრანზე გაიხსნება", "info", 6500);
   setTimeout(() => {
     window.location.href = theaterUrl;
-  }, 800);
+  }, 3500);
 }
 
 // In-page battery % dialog (replaces the blocking native prompt(), which is unusable on the car screen)
