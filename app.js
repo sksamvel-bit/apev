@@ -134,7 +134,7 @@ function initClock() {
 const OFM_STYLE_URL = "https://tiles.openfreemap.org/styles/liberty";
 const OFM_STYLE_CACHE_KEY = "tesla_nav_ofm_style_v1";
 const MAP_STYLE_KEYS = ["openfreemap", "google-roads"];
-const APP_VERSION = "3.10.29";
+const APP_VERSION = "3.10.30";
 const MAP_DEFAULT_ZOOM = 16;      // MapLibre zoom (Leaflet-equivalent 17)
 // Performance experiments (all default to the normal behaviour): ?labels=0 hides the base-map labels/icons, ?markers=0 skips the
 // charger DOM markers, ?pitch=N sets the heading-up tilt (0-60). Used to find what makes the car's browser slow.
@@ -214,11 +214,11 @@ function tuneVectorStyle(style) {
     const ref = out.layers.find((l) => l.type === "symbol" && l.layout && l.layout["text-font"] && l["source-layer"] === "transportation_name") ||
                 out.layers.find((l) => l.type === "symbol" && l.layout && l.layout["text-font"]);
     out.layers.push({
-      // minzoom 16 = the car's default zoom (MAP_DEFAULT_ZOOM); with 17 the numbers never showed unless the driver zoomed in.
-      // They are hidden while driving (see the speed watcher in initMap) because placing them costs CPU on the Atom.
-      id: "housenumber", type: "symbol", source: "openmaptiles", "source-layer": "housenumber", minzoom: 16,
+      // minzoom 15: ensures house numbers remain visible across navigation zoom levels (including default zoom 16).
+      // They stay visible at all normal city driving speeds (<= 75 km/h).
+      id: "housenumber", type: "symbol", source: "openmaptiles", "source-layer": "housenumber", minzoom: 15,
       layout: { "text-field": ["get", "housenumber"], "text-font": ref ? ref.layout["text-font"] : ["Noto Sans Regular"],
-        "text-size": ["interpolate", ["linear"], ["zoom"], 16, 11, 18, 14] },
+        "text-size": ["interpolate", ["linear"], ["zoom"], 15, 10, 18, 14] },
       paint: { "text-color": "#3f4650", "text-halo-color": "#ffffff", "text-halo-width": 1.5 }
     });
   }
@@ -340,6 +340,7 @@ function initMap() {
     try {
       if (!PERF.lite) return;
       window.MapGL.pickLiteHidden(map.getStyle().layers, "openmaptiles").forEach((id) => {
+        if (id === "housenumber") return; // keep house numbers visible in Lite mode
         if (map.getLayoutProperty(id, "visibility") !== "none") { liteHidden.add(id); map.setLayoutProperty(id, "visibility", "none"); }
       });
     } catch (_) {}
@@ -351,13 +352,13 @@ function initMap() {
     if (on) applyLite();
     else { detailOn = false; liteHidden.forEach((id) => { try { map.setLayoutProperty(id, "visibility", "visible"); } catch (_) {} }); liteHidden.clear(); }
   };
-  // While the car stands (speed < 3 km/h for 2 s) house numbers and minor street names come back; they hide again when moving.
+  // While the car stands (speed < 3 km/h for 2 s) minor street names come back; they hide again when moving.
   let detailOn = false, stillSince = 0;
   const setDetail = (on) => {
     if (on === detailOn || !PERF.lite) return;
     detailOn = on;
     try {
-      // House numbers are NOT toggled here: they follow the speed watcher below (shown while crawling, not only when standing).
+      // House numbers are NOT toggled here: they follow the city driving watcher below.
       window.MapGL.pickLiteDetail(map.getStyle().layers, "openmaptiles").filter((id) => id !== "housenumber")
         .forEach((id) => map.setLayoutProperty(id, "visibility", on ? "visible" : "none"));
     } catch (_) {}
@@ -368,12 +369,11 @@ function initMap() {
     else { stillSince = 0; setDetail(false); }
   }, 500);
   map.on("styledata", () => { applyLite(); if (detailOn) { detailOn = false; setDetail(true); } hnOn = null; });
-  // House numbers, both modes: shown while the car crawls/stands, hidden while driving. Normal mode: on < 15 km/h, off > 25.
-  // Lite (the car's usual mode, placing labels costs CPU on the Atom): on < 12 km/h, off > 20. (Before v3.10.29 Lite showed them only at a stand-still.)
+  // House numbers: visible while driving in the city (speed up to 75 km/h) and while standing/crawling.
+  // Hides only at highway speeds (> 75 km/h) to conserve resources where house numbers do not exist.
   let hnOn = null;
   setInterval(() => {
-    const onBelow = PERF.lite ? 12 : 15, offAbove = PERF.lite ? 20 : 25;
-    const want = hnOn === false ? currentSpeedKmh < onBelow : currentSpeedKmh <= offAbove;
+    const want = currentSpeedKmh <= 75;
     if (want === hnOn) return;
     hnOn = want;
     try { if (map.getLayer("housenumber")) map.setLayoutProperty("housenumber", "visibility", want ? "visible" : "none"); } catch (_) { hnOn = null; }
@@ -2163,9 +2163,9 @@ function initRemoteSession() {
       const now = Date.now();
       if (!hnLine.t || now - hnLine.t > 1000) {
         hnLine.t = now;
-        hnLine.n = map.getZoom() >= 16 && vis ? map.queryRenderedFeatures({ layers: ["housenumber"] }).length : null;
+        hnLine.n = map.getZoom() >= 15 && vis ? map.queryRenderedFeatures({ layers: ["housenumber"] }).length : null;
       }
-      return "housenumbers: " + (vis ? "ON" : "off(speed)") + "  zoom>=16 " + (map.getZoom() >= 16 ? "yes" : "NO") + "  in view " + (hnLine.n == null ? "-" : hnLine.n) + "  lite " + (PERF.lite ? "yes" : "no");
+      return "housenumbers: " + (vis ? "ON" : "off(speed>75)") + "  zoom>=15 " + (map.getZoom() >= 15 ? "yes" : "NO") + "  in view " + (hnLine.n == null ? "-" : hnLine.n) + "  lite " + (PERF.lite ? "yes" : "no");
     } catch (_) { return "housenumbers: n/a"; }
   }
   function render() {
