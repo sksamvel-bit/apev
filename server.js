@@ -705,9 +705,9 @@ function httpsGetJson(url) {
   });
 }
 
-async function searchYouTubeApi(query) {
+async function searchYouTubeApi(query, max) {
   const base = 'https://www.googleapis.com/youtube/v3/';
-  const s = await httpsGetJson(base + 'search?part=snippet&type=video&maxResults=6&videoEmbeddable=true&safeSearch=moderate'
+  const s = await httpsGetJson(base + 'search?part=snippet&type=video&maxResults=' + max + '&videoEmbeddable=true&safeSearch=moderate'
     + '&q=' + encodeURIComponent(query) + '&key=' + encodeURIComponent(YOUTUBE_API_KEY));
   const items = (s.items || []).filter(i => i && i.id && /^[a-zA-Z0-9_-]{11}$/.test(i.id.videoId || ''));
   if (!items.length) return { success: false, results: [] };
@@ -729,7 +729,7 @@ async function searchYouTubeApi(query) {
 }
 
 // Keyless JSON endpoint used by youtube.com itself (more stable than parsing the HTML page).
-function searchYouTubeInnerTube(query) {
+function searchYouTubeInnerTube(query, max) {
   return new Promise((resolve) => {
     const payload = JSON.stringify({
       context: { client: { clientName: 'WEB', clientVersion: '2.20240101.00.00', hl: 'ka', gl: 'GE' } },
@@ -748,7 +748,7 @@ function searchYouTubeInnerTube(query) {
       let body = '';
       resp.on('data', c => { body += c; if (body.length > 4 * 1024 * 1024) resp.destroy(); });
       resp.on('end', () => {
-        const results = resp.statusCode === 200 ? parseYouTubeResults(body, 6) : [];
+        const results = resp.statusCode === 200 ? parseYouTubeResults(body, max) : [];
         resolve({ success: results.length > 0, results });
       });
       resp.on('error', () => resolve({ success: false, results: [] }));
@@ -760,9 +760,10 @@ function searchYouTubeInnerTube(query) {
   });
 }
 
-function searchYouTubeList(query) {
+function searchYouTubeList(query, max) {
+  max = Math.min(15, Math.max(1, (max | 0) || 6));
   return new Promise((resolve) => {
-    const key = query.toLowerCase();
+    const key = query.toLowerCase() + '|' + max;
     const hit = ytListCache.get(key);
     if (hit && Date.now() - hit.t < 10 * 60 * 1000) return resolve(hit.v);
     const done = v => {
@@ -774,10 +775,10 @@ function searchYouTubeList(query) {
       }
       return false;
     };
-    const viaPage = () => scrapeYouTubeList(query, key, resolve);
-    const viaInnerTube = () => searchYouTubeInnerTube(query).then(v => { if (!done(v)) viaPage(); }).catch(viaPage);
+    const viaPage = () => scrapeYouTubeList(query, key, resolve, max);
+    const viaInnerTube = () => searchYouTubeInnerTube(query, max).then(v => { if (!done(v)) viaPage(); }).catch(viaPage);
     if (YOUTUBE_API_KEY) {
-      searchYouTubeApi(query).then(v => { if (!done(v)) viaInnerTube(); }).catch(err => {
+      searchYouTubeApi(query, max).then(v => { if (!done(v)) viaInnerTube(); }).catch(err => {
         console.warn('[YouTube API] ' + err.message + ' - falling back');
         viaInnerTube();
       });
@@ -787,7 +788,7 @@ function searchYouTubeList(query) {
   });
 }
 
-function scrapeYouTubeList(query, key, resolve) {
+function scrapeYouTubeList(query, key, resolve, max) {
   {
     const url = 'https://www.youtube.com/results?search_query=' + encodeURIComponent(query);
     const req = https.get(url, {
@@ -801,7 +802,7 @@ function scrapeYouTubeList(query, key, resolve) {
       let body = '';
       resp.on('data', chunk => { body += chunk; if (body.length > 4 * 1024 * 1024) resp.destroy(); });
       resp.on('end', () => {
-        const results = parseYouTubeResults(body, 6);
+        const results = parseYouTubeResults(body, max);
         const v = { success: results.length > 0, results };
         if (v.success) {
           ytListCache.set(key, { t: Date.now(), v });
@@ -1108,7 +1109,7 @@ const server = http.createServer((req, res) => {
         res.end(JSON.stringify({ success: false, results: [] }));
         return;
       }
-      searchYouTubeList(q.slice(0, 120)).then(result => {
+      searchYouTubeList(q.slice(0, 120), parseInt(urlObj.searchParams.get('n'), 10) || 6).then(result => {
         res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
         res.end(JSON.stringify(result));
       });

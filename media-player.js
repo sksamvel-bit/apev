@@ -1,6 +1,9 @@
 /**
- * Media Player Engine (YouTube in Tesla Car)
- * Docked Picture-in-Picture YouTube & Music Player with Auto-Advance Queue & Controls
+ * Media Player Engine (YouTube in the Tesla browser) - two-pane layout (v3.10.26):
+ *   left : video + progress + controls (shuffle / prev / play / next / repeat) + tabs "Popular" | "History"
+ *   right: YouTube search with thumbnails
+ * Playback uses the official YouTube iframe (nocookie embed) controlled through postMessage; progress comes from
+ * the iframe's "listening" handshake (infoDelivery). No scraping happens in the browser: search goes through /api/youtube/search.
  */
 
 const PRESET_TRACKS = [
@@ -10,20 +13,46 @@ const PRESET_TRACKS = [
   { title: "Relaxing Ambient Drive", id: "M5QGkQiXW_U" }
 ];
 
+const POPULAR_QUERY = "პოპულარული მუსიკა"; // what the "Popular" tab asks the server for (cached there for 10 min)
+const POPULAR_COUNT = 12;
+const SEARCH_COUNT = 12;
+const HISTORY_MAX = 30;
+const HISTORY_KEY = "ytHistory";
+
+function formatTime(sec) {
+  sec = Math.max(0, Math.floor(Number(sec) || 0));
+  const h = Math.floor(sec / 3600), m = Math.floor((sec % 3600) / 60), s = sec % 60;
+  const p2 = (n) => String(n).padStart(2, "0");
+  return h ? h + ":" + p2(m) + ":" + p2(s) : m + ":" + p2(s);
+}
+
+function thumbUrl(id) {
+  return "https://i.ytimg.com/vi/" + id + "/mqdefault.jpg";
+}
+
 class MediaPlayerEngine {
   constructor(opts = {}) {
-    this.container = opts.container || (typeof document !== "undefined" ? document.getElementById("media-player-card") : null);
-    this.iframe = opts.iframe || (typeof document !== "undefined" ? document.getElementById("youtube-iframe") : null);
+    const hasDoc = typeof document !== "undefined";
+    this.container = opts.container || (hasDoc ? document.getElementById("media-player-card") : null);
+    this.iframe = opts.iframe || (hasDoc ? document.getElementById("youtube-iframe") : null);
     this.currentTrackId = PRESET_TRACKS[0].id;
     this.currentTitle = PRESET_TRACKS[0].title;
+    this.currentChannel = "";
     this.isOpen = false;
     this.isMinimized = false;
     this.isPlaying = false;
     this.isLoop = false;
+    this.isShuffle = false;
+    this.duration = 0;
+    this.currentTime = 0;
+    this.tab = "popular";
 
-    // Playlist Queue
-    this.queue = PRESET_TRACKS.map(t => ({ id: t.id, title: t.title }));
+    // Playlist queue (the list you last started a track from)
+    this.queue = PRESET_TRACKS.map((t) => ({ id: t.id, title: t.title, channel: "", length: "" }));
     this.queueIndex = 0;
+    this.popular = [];
+    this.popularAt = 0;
+    this.history = this.loadHistory();
 
     if (typeof window !== "undefined") {
       this.initUI();
@@ -31,147 +60,151 @@ class MediaPlayerEngine {
     }
   }
 
+  $(id) {
+    return typeof document !== "undefined" ? document.getElementById(id) : null;
+  }
+
+  toast(msg, kind, ms) {
+    if (typeof window !== "undefined" && window.showToast) window.showToast(msg, kind || "info", ms);
+  }
+
+  // ---------- history (localStorage, never required) ----------
+  loadHistory() {
+    try {
+      if (typeof localStorage === "undefined" || typeof window === "undefined") return [];
+      const arr = JSON.parse(localStorage.getItem(HISTORY_KEY) || "[]");
+      return Array.isArray(arr) ? arr.filter((x) => x && /^[\w-]{11}$/.test(x.id || "")).slice(0, HISTORY_MAX) : [];
+    } catch (_) { return []; }
+  }
+
+  saveHistory() {
+    try {
+      if (typeof localStorage !== "undefined" && typeof window !== "undefined") {
+        localStorage.setItem(HISTORY_KEY, JSON.stringify(this.history));
+      }
+    } catch (_) { /* private mode / quota: history is optional */ }
+  }
+
+  addToHistory(item) {
+    if (!item || !item.id) return;
+    this.history = [{ id: item.id, title: item.title || "", channel: item.channel || "", length: item.length || "" }]
+      .concat(this.history.filter((h) => h.id !== item.id)).slice(0, HISTORY_MAX);
+    this.saveHistory();
+    if (this.tab === "history") this.renderList("media-list", this.history, "history");
+  }
+
+  // ---------- UI wiring ----------
   initUI() {
-    const selector = document.getElementById("media-preset-select");
-    if (selector) {
-      PRESET_TRACKS.forEach((track) => {
-        const opt = document.createElement("option");
-        opt.value = track.id;
-        opt.textContent = track.title;
-        selector.appendChild(opt);
-      });
+    const on = (id, ev, fn) => { const el = this.$(id); if (el) el.addEventListener(ev, fn); return el; };
 
-      selector.addEventListener("change", (e) => {
-        const chosenId = e.target.value;
-        const idx = PRESET_TRACKS.findIndex(t => t.id === chosenId);
-        this.queue = PRESET_TRACKS.map(t => ({ id: t.id, title: t.title }));
-        this.queueIndex = idx !== -1 ? idx : 0;
-        const chosen = this.queue[this.queueIndex];
-        this.loadVideo(chosen.id, chosen.title);
-      });
-    }
+    on("media-btn-prev", "click", (e) => { e.stopPropagation(); this.playPrev(); });
+    on("media-btn-next", "click", (e) => { e.stopPropagation(); this.playNext(false); });
+    on("media-btn-play-pause", "click", (e) => { e.stopPropagation(); this.togglePlayPause(); });
+    on("media-btn-loop", "click", (e) => { e.stopPropagation(); this.toggleLoop(); });
+    on("media-btn-shuffle", "click", (e) => { e.stopPropagation(); this.toggleShuffle(); });
+    on("media-tap-layer", "click", () => this.togglePlayPause());
+    on("media-close-btn", "click", () => this.close());
 
-    // Playback Controls (Prev, Play/Pause, Next, Loop)
-    const prevBtn = document.getElementById("media-btn-prev");
-    if (prevBtn) {
-      prevBtn.addEventListener("click", (e) => {
-        e.stopPropagation();
-        this.playPrev();
-      });
-    }
+    on("media-progress", "click", (e) => {
+      if (!this.duration) return;
+      const r = e.currentTarget.getBoundingClientRect();
+      const f = Math.min(1, Math.max(0, (e.clientX - r.left) / Math.max(1, r.width)));
+      this.sendCommand("seekTo", [f * this.duration, true]);
+      this.updateProgress(f * this.duration, this.duration);
+    });
 
-    const nextBtn = document.getElementById("media-btn-next");
-    if (nextBtn) {
-      nextBtn.addEventListener("click", (e) => {
-        e.stopPropagation();
-        this.playNext(false);
-      });
-    }
+    on("media-tab-popular", "click", () => this.showTab("popular"));
+    on("media-tab-history", "click", () => this.showTab("history"));
 
-    const playPauseBtn = document.getElementById("media-btn-play-pause");
-    if (playPauseBtn) {
-      playPauseBtn.addEventListener("click", (e) => {
-        e.stopPropagation();
-        this.togglePlayPause();
-      });
-    }
+    const input = this.$("media-custom-url-input");
+    const go = () => { const v = input && input.value.trim(); if (v) this.searchAndShow(v); else this.toast("ჩაწერეთ სიმღერა ან YouTube ლინკი", "info"); };
+    on("media-load-custom-btn", "click", go);
+    if (input) input.addEventListener("keydown", (e) => { if (e.key === "Enter") go(); });
 
-    const loopBtn = document.getElementById("media-btn-loop");
-    if (loopBtn) {
-      loopBtn.addEventListener("click", (e) => {
-        e.stopPropagation();
-        this.toggleLoop();
-      });
-    }
-
-    const customBtn = document.getElementById("media-load-custom-btn");
-    const customInput = document.getElementById("media-custom-url-input");
-    if (customBtn && customInput) {
-      customBtn.addEventListener("click", () => {
-        const val = customInput.value.trim();
-        if (val) {
-          this.searchAndShow(val);
-        } else {
-          if (window.showToast) window.showToast("ჩაწერეთ სიმღერა ან YouTube ლინკი", "info");
+    // Ask the embedded player to report progress/state to us (needs a fresh handshake after every src change).
+    if (this.iframe && this.iframe.addEventListener) {
+      this.iframe.addEventListener("load", () => {
+        if (this.iframe.src && this.iframe.src !== "about:blank" && this.iframe.contentWindow) {
+          try { this.iframe.contentWindow.postMessage(JSON.stringify({ event: "listening", id: 1, channel: "widget" }), "*"); } catch (_) { /* ignore */ }
         }
       });
-
-      customInput.addEventListener("keydown", (e) => {
-        if (e.key === "Enter") {
-          const val = customInput.value.trim();
-          if (val) this.searchAndShow(val);
-        }
-      });
-    }
-
-    const minBtn = document.getElementById("media-min-btn");
-    if (minBtn) {
-      minBtn.addEventListener("click", () => this.toggleMinimize());
-    }
-
-    const closeBtn = document.getElementById("media-close-btn");
-    if (closeBtn) {
-      closeBtn.addEventListener("click", () => this.close());
     }
   }
 
   initPostMessageListener() {
     window.addEventListener("message", (e) => {
+      if (this.iframe && this.iframe.contentWindow && e.source && e.source !== this.iframe.contentWindow) return;
       let data = e.data;
       if (typeof data === "string") {
         try { data = JSON.parse(data); } catch (_) { return; }
       }
       if (!data) return;
-
-      // YouTube IFrame API sends event: "onStateChange" or info.playerState
-      let state = null;
-      if (data.event === "onStateChange" && typeof data.info === "number") {
-        state = data.info;
-      } else if (data.info && typeof data.info.playerState === "number") {
-        state = data.info.playerState;
-      }
-
-      if (state === 0) {
-        // YT.PlayerState.ENDED = 0
-        this.onVideoEnded();
-      } else if (state === 1) {
-        // YT.PlayerState.PLAYING = 1
-        this.isPlaying = true;
-        this.updatePlayPauseUI(true);
-      } else if (state === 2) {
-        // YT.PlayerState.PAUSED = 2
-        this.isPlaying = false;
-        this.updatePlayPauseUI(false);
-      }
+      this.handlePlayerMessage(data);
     });
+  }
+
+  /** Handles one decoded message from the YouTube iframe (separate from the DOM event so it can be unit-tested). */
+  handlePlayerMessage(data) {
+    let state = null;
+    if (data.event === "onStateChange" && typeof data.info === "number") {
+      state = data.info;
+    } else if (data.info && typeof data.info === "object" && typeof data.info.playerState === "number") {
+      state = data.info.playerState;
+    }
+
+    if (data.info && typeof data.info === "object") {
+      const i = data.info;
+      if (typeof i.duration === "number" && i.duration > 0) this.duration = i.duration;
+      if (typeof i.currentTime === "number") this.currentTime = i.currentTime;
+      if (typeof i.duration === "number" || typeof i.currentTime === "number") this.updateProgress(this.currentTime, this.duration);
+      if (i.videoData && i.videoData.author && !this.currentChannel) {
+        this.currentChannel = String(i.videoData.author).slice(0, 80);
+        this.updateTrackTitle(this.currentTitle);
+      }
+    }
+
+    if (state === 0) {
+      this.onVideoEnded();
+    } else if (state === 1) {
+      this.isPlaying = true;
+      this.updatePlayPauseUI(true);
+    } else if (state === 2) {
+      this.isPlaying = false;
+      this.updatePlayPauseUI(false);
+    }
   }
 
   sendCommand(func, args = "") {
     if (!this.iframe || !this.iframe.contentWindow) return;
-    const msg = JSON.stringify({
-      event: "command",
-      func: func,
-      args: args
-    });
+    const msg = JSON.stringify({ event: "command", func: func, args: args });
     this.iframe.contentWindow.postMessage(msg, "*");
   }
 
+  // ---------- queue / transport ----------
   onVideoEnded() {
     if (this.isLoop) {
       this.sendCommand("seekTo", [0, true]);
       this.sendCommand("playVideo");
-      if (typeof window !== "undefined" && window.showToast) window.showToast("🔂 განმეორება", "info", 1500);
+      this.toast("🔂 განმეორება", "info", 1500);
       return;
     }
-    // Auto-advance to next track in queue!
     this.playNext(true);
   }
 
-  playNext(autoAdvance = false) {
+  ensureQueue() {
     if (!this.queue || this.queue.length === 0) {
-      this.queue = PRESET_TRACKS.map(t => ({ id: t.id, title: t.title }));
+      this.queue = PRESET_TRACKS.map((t) => ({ id: t.id, title: t.title, channel: "", length: "" }));
+      this.queueIndex = 0;
     }
-    if (this.queueIndex < this.queue.length - 1) {
+  }
+
+  playNext(autoAdvance = false) {
+    this.ensureQueue();
+    if (this.isShuffle && this.queue.length > 1) {
+      let n = this.queueIndex;
+      while (n === this.queueIndex) n = Math.floor(Math.random() * this.queue.length);
+      this.queueIndex = n;
+    } else if (this.queueIndex < this.queue.length - 1) {
       this.queueIndex++;
     } else {
       this.queueIndex = 0;
@@ -179,27 +212,24 @@ class MediaPlayerEngine {
     const track = this.queue[this.queueIndex];
     if (track) {
       this.loadVideo(track.id, track.title);
-      if (typeof window !== "undefined" && window.showToast) {
-        window.showToast(`${autoAdvance ? "⏭️ შემდეგი ვიდეო" : "⏭️ შემდეგი"}: ${track.title}`, "info", 3000);
-      }
+      this.toast((autoAdvance ? "⏭️ შემდეგი ვიდეო: " : "⏭️ შემდეგი: ") + track.title, "info", 2500);
     }
   }
 
   playPrev() {
-    if (!this.queue || this.queue.length === 0) {
-      this.queue = PRESET_TRACKS.map(t => ({ id: t.id, title: t.title }));
+    this.ensureQueue();
+    // Like every player: after a few seconds "previous" restarts the track.
+    if (this.currentTime > 5) {
+      this.sendCommand("seekTo", [0, true]);
+      this.currentTime = 0;
+      this.updateProgress(0, this.duration);
+      return;
     }
-    if (this.queueIndex > 0) {
-      this.queueIndex--;
-    } else {
-      this.queueIndex = this.queue.length - 1;
-    }
+    if (this.queueIndex > 0) this.queueIndex--; else this.queueIndex = this.queue.length - 1;
     const track = this.queue[this.queueIndex];
     if (track) {
       this.loadVideo(track.id, track.title);
-      if (typeof window !== "undefined" && window.showToast) {
-        window.showToast(`⏮️ წინა: ${track.title}`, "info", 3000);
-      }
+      this.toast("⏮️ წინა: " + track.title, "info", 2500);
     }
   }
 
@@ -217,35 +247,136 @@ class MediaPlayerEngine {
 
   toggleLoop() {
     this.isLoop = !this.isLoop;
-    const btn = typeof document !== "undefined" ? document.getElementById("media-btn-loop") : null;
+    const btn = this.$("media-btn-loop");
     if (btn) btn.classList.toggle("active", this.isLoop);
-    if (typeof window !== "undefined" && window.showToast) {
-      window.showToast(this.isLoop ? "🔂 განმეორება ჩაირთო" : "➡️ ავტო-შემდეგი ჩაირთო", "info", 2000);
-    }
+    this.toast(this.isLoop ? "🔂 განმეორება ჩაირთო" : "➡️ ავტო-შემდეგი ჩაირთო", "info", 2000);
   }
 
+  toggleShuffle() {
+    this.isShuffle = !this.isShuffle;
+    const btn = this.$("media-btn-shuffle");
+    if (btn) btn.classList.toggle("active", this.isShuffle);
+    this.toast(this.isShuffle ? "🔀 შემთხვევითი რიგი ჩაირთო" : "🔀 შემთხვევითი რიგი გამოირთო", "info", 2000);
+  }
+
+  // ---------- rendering ----------
   updatePlayPauseUI(isPlaying) {
-    const btn = typeof document !== "undefined" ? document.getElementById("media-btn-play-pause") : null;
+    const btn = this.$("media-btn-play-pause");
     if (btn) {
-      btn.textContent = isPlaying ? "⏸️" : "▶️";
+      btn.classList.toggle("is-playing", !!isPlaying);
       btn.title = isPlaying ? "დაპაუზება" : "დაკვრა";
+      btn.setAttribute("aria-label", btn.title);
     }
+    if (this.container && this.container.classList) this.container.classList.toggle("paused", !isPlaying);
+  }
+
+  updateProgress(cur, dur) {
+    const fill = this.$("media-progress-fill"), tc = this.$("media-time-cur"), td = this.$("media-time-dur");
+    if (fill) fill.style.width = (dur > 0 ? Math.min(100, (cur / dur) * 100) : 0).toFixed(1) + "%";
+    if (tc) tc.textContent = formatTime(cur);
+    if (td) td.textContent = dur > 0 ? formatTime(dur) : "--:--";
   }
 
   updateTrackTitle(title) {
     this.currentTitle = title || "";
-    const el = typeof document !== "undefined" ? document.getElementById("media-track-title") : null;
-    if (el) {
-      el.textContent = this.currentTitle || "YouTube Music";
-      el.title = this.currentTitle || "";
-    }
-    // Also sync preset selector if present
-    const sel = typeof document !== "undefined" ? document.getElementById("media-preset-select") : null;
-    if (sel && this.currentTrackId) {
-      sel.value = this.currentTrackId;
-    }
+    const el = this.$("media-track-title");
+    if (el) { el.textContent = this.currentTitle || "YouTube"; el.title = this.currentTitle || ""; }
+    const ch = this.$("media-track-channel");
+    if (ch) ch.textContent = this.currentChannel || "";
+    this.markActive();
   }
 
+  markActive() {
+    if (typeof document === "undefined") return;
+    document.querySelectorAll("#media-player-card .media-item").forEach((b) => {
+      b.classList.toggle("active", b.dataset.id === this.currentTrackId);
+    });
+  }
+
+  /** Renders a list of {id,title,channel,length} into #boxId; clicking an item makes that list the queue. */
+  renderList(boxId, items, source) {
+    const box = this.$(boxId);
+    if (!box) return;
+    box.textContent = "";
+    if (!items || !items.length) {
+      const empty = document.createElement("div");
+      empty.className = "media-empty";
+      empty.textContent = source === "history" ? "ისტორია ცარიელია" : "შედეგი ვერ მოიძებნა";
+      box.appendChild(empty);
+      return;
+    }
+    items.forEach((r, idx) => {
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "media-item" + (r.id === this.currentTrackId ? " active" : "");
+      btn.dataset.id = r.id;
+      const img = document.createElement("img");
+      img.className = "media-thumb";
+      img.alt = "";
+      img.loading = "lazy";
+      img.decoding = "async";
+      img.src = thumbUrl(r.id);
+      const txt = document.createElement("span");
+      txt.className = "media-item-text";
+      const t = document.createElement("span");
+      t.className = "media-item-title";
+      t.textContent = r.title;
+      const m = document.createElement("span");
+      m.className = "media-item-meta";
+      m.textContent = r.channel || "";
+      txt.appendChild(t);
+      txt.appendChild(m);
+      const dur = document.createElement("span");
+      dur.className = "media-item-dur";
+      dur.textContent = r.length || "";
+      btn.appendChild(img);
+      btn.appendChild(txt);
+      btn.appendChild(dur);
+      btn.addEventListener("click", () => {
+        this.queue = items.map((x) => ({ id: x.id, title: x.title, channel: x.channel || "", length: x.length || "" }));
+        this.queueIndex = idx;
+        this.loadVideo(r.id, r.title);
+        this.open();
+      });
+      box.appendChild(btn);
+    });
+  }
+
+  showTab(tab) {
+    this.tab = tab === "history" ? "history" : "popular";
+    const tp = this.$("media-tab-popular"), th = this.$("media-tab-history");
+    if (tp) tp.classList.toggle("active", this.tab === "popular");
+    if (th) th.classList.toggle("active", this.tab === "history");
+    if (this.tab === "history") this.renderList("media-list", this.history, "history");
+    else this.loadPopular();
+  }
+
+  async loadPopular(force) {
+    const box = this.$("media-list");
+    if (!box) return;
+    const fresh = this.popular.length && Date.now() - this.popularAt < 10 * 60 * 1000;
+    if (fresh && !force) { this.renderList("media-list", this.popular, "popular"); return; }
+    box.textContent = "";
+    const wait = document.createElement("div");
+    wait.className = "media-empty";
+    wait.textContent = "იტვირთება...";
+    box.appendChild(wait);
+    let list = null;
+    try {
+      const res = await fetch("/api/youtube/search?list=1&n=" + POPULAR_COUNT + "&q=" + encodeURIComponent(POPULAR_QUERY));
+      const data = await res.json();
+      if (data && data.success && Array.isArray(data.results) && data.results.length) {
+        list = data.results.map((r) => ({ id: r.videoId, title: r.title, channel: r.channel, length: r.length }));
+      }
+    } catch (err) {
+      console.warn("YouTube popular list fallback:", err);
+    }
+    if (!list) list = PRESET_TRACKS.map((t) => ({ id: t.id, title: t.title, channel: "", length: "" }));
+    else { this.popular = list; this.popularAt = Date.now(); }
+    if (this.tab === "popular") this.renderList("media-list", list, "popular");
+  }
+
+  // ---------- search ----------
   extractYouTubeId(url) {
     if (!url) return null;
     if (url.length === 11 && !url.includes("/") && !url.includes(".") && !url.includes(" ")) return url;
@@ -257,130 +388,75 @@ class MediaPlayerEngine {
     const q = (input || "").trim();
     if (!q) return;
     if (this.extractYouTubeId(q)) { this.playQueryOrUrl(q); return; }
-    const box = document.getElementById("media-results");
-    if (!box) { this.playQueryOrUrl(q); return; }
-    box.textContent = "🔍 " + q + "...";
-    box.classList.add("show");
+    const box = this.$("media-search-results");
+    if (!box) return;
+    box.textContent = "";
+    const wait = document.createElement("div");
+    wait.className = "media-empty";
+    wait.textContent = "🔍 " + q + "...";
+    box.appendChild(wait);
     try {
-      const res = await fetch("/api/youtube/search?list=1&q=" + encodeURIComponent(q));
+      const res = await fetch("/api/youtube/search?list=1&n=" + SEARCH_COUNT + "&q=" + encodeURIComponent(q));
       const data = await res.json();
       if (data && data.success && Array.isArray(data.results) && data.results.length) {
-        this.renderResults(box, data.results);
+        this.renderList("media-search-results", data.results.map((r) => ({ id: r.videoId, title: r.title, channel: r.channel, length: r.length })), "search");
         return;
       }
     } catch (err) {
       console.warn("YouTube list search fallback:", err);
     }
-    box.classList.remove("show");
     box.textContent = "";
-    this.playQueryOrUrl(q);
-  }
-
-  renderResults(box, results) {
-    box.textContent = "";
-    results.forEach((r, idx) => {
-      const btn = document.createElement("button");
-      btn.type = "button";
-      btn.className = "media-result";
-      const t = document.createElement("span");
-      t.className = "media-result-title";
-      t.textContent = r.title;
-      const m = document.createElement("span");
-      m.className = "media-result-meta";
-      m.textContent = [r.channel, r.length].filter(Boolean).join(" · ");
-      btn.appendChild(t);
-      btn.appendChild(m);
-      btn.addEventListener("click", () => {
-        // Enqueue all search results so the driver can next/prev through the search list!
-        this.queue = results.map(item => ({ id: item.videoId, title: item.title }));
-        this.queueIndex = idx;
-        this.loadVideo(r.videoId, r.title);
-        this.open();
-        box.classList.remove("show");
-        box.textContent = "";
-        const inp = document.getElementById("media-custom-url-input");
-        if (inp) inp.value = "";
-      });
-      box.appendChild(btn);
-    });
-    box.classList.add("show");
+    this.renderList("media-search-results", [], "search");
   }
 
   async playQueryOrUrl(input) {
     if (!input) return;
     const trimmed = input.trim();
     const videoId = this.extractYouTubeId(trimmed);
-
     if (videoId) {
-      this.queue = [{ id: videoId, title: "YouTube Video" }];
+      this.queue = [{ id: videoId, title: "YouTube Video", channel: "", length: "" }];
       this.queueIndex = 0;
       this.loadVideo(videoId, "YouTube Video");
       this.open();
-      if (window.showToast) window.showToast("▶ YouTube ვიდეო ჩაირთო!", "success");
+      this.toast("▶ YouTube ვიდეო ჩაირთო!", "success");
       return;
     }
-
-    if (window.showToast) window.showToast(`🔍 იძებნება: "${trimmed}"...`, "info");
-
-    try {
-      const res = await fetch(`/api/youtube/search?q=${encodeURIComponent(trimmed)}`);
-      const data = await res.json();
-      if (data && data.success && data.videoId) {
-        this.queue = [{ id: data.videoId, title: data.title || trimmed }];
-        this.queueIndex = 0;
-        this.loadVideo(data.videoId, data.title || trimmed);
-        this.open();
-        if (window.showToast) {
-          window.showToast(`▶ ${data.title || trimmed}`, "success", 4000);
-        }
-        return;
-      }
-    } catch (err) {
-      console.warn("YouTube search resolver fallback:", err);
-    }
-
-    // Embed search fallback
-    if (this.iframe) {
-      const origin = (typeof window !== "undefined" && window.location && window.location.origin) ? window.location.origin : "";
-      this.iframe.src = `https://www.youtube-nocookie.com/embed?listType=search&list=${encodeURIComponent(trimmed)}&autoplay=1&enablejsapi=1&origin=${encodeURIComponent(origin)}&playsinline=1&controls=1&modestbranding=1&rel=0&iv_load_policy=3&disablekb=1&vq=tiny`;
-    }
-    this.open();
-    this.updateTrackTitle(trimmed);
-    if (window.showToast) window.showToast(`▶ იკვრება: "${trimmed}"`, "success");
+    this.searchAndShow(trimmed);
   }
 
+  // ---------- playback ----------
   loadVideo(id, title = "") {
     this.currentTrackId = id;
-    if (title) {
-      this.updateTrackTitle(title);
-    } else {
-      const found = PRESET_TRACKS.find(t => t.id === id);
-      if (found) this.updateTrackTitle(found.title);
-    }
+    this.duration = 0;
+    this.currentTime = 0;
+    const item = (this.queue || []).find((q) => q.id === id) || {};
+    const preset = PRESET_TRACKS.find((t) => t.id === id);
+    const name = title || item.title || (preset && preset.title) || "";
+    this.currentChannel = item.channel || "";
+    this.updateTrackTitle(name);
+    this.updateProgress(0, 0);
     if (this.iframe) {
       const origin = (typeof window !== "undefined" && window.location && window.location.origin) ? window.location.origin : "";
-      this.iframe.src = `https://www.youtube-nocookie.com/embed/${id}?autoplay=1&enablejsapi=1&origin=${encodeURIComponent(origin)}&playsinline=1&controls=1&modestbranding=1&rel=0&iv_load_policy=3&disablekb=1&vq=tiny`;
+      this.iframe.src = `https://www.youtube-nocookie.com/embed/${id}?autoplay=1&enablejsapi=1&origin=${encodeURIComponent(origin)}&playsinline=1&controls=0&modestbranding=1&rel=0&iv_load_policy=3&disablekb=1&fs=0&vq=tiny`;
     }
     this.isPlaying = true;
     this.updatePlayPauseUI(true);
+    this.addToHistory({ id, title: name, channel: this.currentChannel, length: item.length || "" });
   }
 
   toggle() {
-    if (this.isOpen) {
-      this.close();
-    } else {
-      this.open();
-    }
+    if (this.isOpen) this.close(); else this.open();
     return this.isOpen;
   }
 
   open() {
     if (typeof window !== "undefined" && window.DRIVING_LOCKOUT && window.currentSpeedKmhForLock > 5) {
-      if (window.showToast) window.showToast("მედია მოძრაობისას დაბლოკილია", "error");
+      this.toast("მედია მოძრაობისას დაბლოკილია", "error");
       return;
     }
     this.isOpen = true;
     if (this.container) this.container.classList.add("active");
+    if (typeof document !== "undefined") this.showTab(this.tab);
     if (this.iframe && (!this.iframe.src || this.iframe.src === "about:blank")) {
       const track = this.queue[this.queueIndex] || PRESET_TRACKS[0];
       this.loadVideo(track.id, track.title);
@@ -391,10 +467,10 @@ class MediaPlayerEngine {
     this.isOpen = false;
     this.isPlaying = false;
     if (this.container) this.container.classList.remove("active");
-    if (this.iframe) {
-      this.iframe.src = "about:blank"; // Stop audio/video
-    }
+    if (this.iframe) this.iframe.src = "about:blank"; // stop audio/video
     this.updatePlayPauseUI(false);
+    const btn = this.$("btn-toggle-media");
+    if (btn) btn.classList.remove("active");
   }
 
   toggleMinimize() {
@@ -404,7 +480,7 @@ class MediaPlayerEngine {
 }
 
 if (typeof module !== "undefined" && module.exports) {
-  module.exports = { PRESET_TRACKS, MediaPlayerEngine };
+  module.exports = { PRESET_TRACKS, MediaPlayerEngine, formatTime, thumbUrl };
 } else {
   window.PRESET_TRACKS = PRESET_TRACKS;
   window.MediaPlayerEngine = MediaPlayerEngine;
