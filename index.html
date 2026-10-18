@@ -14,9 +14,9 @@
   <link rel="apple-touch-icon" href="icon-192.png">
   
   <!-- MapLibre GL CSS (Local Offline) -->
-  <link rel="stylesheet" href="maplibre-gl.css?v=3.10.27">
+  <link rel="stylesheet" href="maplibre-gl.css?v=3.10.29">
   <!-- Custom Stylesheet -->
-  <link rel="stylesheet" href="style.css?v=3.10.27">
+  <link rel="stylesheet" href="style.css?v=3.10.29">
 </head>
 <body>
 
@@ -174,69 +174,6 @@
     </div>
   </section>
 
-  <!-- FLOATING IN-CAR YOUTUBE PLAYER (two panes, v3.10.26): left = video + controls + popular/history, right = search -->
-  <aside id="media-player-card" class="media-player-card paused" aria-label="YouTube">
-    <div class="media-player-header">
-      <div class="media-title">
-        <svg viewBox="0 0 24 24" width="26" height="26" fill="#e82127" aria-hidden="true">
-          <path d="M21.58 7.19a2.5 2.5 0 0 0-1.76-1.77C18.26 5 12 5 12 5s-6.26 0-7.82.42A2.5 2.5 0 0 0 2.42 7.2C2 8.76 2 12 2 12s0 3.24.42 4.81a2.5 2.5 0 0 0 1.76 1.77C5.74 19 12 19 12 19s6.26 0 7.82-.42a2.5 2.5 0 0 0 1.76-1.77C22 15.24 22 12 22 12s0-3.24-.42-4.81zM10 15V9l5.2 3L10 15z"/>
-        </svg>
-        <span>YouTube</span>
-      </div>
-      <button id="media-close-btn" class="media-btn-icon" type="button" title="დახურვა" aria-label="დახურვა">✕</button>
-    </div>
-    <div class="media-panes">
-      <section class="media-pane media-pane-left">
-        <div class="media-video-wrapper">
-          <iframe id="youtube-iframe" src="about:blank" allow="autoplay; encrypted-media; picture-in-picture"></iframe>
-          <div id="media-tap-layer" class="media-tap-layer" title="დაკვრა / პაუზა">
-            <span class="media-pause-badge" aria-hidden="true">
-              <svg viewBox="0 0 24 24" width="30" height="30" fill="#fff"><path d="M8 5h3v14H8zM13 5h3v14h-3z"/></svg>
-            </span>
-          </div>
-        </div>
-        <div class="media-now">
-          <div id="media-track-title" class="media-track-title">Synthwave / Cyberpunk Night Drive</div>
-          <div id="media-track-channel" class="media-track-channel"></div>
-        </div>
-        <div class="media-progress-row">
-          <div id="media-progress" class="media-progress" role="slider" aria-label="პროგრესი"><div id="media-progress-fill" class="media-progress-fill"></div></div>
-          <div class="media-times"><span id="media-time-cur">0:00</span><span id="media-time-dur">--:--</span></div>
-        </div>
-        <div class="media-playback-bar">
-          <button id="media-btn-shuffle" class="media-ctrl-btn" type="button" title="შემთხვევითი რიგი" aria-label="შემთხვევითი რიგი">
-            <svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor"><path d="M10.59 9.17 5.41 4 4 5.41l5.17 5.17 1.42-1.41zM14.5 4l2.04 2.04L4 18.59 5.41 20 17.96 7.46 20 9.5V4h-5.5zm.33 9.41-1.41 1.41 3.13 3.13L14.5 20H20v-5.5l-2.04 2.04-3.13-3.13z"/></svg>
-          </button>
-          <button id="media-btn-prev" class="media-ctrl-btn" type="button" title="წინა" aria-label="წინა">
-            <svg viewBox="0 0 24 24" width="24" height="24" fill="currentColor"><path d="M6 6h2v12H6zm3.5 6 8.5 6V6z"/></svg>
-          </button>
-          <button id="media-btn-play-pause" class="media-ctrl-btn play-pause-btn" type="button" title="დაკვრა / დაპაუზება" aria-label="დაკვრა / დაპაუზება">
-            <svg class="ico-play" viewBox="0 0 24 24" width="32" height="32" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
-            <svg class="ico-pause" viewBox="0 0 24 24" width="32" height="32" fill="currentColor"><path d="M6 5h4v14H6zm8 0h4v14h-4z"/></svg>
-          </button>
-          <button id="media-btn-next" class="media-ctrl-btn" type="button" title="შემდეგი" aria-label="შემდეგი">
-            <svg viewBox="0 0 24 24" width="24" height="24" fill="currentColor"><path d="M6 18l8.5-6L6 6v12zM16 6v12h2V6h-2z"/></svg>
-          </button>
-          <button id="media-btn-loop" class="media-ctrl-btn" type="button" title="განმეორება" aria-label="განმეორება">
-            <svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor"><path d="M7 7h10v3l4-4-4-4v3H5v6h2V7zm10 10H7v-3l-4 4 4 4v-3h12v-6h-2v4z"/></svg>
-          </button>
-        </div>
-        <div class="media-tabs" role="tablist">
-          <button id="media-tab-popular" class="media-tab active" type="button" role="tab">პოპულარული მუსიკა</button>
-          <button id="media-tab-history" class="media-tab" type="button" role="tab">ისტორია</button>
-        </div>
-        <div id="media-list" class="media-list"></div>
-      </section>
-      <section class="media-pane media-pane-right">
-        <div class="media-input-wrapper">
-          <input type="text" id="media-custom-url-input" class="media-input" placeholder="YouTube-ზე ძებნა ან ლინკის ჩასმა..." autocomplete="off" enterkeyhint="search">
-          <button id="media-load-custom-btn" class="media-load-btn" type="button">ძებნა</button>
-        </div>
-        <div id="media-search-results" class="media-list media-search-list"></div>
-      </section>
-    </div>
-  </aside>
-
   <!-- RIGHT DOCK CONTROLS (Compact Vertical Touch Strip) -->
   <aside id="chargers-drawer" class="chargers-drawer" aria-label="EV დამტენების სია">
     <div class="cd-head">
@@ -338,17 +275,7 @@
 
     <div class="dock-divider"></div>
 
-    <!-- Group 3: Media & System Tools -->
-    <button id="btn-toggle-media" class="dock-btn" title="YouTube / მუსიკა">
-      <svg viewBox="0 0 24 24">
-        <rect x="2" y="3" width="20" height="14" rx="2" stroke="currentColor" fill="none"/>
-        <polygon points="10 7 15 10 10 13 10 7" fill="currentColor"/>
-        <line x1="8" y1="21" x2="16" y2="21"></line>
-        <line x1="12" y1="17" x2="12" y2="21"></line>
-      </svg>
-      <span class="dock-tooltip">YouTube მუსიკა</span>
-    </button>
-
+    <!-- Group 3: System Tools -->
     <button id="btn-toggle-voice" class="dock-btn active" title="ხმოვანი ნავიგაცია">
       <svg viewBox="0 0 24 24">
         <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon>
@@ -513,18 +440,11 @@
               <input type="checkbox" id="input-avoid-unpaved" class="setting-checkbox">
             </div>
 
-            <div class="setting-group theater-mode-row">
-              <div>
-                <label class="setting-label" style="margin-bottom: 2px;">🎬 Tesla Theater სრული ეკრანი:</label>
-                <span class="theater-warn-sub">(მხოლოდ გაჩერებულზე / P-ში)</span>
-              </div>
-              <button id="btn-launch-theater" class="btn-theater-launch" type="button">გაშვება</button>
-            </div>
           </div>
         </div>
       </div>
       <div class="modal-footer">
-        <span class="settings-version-tag" style="margin-right: auto; font-size: 0.8rem; color: var(--text-secondary); opacity: 0.8;">ვერსია: v3.10.27</span>
+        <span class="settings-version-tag" style="margin-right: auto; font-size: 0.8rem; color: var(--text-secondary); opacity: 0.8;">ვერსია: v3.10.29</span>
         <button id="modal-cancel-btn" class="btn-secondary">გაუქმება</button>
         <button id="modal-save-btn" class="btn-primary">შენახვა</button>
       </div>
@@ -532,24 +452,23 @@
   </div>
 
   <!-- MapLibre GL JS (Local Offline - Hardware Accelerated WebGL Engine) -->
-  <script src="maplibre-gl.js?v=3.10.27"></script>
-  <script src="map-gl.js?v=3.10.27"></script>
+  <script src="maplibre-gl.js?v=3.10.29"></script>
+  <script src="map-gl.js?v=3.10.29"></script>
   <!-- QR Code Generator -->
   <script src="qrcode.min.js"></script>
   <!-- Application Engines -->
-  <script src="speech.js?v=3.10.27"></script>
-  <script src="weather.js?v=3.10.27"></script>
-  <script src="battery.js?v=3.10.27"></script>
-  <script src="chargers.js?v=3.10.27"></script>
-  <script src="charger-list.js?v=3.10.27"></script>
-  <script src="search.js?v=3.10.27"></script>
-  <script src="tesla-style.js?v=3.10.27"></script>
-  <script src="traffic-signals.js?v=3.10.27"></script>
-  <script src="traffic.js?v=3.10.27"></script>
-  <script src="media-player.js?v=3.10.27"></script>
-  <script src="routing.js?v=3.10.27"></script>
-  <script src="speed-limit.js?v=3.10.27"></script>
-  <script src="sim-drive.js?v=3.10.27"></script>
-  <script src="app.js?v=3.10.27"></script>
+  <script src="speech.js?v=3.10.29"></script>
+  <script src="weather.js?v=3.10.29"></script>
+  <script src="battery.js?v=3.10.29"></script>
+  <script src="chargers.js?v=3.10.29"></script>
+  <script src="charger-list.js?v=3.10.29"></script>
+  <script src="search.js?v=3.10.29"></script>
+  <script src="tesla-style.js?v=3.10.29"></script>
+  <script src="traffic-signals.js?v=3.10.29"></script>
+  <script src="traffic.js?v=3.10.29"></script>
+  <script src="routing.js?v=3.10.29"></script>
+  <script src="speed-limit.js?v=3.10.29"></script>
+  <script src="sim-drive.js?v=3.10.29"></script>
+  <script src="app.js?v=3.10.29"></script>
 </body>
 </html>

@@ -19,7 +19,7 @@ const STATIC_WHITELIST = new Set([
   'index.html','remote.html','style.css','qrcode.min.js',
   'maplibre-gl.js','maplibre-gl.css','map-gl.js',
   'app.js','routing.js','traffic.js','traffic-signals.js','chargers.js','charger-list.js','search.js','tesla-style.js',
-  'battery.js','weather.js','speech.js','media-player.js','speed-limit.js',
+  'battery.js','weather.js','speech.js','speed-limit.js',
   'sim-drive.js',
   'manifest.json','icon.svg','icon-192.png','icon-512.png','sw.js'
 ]);
@@ -229,7 +229,7 @@ function isPublicAuthPath(p) {
   return false;
 }
 
-const ALLOWED_EVENT_TYPES = new Set(['destination','gps','media']);
+const ALLOWED_EVENT_TYPES = new Set(['destination','gps']);
 const CODE_RE = /^[A-Z0-9]{12,32}$/;
 const MAX_BODY = 8 * 1024;
 // Behind a reverse proxy (Render) the TCP peer is the proxy, so "localhost only" can't work.
@@ -598,225 +598,6 @@ function searchNominatimProxy(query, bias) {
   });
 }
 
-// Resolve YouTube search query to Video ID
-function resolveYouTubeQuery(query) {
-  return new Promise((resolve) => {
-    const url = 'https://www.youtube.com/results?search_query=' + encodeURIComponent(query);
-    const req = https.get(url, {
-      headers: {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-        'Accept-Language': 'ka-GE,ka;q=0.9,en-US;q=0.8,en;q=0.7',
-        'Cookie': 'CONSENT=YES+cb.20210328-17-p0.en+FX+917; SOCS=CAI'
-      },
-      timeout: 6000
-    }, resp => {
-      let body = '';
-      resp.on('data', chunk => body += chunk);
-      resp.on('end', () => {
-        const idMatch = body.match(/"videoId":"([a-zA-Z0-9_-]{11})"/);
-        const titleMatch = body.match(/"title":{"runs":\[{"text":"(.*?)"/);
-        if (idMatch && idMatch[1]) {
-          resolve({
-            success: true,
-            videoId: idMatch[1],
-            title: titleMatch ? titleMatch[1] : query
-          });
-        } else {
-          resolve({ success: false, fallbackQuery: query });
-        }
-      });
-    });
-    req.on('error', err => resolve({ success: false, fallbackQuery: query, error: err.message }));
-    req.on('timeout', () => { req.destroy(); resolve({ success: false, fallbackQuery: query, error: 'timeout' }); });
-  });
-}
-
-// YouTube search RESULTS (list of videos to pick from). Parses ytInitialData from the public results page.
-const ytListCache = new Map();
-function parseYouTubeResults(body, max) {
-  const out = [], seen = new Set();
-  const push = (id, title, channel, length) => {
-    if (!/^[a-zA-Z0-9_-]{11}$/.test(id || '') || seen.has(id) || !title) return;
-    seen.add(id);
-    out.push({ videoId: id, title: String(title).slice(0, 140), channel: String(channel || '').slice(0, 80), length: String(length || '').slice(0, 12) });
-  };
-  try {
-    const trimmed = body.trimStart();
-    const m = trimmed[0] === '{' ? [null, trimmed] : body.match(/ytInitialData\s*=\s*(\{[\s\S]*?\});\s*<\/script>/);
-    if (m) {
-      const data = JSON.parse(m[1]);
-      const walk = (o, depth) => {
-        if (!o || typeof o !== 'object' || depth > 40 || out.length >= max) return;
-        if (o.videoRenderer && o.videoRenderer.videoId) {
-          const v = o.videoRenderer;
-          push(v.videoId,
-            v.title && v.title.runs && v.title.runs[0] && v.title.runs[0].text,
-            v.ownerText && v.ownerText.runs && v.ownerText.runs[0] && v.ownerText.runs[0].text,
-            v.lengthText && v.lengthText.simpleText);
-        }
-        for (const k of Object.keys(o)) walk(o[k], depth + 1);
-      };
-      walk(data, 0);
-    }
-  } catch (_) { /* fall through to the regex fallback */ }
-  if (out.length === 0) {
-    const re = /"videoId":"([a-zA-Z0-9_-]{11})"[\s\S]{0,400}?"title":\{"runs":\[\{"text":"((?:[^"\\]|\\.)*)"/g;
-    let r;
-    while ((r = re.exec(body)) && out.length < max) {
-      let t = r[2]; try { t = JSON.parse('"' + t + '"'); } catch (_) {}
-      push(r[1], t, '', '');
-    }
-  }
-  return out.slice(0, max);
-}
-
-// Official YouTube Data API v3 (preferred when YOUTUBE_API_KEY is set; the HTML scraping above is the fallback).
-// Quota: search = 100 units, videos.list = 1 unit; default 10,000 units/day = ~100 searches/day (results are cached 10 min).
-const YOUTUBE_API_KEY = (process.env.YOUTUBE_API_KEY || '').trim();
-function decodeHtmlEntities(t) {
-  return String(t || '').replace(/&(#x?[0-9a-f]+|amp|lt|gt|quot|apos);/gi, (m, e) => {
-    const l = e.toLowerCase();
-    if (l === 'amp') return '&'; if (l === 'lt') return '<'; if (l === 'gt') return '>';
-    if (l === 'quot') return '"'; if (l === 'apos') return "'";
-    const n = l[1] === 'x' ? parseInt(l.slice(2), 16) : parseInt(l.slice(1), 10);
-    return Number.isFinite(n) && n > 0 && n < 0x110000 ? String.fromCodePoint(n) : m;
-  });
-}
-function isoDurationToText(iso) {
-  const m = /^P(?:(\d+)D)?T?(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?$/.exec(iso || '');
-  if (!m) return '';
-  const h = (+m[1] || 0) * 24 + (+m[2] || 0), mi = +m[3] || 0, se = +m[4] || 0;
-  const p2 = n => String(n).padStart(2, '0');
-  return h ? `${h}:${p2(mi)}:${p2(se)}` : `${mi}:${p2(se)}`;
-}
-function httpsGetJson(url) {
-  return new Promise((resolve, reject) => {
-    const req = https.get(url, { timeout: 6000 }, resp => {
-      let body = '';
-      resp.on('data', c => { body += c; if (body.length > 1024 * 1024) resp.destroy(); });
-      resp.on('end', () => {
-        if (resp.statusCode !== 200) return reject(new Error('HTTP ' + resp.statusCode));
-        try { resolve(JSON.parse(body)); } catch (e) { reject(new Error('bad JSON')); }
-      });
-      resp.on('error', reject);
-    });
-    req.on('error', reject);
-    req.on('timeout', () => { req.destroy(); reject(new Error('timeout')); });
-  });
-}
-
-async function searchYouTubeApi(query, max) {
-  const base = 'https://www.googleapis.com/youtube/v3/';
-  const s = await httpsGetJson(base + 'search?part=snippet&type=video&maxResults=' + max + '&videoEmbeddable=true&safeSearch=moderate'
-    + '&q=' + encodeURIComponent(query) + '&key=' + encodeURIComponent(YOUTUBE_API_KEY));
-  const items = (s.items || []).filter(i => i && i.id && /^[a-zA-Z0-9_-]{11}$/.test(i.id.videoId || ''));
-  if (!items.length) return { success: false, results: [] };
-  let dur = {};
-  try {
-    const v = await httpsGetJson(base + 'videos?part=contentDetails&id=' + items.map(i => i.id.videoId).join(',')
-      + '&key=' + encodeURIComponent(YOUTUBE_API_KEY));
-    (v.items || []).forEach(x => { dur[x.id] = isoDurationToText(x.contentDetails && x.contentDetails.duration); });
-  } catch (_) { /* durations are optional */ }
-  return {
-    success: true,
-    results: items.map(i => ({
-      videoId: i.id.videoId,
-      title: decodeHtmlEntities(i.snippet && i.snippet.title).slice(0, 140),
-      channel: decodeHtmlEntities(i.snippet && i.snippet.channelTitle).slice(0, 80),
-      length: dur[i.id.videoId] || ''
-    }))
-  };
-}
-
-// Keyless JSON endpoint used by youtube.com itself (more stable than parsing the HTML page).
-function searchYouTubeInnerTube(query, max) {
-  return new Promise((resolve) => {
-    const payload = JSON.stringify({
-      context: { client: { clientName: 'WEB', clientVersion: '2.20240101.00.00', hl: 'ka', gl: 'GE' } },
-      query
-    });
-    const req = https.request('https://www.youtube.com/youtubei/v1/search?prettyPrint=false', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Content-Length': Buffer.byteLength(payload),
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-        'Cookie': 'CONSENT=YES+cb.20210328-17-p0.en+FX+917; SOCS=CAI'
-      },
-      timeout: 6000
-    }, resp => {
-      let body = '';
-      resp.on('data', c => { body += c; if (body.length > 4 * 1024 * 1024) resp.destroy(); });
-      resp.on('end', () => {
-        const results = resp.statusCode === 200 ? parseYouTubeResults(body, max) : [];
-        resolve({ success: results.length > 0, results });
-      });
-      resp.on('error', () => resolve({ success: false, results: [] }));
-    });
-    req.on('error', () => resolve({ success: false, results: [] }));
-    req.on('timeout', () => { req.destroy(); resolve({ success: false, results: [] }); });
-    req.write(payload);
-    req.end();
-  });
-}
-
-function searchYouTubeList(query, max) {
-  max = Math.min(15, Math.max(1, (max | 0) || 6));
-  return new Promise((resolve) => {
-    const key = query.toLowerCase() + '|' + max;
-    const hit = ytListCache.get(key);
-    if (hit && Date.now() - hit.t < 10 * 60 * 1000) return resolve(hit.v);
-    const done = v => {
-      if (v && v.success) {
-        ytListCache.set(key, { t: Date.now(), v });
-        if (ytListCache.size > 100) ytListCache.delete(ytListCache.keys().next().value);
-        resolve(v);
-        return true;
-      }
-      return false;
-    };
-    const viaPage = () => scrapeYouTubeList(query, key, resolve, max);
-    const viaInnerTube = () => searchYouTubeInnerTube(query, max).then(v => { if (!done(v)) viaPage(); }).catch(viaPage);
-    if (YOUTUBE_API_KEY) {
-      searchYouTubeApi(query, max).then(v => { if (!done(v)) viaInnerTube(); }).catch(err => {
-        console.warn('[YouTube API] ' + err.message + ' - falling back');
-        viaInnerTube();
-      });
-      return;
-    }
-    viaInnerTube();
-  });
-}
-
-function scrapeYouTubeList(query, key, resolve, max) {
-  {
-    const url = 'https://www.youtube.com/results?search_query=' + encodeURIComponent(query);
-    const req = https.get(url, {
-      headers: {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-        'Accept-Language': 'ka-GE,ka;q=0.9,en-US;q=0.8,en;q=0.7',
-        'Cookie': 'CONSENT=YES+cb.20210328-17-p0.en+FX+917; SOCS=CAI'
-      },
-      timeout: 6000
-    }, resp => {
-      let body = '';
-      resp.on('data', chunk => { body += chunk; if (body.length > 4 * 1024 * 1024) resp.destroy(); });
-      resp.on('end', () => {
-        const results = parseYouTubeResults(body, max);
-        const v = { success: results.length > 0, results };
-        if (v.success) {
-          ytListCache.set(key, { t: Date.now(), v });
-          if (ytListCache.size > 100) ytListCache.delete(ytListCache.keys().next().value);
-        }
-        resolve(v);
-      });
-      resp.on('error', () => resolve({ success: false, results: [] }));
-    });
-    req.on('error', () => resolve({ success: false, results: [] }));
-    req.on('timeout', () => { req.destroy(); resolve({ success: false, results: [] }); });
-  }
-}
-
 const PIN_LOGIN_HTML = `<!DOCTYPE html>
 <html lang="ka">
 <head>
@@ -1094,38 +875,6 @@ const server = http.createServer((req, res) => {
     return;
   }
 
-  // API Endpoint: /api/youtube/search (Resolve song or artist name to YouTube Video ID)
-  if (pathname === '/api/youtube/search') {
-    const q = (urlObj.searchParams.get('q') || '').trim();
-    if (!q) {
-      res.writeHead(400, { 'Content-Type': 'application/json' });
-      res.end(JSON.stringify({ error: 'Missing query parameter q' }));
-      return;
-    }
-
-    if (urlObj.searchParams.get('list') === '1') {
-      if (searchRateLimited(clientIp(req))) {
-        res.writeHead(429, { 'Content-Type': 'application/json; charset=utf-8', 'Retry-After': '60' });
-        res.end(JSON.stringify({ success: false, results: [] }));
-        return;
-      }
-      searchYouTubeList(q.slice(0, 120), parseInt(urlObj.searchParams.get('n'), 10) || 6).then(result => {
-        res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
-        res.end(JSON.stringify(result));
-      });
-      return;
-    }
-
-    resolveYouTubeQuery(q).then(result => {
-      res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
-      res.end(JSON.stringify(result));
-    }).catch(err => {
-      res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
-      res.end(JSON.stringify({ success: false, fallbackQuery: q, error: err.message }));
-    });
-    return;
-  }
-
   // API Endpoint: /api/search (Server-side geocoding proxy with 24h cache & 1s rate-limiting)
   if (pathname === '/api/search') {
     const q = (urlObj.searchParams.get('q') || '').trim().slice(0, 200);
@@ -1226,7 +975,7 @@ const server = http.createServer((req, res) => {
       try {
         const payload = JSON.parse(bodyStr || '{}');
         const code = (payload.code || '').toUpperCase().trim();
-        const type = payload.type; // 'destination', 'gps', 'media'
+        const type = payload.type; // 'destination', 'gps'
         const data = payload.data;
 
         if (!CODE_RE.test(code) || !ALLOWED_EVENT_TYPES.has(type) || typeof data !== 'object' || data === null) {

@@ -1,7 +1,7 @@
 /**
  * Tesla Model 3 Navigation - Main Application Controller
  * Enhanced with Live Weather, Battery/Energy calculations, EV Chargers layer,
- * In-Car YouTube Media Player, and Multi-Style Map Engine.
+ * and Multi-Style Map Engine.
  */
 
 // Global State
@@ -21,10 +21,9 @@ let speechAssistant = null;
 let weatherEngine = null;
 let batteryEngine = null;
 let chargersEngine = null;
-let mediaEngine = null;
 let speedLimitEngine = null;
 
-// Driving lockout switch (false keeps YouTube & search unrestricted while driving by user command)
+// Driving lockout switch (false keeps search unrestricted while driving by user command)
 const DRIVING_LOCKOUT = false;
 window.DRIVING_LOCKOUT = DRIVING_LOCKOUT;
 
@@ -135,7 +134,7 @@ function initClock() {
 const OFM_STYLE_URL = "https://tiles.openfreemap.org/styles/liberty";
 const OFM_STYLE_CACHE_KEY = "tesla_nav_ofm_style_v1";
 const MAP_STYLE_KEYS = ["openfreemap", "google-roads"];
-const APP_VERSION = "3.10.27";
+const APP_VERSION = "3.10.29";
 const MAP_DEFAULT_ZOOM = 16;      // MapLibre zoom (Leaflet-equivalent 17)
 // Performance experiments (all default to the normal behaviour): ?labels=0 hides the base-map labels/icons, ?markers=0 skips the
 // charger DOM markers, ?pitch=N sets the heading-up tilt (0-60). Used to find what makes the car's browser slow.
@@ -358,7 +357,9 @@ function initMap() {
     if (on === detailOn || !PERF.lite) return;
     detailOn = on;
     try {
-      window.MapGL.pickLiteDetail(map.getStyle().layers, "openmaptiles").forEach((id) => map.setLayoutProperty(id, "visibility", on ? "visible" : "none"));
+      // House numbers are NOT toggled here: they follow the speed watcher below (shown while crawling, not only when standing).
+      window.MapGL.pickLiteDetail(map.getStyle().layers, "openmaptiles").filter((id) => id !== "housenumber")
+        .forEach((id) => map.setLayoutProperty(id, "visibility", on ? "visible" : "none"));
     } catch (_) {}
   };
   setInterval(() => {
@@ -367,11 +368,12 @@ function initMap() {
     else { stillSince = 0; setDetail(false); }
   }, 500);
   map.on("styledata", () => { applyLite(); if (detailOn) { detailOn = false; setDetail(true); } hnOn = null; });
-  // Normal (non-Lite) mode: house numbers are shown while the car crawls/stands (< 15 km/h) and hidden while driving (> 25 km/h).
+  // House numbers, both modes: shown while the car crawls/stands, hidden while driving. Normal mode: on < 15 km/h, off > 25.
+  // Lite (the car's usual mode, placing labels costs CPU on the Atom): on < 12 km/h, off > 20. (Before v3.10.29 Lite showed them only at a stand-still.)
   let hnOn = null;
   setInterval(() => {
-    if (PERF.lite) return;   // Lite has its own stand-still logic above
-    const want = hnOn === false ? currentSpeedKmh < 15 : currentSpeedKmh <= 25;
+    const onBelow = PERF.lite ? 12 : 15, offAbove = PERF.lite ? 20 : 25;
+    const want = hnOn === false ? currentSpeedKmh < onBelow : currentSpeedKmh <= offAbove;
     if (want === hnOn) return;
     hnOn = want;
     try { if (map.getLayer("housenumber")) map.setLayoutProperty("housenumber", "visibility", want ? "visible" : "none"); } catch (_) { hnOn = null; }
@@ -641,7 +643,6 @@ function initSubsystems() {
     }, false);   // map markers are OFF by default: chargers live in the list drawer (dock button); the bolt button still shows them on the map
     window.chargersEngine = chargersEngine;
   } catch (e) { console.warn("chargersEngine init notice:", e); }
-  try { mediaEngine = new MediaPlayerEngine(); window.mediaEngine = mediaEngine; } catch (e) { console.warn("mediaEngine init notice:", e); }
 
   try {
     routingEngine = new RoutingEngine(map, trafficEngine, trafficSignalsEngine, speechAssistant, batteryEngine);
@@ -1065,10 +1066,6 @@ function updateVehicleMarker(lat, lng, headingDeg, speedKmh, accuracyMeters = nu
     if (si && si.disabled !== driving) {
       si.disabled = driving;
       si.placeholder = driving ? "🚫 ძებნა მოძრაობისას გამორთულია" : "მოძებნეთ მისამართი ან ობიექტი...";
-    }
-    if (driving && mediaEngine && mediaEngine.isOpen) {
-      mediaEngine.close();
-      showToast("მედია გამორთულია მოძრაობისას", "info", 2500);
     }
   }
 
@@ -1753,22 +1750,6 @@ async function requestWakeLock() {
   }
 }
 
-function launchTeslaTheaterMode() {
-  if (window.currentSpeedKmhForLock > 3) {
-    showToast("⚠️ Tesla Theater მუშაობს მხოლოდ გაჩერებულზე (P-ში)!", "error", 4500);
-    return;
-  }
-  let liveUrl = window.location.href;
-  if (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1") {
-    liveUrl = "https://apev.onrender.com";
-  }
-  const theaterUrl = `https://www.youtube.com/redirect?q=${encodeURIComponent(liveUrl)}`;
-  showToast("YouTube-ი ჰკითხავს, გსურთ თუ არა გვერდის დატოვება: დააჭირეთ „GO TO SITE“ / „გადასვლა“ და საიტი სრულ ეკრანზე გაიხსნება", "info", 6500);
-  setTimeout(() => {
-    window.location.href = theaterUrl;
-  }, 3500);
-}
-
 // In-page battery % dialog (replaces the blocking native prompt(), which is unusable on the car screen)
 function openBatteryDialog(current, modelName) {
   let ov = document.getElementById("battery-dialog");
@@ -1877,15 +1858,6 @@ function initEventListeners() {
     });
     btnChargersList.addEventListener("click", () => btnChargersList.classList.toggle("active", drawer.toggle()));
     drawer.el && drawer.el.querySelector(".cd-close").addEventListener("click", () => btnChargersList.classList.remove("active"));
-  }
-
-  // Toggle In-Car YouTube Media Player
-  const btnMedia = document.getElementById("btn-toggle-media");
-  if (btnMedia) {
-    btnMedia.addEventListener("click", () => {
-      const open = mediaEngine.toggle();
-      btnMedia.classList.toggle("active", open);
-    });
   }
 
   // Map Style Menu Toggle
@@ -2029,15 +2001,6 @@ function initEventListeners() {
   if (selectTeslaModel) selectTeslaModel.value = batteryEngine.modelKey;
   document.getElementById("input-initial-soc").value = batteryEngine.currentSoC;
 
-  // Tesla Theater Launcher in Settings
-  const btnLaunchTheater = document.getElementById("btn-launch-theater");
-  if (btnLaunchTheater) {
-    btnLaunchTheater.addEventListener("click", () => {
-      modal.classList.remove("open");
-      launchTeslaTheaterMode();
-    });
-  }
-
   // Remote Phone Companion Modal & Pairing Setup
   const remoteModal = document.getElementById("remote-modal");
   const btnRemote = document.getElementById("btn-remote-phone");
@@ -2140,18 +2103,6 @@ function initRemoteSession() {
       }
     });
 
-    remoteEventSource.addEventListener("media", (e) => {
-      try {
-        const payload = JSON.parse(e.data);
-        if (mediaEngine && payload.query) {
-          mediaEngine.playQueryOrUrl(payload.query);
-          showToast(`🎵 YouTube გაშვებულია ტელეფონიდან: ${payload.title || payload.query}`, "success", 4000);
-        }
-      } catch (err) {
-        console.error("Malformed remote media payload:", err);
-      }
-    });
-
     remoteEventSource.addEventListener("gps", (e) => {
       try {
         const payload = JSON.parse(e.data);
@@ -2204,6 +2155,19 @@ function initRemoteSession() {
 (function setupDebugHud() {
   let el = null, timer = null, taps = [];
   const f = (v, n = 1) => (typeof v === "number" && isFinite(v) ? v.toFixed(n) : "-");
+  // House-number diagnosis: is the layer there, is it switched on, is the zoom high enough, does the tile data hold any numbers here?
+  function hnLine() {
+    try {
+      if (!map.getLayer("housenumber")) return "housenumbers: layer MISSING (style has no housenumber source)";
+      const vis = map.getLayoutProperty("housenumber", "visibility") !== "none";
+      const now = Date.now();
+      if (!hnLine.t || now - hnLine.t > 1000) {
+        hnLine.t = now;
+        hnLine.n = map.getZoom() >= 16 && vis ? map.queryRenderedFeatures({ layers: ["housenumber"] }).length : null;
+      }
+      return "housenumbers: " + (vis ? "ON" : "off(speed)") + "  zoom>=16 " + (map.getZoom() >= 16 ? "yes" : "NO") + "  in view " + (hnLine.n == null ? "-" : hnLine.n) + "  lite " + (PERF.lite ? "yes" : "no");
+    } catch (_) { return "housenumbers: n/a"; }
+  }
   function render() {
     if (!el || !window.map || !window.carMarker) return;
     const d = window.__dbg || { fixes: [] }, fx = d.fixes, now = Date.now();
@@ -2231,7 +2195,8 @@ function initRemoteSession() {
       "flags: dpr " + f(map.getPixelRatio && map.getPixelRatio(), 2) + "  pitch " + (PERF.pitch != null ? PERF.pitch : "45*") + "  labels " + (PERF.labels ? "on" : "OFF") + "  markers " + (PERF.markers ? "on" : "OFF") + "  look " + (window.__teslaLook ? (window.__lookMode === "mono" ? "MONO" : "TESLA") : "classic"),
       "bearing " + f(map.getBearing(), 0) + "  pitch " + f(map.getPitch(), 0) + "  zoom " + f(map.getZoom(), 1) + "  pad " + padTop,
       "arrow offset from expected: dx " + f(dx, 0) + "  dy " + f(dy, 0) + " px",
-      "heading used " + f(lastKnownValidHeading, 0) + "  speed " + currentSpeedKmh + " km/h"
+      "heading used " + f(lastKnownValidHeading, 0) + "  speed " + currentSpeedKmh + " km/h",
+      hnLine()
     ];
     fx.slice(-5).forEach(q => lines.push(((now - q.t) / 1000).toFixed(1).padStart(5) + "s  " + q.lat.toFixed(5) + "," + q.lng.toFixed(5) + "  a" + f(q.acc, 0) + " s" + f(q.spd) + " h" + f(q.hdg, 0)));
     el.textContent = lines.join("\n");

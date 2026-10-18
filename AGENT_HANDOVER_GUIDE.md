@@ -26,7 +26,6 @@ This application provides a native-feeling, zero-lag, 60 FPS web navigation syst
 ### Phase 2: Eco-System & Tesla Features
 * **Battery & Energy Estimator (`battery.js`):** Calculates trip energy consumption (kWh) and Arrival State of Charge (SoC %) based on vehicle profiles.
 * **Live Weather (`weather.js`):** Open-Meteo API integration for local temperature, wind, and conditions.
-* **YouTube In-Car Music (`media-player.js`):** Corner picture-in-picture player for background YouTube music.
 * **Traffic Signals (`traffic-signals.js`):** Tbilisi signalized intersections layer with 350m proximity HUD alerts via Overpass API.
 * **EV Chargers Layer (`chargers.js`):** Fast charging stations across Georgia with 1-click route calculation.
 
@@ -37,7 +36,7 @@ This application provides a native-feeling, zero-lag, 60 FPS web navigation syst
    * 🗺️ **Google Maps (Roads)**
    * 🛰️ **Google Satellite Hybrid**
    * 🟡 **Yandex Maps (with live traffic & score)**
-4. **Phone Remote Companion (`remote.html`):** QR code modal on car screen. Passengers scan to search destinations, dictate addresses by voice, or paste YouTube links/search terms directly to the car screen.
+4. **Phone Remote Companion (`remote.html`):** QR code modal on car screen. Passengers scan to search destinations, dictate addresses by voice, or send GPS fixes directly to the car screen.
 5. **1-Click Day/Night Mode:** Global high-contrast theme toggle for night driving.
 6. **Reverse Gear Recovery:** Auto-persists route state to LocalStorage so page reloads upon reversing don't lose the route.
 7. **Avoid Unpaved Roads:** Added OSRM parameter `exclude=unpaved`.
@@ -145,14 +144,13 @@ tesla-nav/
 ├── battery.js           # Official Tesla 2018-2023 Model 3/Y specs & SoC trip calculator
 ├── weather.js           # Open-Meteo live weather client
 ├── speech.js            # Georgian voice navigation assistant
-├── media-player.js      # Picture-in-picture YouTube player with Auto-Advance Queue & Controls
 ├── speed-limit.js      # OSM Overpass live maxspeed engine with spatial grid cache & fallback
 ├── traffic-signals.js   # Live traffic lights layer via Overpass API (+-50 deg heading filter)
 ├── traffic.js           # Traffic layer coordinator
 ├── server.js            # Node.js HTTP/SSE server, Multi-PIN Single-Device lock, /api/search proxy, EV auto-sync
 ├── sw.js                # Service Worker for instant PWA caching & R-gear instant reload
 ├── remote.html          # Smartphone web companion (QR code target, search, voice dictation)
-├── chargers-cache.json  # 650+ cached charging stations across Georgia
+├── chargers-cache.json  # 570+ cached charging stations across Georgia
 ├── qrcode.min.js        # Offline QR code generator
 └── tests/
     ├── test_routing.js              # Navigation engine automated unit tests
@@ -161,9 +159,13 @@ tesla-nav/
     ├── test_heading.js              # Automotive heading, COG & 360 rotation tests
     ├── test_traffic_signals.js      # Traffic signals Overpass tile query tests
     ├── test_signals_integration.js  # Signals integration & route prefetch tests
-    ├── test_youtube_parse.js        # YouTube parser tests
     ├── test_map_gl.js               # MapLibre GL abstraction, camera & dead reckoning tests
-    ├── test_media_player.js         # Media player playlist queue, auto-advance & loop unit tests
+    ├── test_charger_list.js         # Charger drawer list tests
+    ├── test_search.js               # Search typeahead tests
+    ├── test_tesla_style.js          # Tesla & Mono map style tests
+    ├── test_chargers_sync.js        # Chargers tariff & sync tests
+    ├── test_sim_drive.js            # Simulated driving tests
+    ├── test_speech.js               # Speech & chime tests
     ├── check_version.js             # Version sync check across all manifests and HTML
     └── smoke_server.js              # 18-point server security & regression test suite
 ```
@@ -173,7 +175,7 @@ tesla-nav/
 ## 4. Key Rules for Any Future Modification
 1. **Never break Touch Propagation:** Overlay elements MUST stop propagation to prevent unintentional map panning (`e.stopPropagation()` and `button svg { pointer-events: none; }`).
 2. **Never use `backdrop-filter: blur()`:** It causes severe GPU stuttering on Tesla MCU Chromium.
-3. **Driving Safety & Media:** YouTube playback while driving is enabled by user configuration (`DRIVING_LOCKOUT = false`), with an explicit driver safety disclaimer.
+3. **Driving Safety:** Keep driving interfaces minimal, high-contrast, and distraction-free.
 4. **MapLibre Layer Registry:** Always add custom layers via `map-gl.js` layer registry (`ensureCustomLayers()`) so they persist seamlessly across style switches (Vector 3D / Google Roads / Satellite).
 5. **Keep OSRM Dual-Server Fallback:** Public demo servers may experience rate limits; dual servers ensure 100% uptime.
 6. **Cache Busting:** Always increment `?v=X.X.X` in `index.html` when modifying CSS or JS, because Tesla Chromium caches aggressively.
@@ -187,11 +189,11 @@ tesla-nav/
 To verify the application:
 1. Run automated test suite:
    ```bash
-   npm test          # All test suites (Routing + Speed limits + OSM Overpass + Heading + Signals + YouTube + Map-GL)
+   npm test          # All test suites (Routing, Speed limits, OSM, Heading, Signals, Map-GL, Search, Chargers, Sim-Drive, Speech)
    ```
 2. Verify version consistency:
    ```bash
-   npm run check     # Verifies v3.10.1 across package.json, index.html, sw.js
+   npm run check     # Verifies version consistency across package.json, index.html, sw.js, app.js
    ```
 3. Run security and regression smoke tests:
    ```bash
@@ -199,7 +201,7 @@ To verify the application:
    ```
 4. Verify JS syntax:
    ```bash
-   node --check app.js map-gl.js routing.js chargers.js battery.js server.js media-player.js speed-limit.js traffic-signals.js traffic.js
+   node --check app.js map-gl.js routing.js chargers.js battery.js server.js speed-limit.js traffic-signals.js traffic.js
    ```
 
 ---
