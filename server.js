@@ -843,6 +843,9 @@ const server = http.createServer((req, res) => {
     const payload = JSON.stringify(body);
     const greq = https.request({
       hostname: 'routes.googleapis.com', path: '/directions/v2:computeRoutes', method: 'POST', timeout: 10000,
+      // IPv4 only: the same request and key work from a desktop (200 in ~0.1 s) but answer 503 "Deadline expired" from Render;
+      // Render's Alpine container may reach Google over IPv6, the one network difference we can control from here
+      family: 4,
       headers: {
         'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(payload), 'X-Goog-Api-Key': rkey,
         'X-Goog-FieldMask': fieldMask
