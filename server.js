@@ -843,7 +843,13 @@ const server = http.createServer((req, res) => {
       const chunks = []; let size = 0;
       gres.on('data', (c) => { size += c.length; if (size < 2 * 1024 * 1024) chunks.push(c); });
       gres.on('end', () => {
-        if (gres.statusCode !== 200) { console.warn('[route] Google answered HTTP ' + gres.statusCode); return sendJson(502, { error: 'upstream', status: gres.statusCode }); }
+        if (gres.statusCode !== 200) {
+          // pass Google's own reason on (e.g. PERMISSION_DENIED + "Routes API has not been used in project..."); it never contains the key
+          let reason = '', message = '';
+          try { const e = JSON.parse(Buffer.concat(chunks).toString('utf8')).error || {}; reason = String(e.status || ''); message = String(e.message || '').slice(0, 300); } catch (_) {}
+          console.warn('[route] Google answered HTTP ' + gres.statusCode + (reason ? ' ' + reason : '') + (message ? ': ' + message : ''));
+          return sendJson(502, { error: 'upstream', status: gres.statusCode, reason, message });
+        }
         res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
         res.end(Buffer.concat(chunks));
       });
