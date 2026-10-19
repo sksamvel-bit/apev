@@ -2174,3 +2174,12 @@ body.gmap-open .dock-controls { display: none; } /* the Google layer has its own
 #gmap-nav-dist { font-size: 2rem; font-weight: 700; line-height: 1.1; }
 #gmap-nav-text { font-size: 1.1rem; margin-top: 4px; }
 #gmap-nav-stop { position: absolute; top: 8px; right: 8px; background: transparent; border: 0; color: #fff; font-size: 1.2rem; padding: 8px 12px; cursor: pointer; }
+/* aliases for the markup classes Antigravity used in index.html (same look as the id-based rules above) */
+.gmap-card-actions { display: flex; gap: 8px; }
+.gmap-card-actions button { flex: 1; }
+.gmap-btn-start { background: #16a34a; color: #fff; border: 0; border-radius: 12px; padding: 14px; font-size: 1.05rem; cursor: pointer; }
+.gmap-btn-start[hidden] { display: none; }
+.gmap-depart-label { flex: none; }
+.gmap-nav-turn { display: block; }
+.gmap-nav-dist, .gmap-nav-text { display: block; }
+#gmap-layer.navigating .gmap-top { display: none; }

@@ -16,15 +16,13 @@
   "use strict";
 
   const TBILISI = { lat: 41.7151, lng: 44.8271 };
+  const OFF_ROUTE_M = 45; // farther than this from the route line counts as an off-route fix
   const OSRM_SERVERS = [
     "https://router.project-osrm.org/route/v1/driving/",
     "https://routing.openstreetmap.de/routed-car/route/v1/driving/"
   ];
   const CATEGORIES = [
-    { id: "ev", label: "⚡ დამუხტვა", type: "electric_vehicle_charging_station" },
-    { id: "gas", label: "⛽ საწვავი", type: "gas_station" },
-    { id: "food", label: "🍽 საკვები", type: "restaurant" },
-    { id: "parking", label: "🅿 პარკინგი", type: "parking" }
+    { id: "ev", label: "⚡ დამუხტვა", type: "electric_vehicle_charging_station" } // fuel/food/parking removed at Samvel's request (v3.10.34)
   ];
 
   // ---------- pure helpers (unit-tested) ----------
@@ -82,6 +80,69 @@
     return 12742000 * Math.asin(Math.sqrt(h));
   }
 
+  /** Position of p projected on segment a->b as a fraction (0 = a, 1 = b, unclamped); equirectangular, fine at street scale. */
+  function segT(a, b, p) {
+    const k = Math.cos(p.lat * Math.PI / 180);
+    const ax = (a.lng - p.lng) * k, ay = a.lat - p.lat, dx = (b.lng - a.lng) * k, dy = b.lat - a.lat, L = dx * dx + dy * dy;
+    return L ? (-ax * dx - ay * dy) / L : 1;
+  }
+
+  /** Nearest point of the polyline segments [from, to) to pt: { d: metres, i: segment index }. */
+  function nearestOnPolyline(pt, line, from, to) {
+    if (!line || !line.length) return { d: Infinity, i: -1 };
+    if (line.length === 1) return { d: meters(pt, line[0]), i: 0 };
+    const lo = Math.max(0, from | 0), hi = Math.min(line.length - 1, typeof to === "number" ? to : line.length - 1);
+    let best = { d: Infinity, i: -1 };
+    for (let i = lo; i < hi; i++) {
+      const a = line[i], b = line[i + 1];
+      const t = Math.max(0, Math.min(1, segT(a, b, pt)));
+      const d = meters(pt, { lat: a.lat + t * (b.lat - a.lat), lng: a.lng + t * (b.lng - a.lng) });
+      if (d < best.d) best = { d, i };
+    }
+    return best;
+  }
+
+  function distToPolylineM(pt, line) { return nearestOnPolyline(pt, line).d; }
+
+  function createOffRouteTracker(opts) {
+    const o = opts || {};
+    const thresholdM = typeof o.thresholdM === "number" ? o.thresholdM : 45;
+    const ticks = typeof o.ticks === "number" ? o.ticks : 4;
+    const cooldownMs = typeof o.cooldownMs === "number" ? o.cooldownMs : 20000;
+    const maxReroutes = typeof o.maxReroutes === "number" ? o.maxReroutes : 12;
+
+    let offCount = 0;
+    let lastReroute = -Infinity;
+    let rerouteCount = 0;
+
+    return {
+      update(distM, nowMs) {
+        const now = typeof nowMs === "number" ? nowMs : Date.now();
+        if (distM > thresholdM) {
+          offCount++;
+          if (offCount >= ticks) {
+            if (rerouteCount < maxReroutes && (now - lastReroute) >= cooldownMs) {
+              rerouteCount++;
+              lastReroute = now;
+              offCount = 0;
+              return true;
+            }
+            return false;
+          }
+          return false;
+        } else {
+          offCount = 0;
+          return false;
+        }
+      },
+      reset() {
+        offCount = 0;
+        lastReroute = -Infinity;
+        rerouteCount = 0;
+      }
+    };
+  }
+
 
   // ---------- Google Routes API (traffic-aware) helpers ----------
   /** Decodes a Google encoded polyline (precision 1e5) into [{lat,lng}]. */
@@ -132,9 +193,7 @@
   function nextStepIndex(steps, pos, from) {
     const n = steps.length;
     if (!n) return -1;
-    const k0 = Math.cos(pos.lat * Math.PI / 180);
-    const xy = (p) => ({ x: (p.lng - pos.lng) * k0, y: p.lat - pos.lat });
-    const t = (a, b) => { const A = xy(a), B = xy(b), dx = B.x - A.x, dy = B.y - A.y, L = dx * dx + dy * dy; return L ? ((0 - A.x) * dx + (0 - A.y) * dy) / L : 1; };
+    const t = (a, b) => segT(a, b, pos);
     if (!from && t(steps[0].loc, n > 1 ? steps[1].loc : steps[0].loc) <= 0 && meters(pos, steps[0].loc) > 25) return 0;
     for (let k = Math.max(from || 0, 1); k < n; k++) if (t(steps[k - 1].loc, steps[k].loc) < 1) return k;
     return n - 1;
@@ -146,7 +205,7 @@
   const S = {
     enabled: false, key: "", open: false, map: null, traffic: null, trafficOn: true, loading: null, g: null,
     carMarker: null, carPos: null, carHeading: 0, follow: true, placeMarker: null, catMarkers: [], activeCat: null,
-    routeLines: [], routes: [], routeIdx: 0, stepIdx: 0, navigating: false, place: null, sessionToken: null, night: null, timers: []
+    routeLines: [], routes: [], routeIdx: 0, stepIdx: 0, segIdx: 0, offRouteTracker: null, rerouting: false, navigating: false, place: null, sessionToken: null, night: null, timers: []
   };
 
   const $ = (id) => document.getElementById(id);
@@ -229,7 +288,21 @@
     if (!S.carMarker) S.carMarker = new S.g.core.Marker({ position: pos, map: S.map, icon: markerIcon(), zIndex: 999, clickable: false });
     else if (moved) { S.carMarker.setPosition(pos); S.carMarker.setIcon(markerIcon()); }
     if (S.follow && moved) S.map.panTo(pos);
-    if (S.navigating) updateNavBanner();
+    if (S.navigating && S.place && S.place.loc && meters(pos, S.place.loc) < 30) {
+      stopNavigation();
+      setStatus("დანიშნულების ადგილზე ხართ");
+      setTimeout(() => setStatus(""), 5000);
+    } else if (S.navigating) {
+      const rt = S.routes[S.routeIdx];
+      if (rt && rt.coords && rt.coords.length && S.offRouteTracker && !S.rerouting) {
+        // look near the last match first (cheap on long routes); scan the whole line only when the car seems off it there
+        let nr = nearestOnPolyline(pos, rt.coords, S.segIdx - 20, S.segIdx + 200);
+        if (nr.d > OFF_ROUTE_M) nr = nearestOnPolyline(pos, rt.coords);
+        if (nr.i >= 0) S.segIdx = nr.i;
+        if (S.offRouteTracker.update(nr.d)) reroute();
+      }
+      updateNavBanner();
+    }
     const night = !!window.__night;
     if (night !== S.night) { S.night = night; S.map.setOptions({ styles: mapStyles(night) }); }
   }
@@ -408,7 +481,7 @@
 
   function selectRoute(i) {
     if (!S.routes[i]) return;
-    S.routeIdx = i; S.stepIdx = 0;
+    S.routeIdx = i; S.stepIdx = 0; S.segIdx = 0;
     drawRoutes(); renderRouteOptions(); updateNavBanner();
   }
 
@@ -427,7 +500,10 @@
 
   function startNavigation() {
     if (!S.routes.length) return;
-    S.navigating = true; S.follow = true; S.stepIdx = 0;
+    S.navigating = true; S.follow = true; S.stepIdx = 0; S.segIdx = 0;
+    S.offRouteTracker = createOffRouteTracker({ thresholdM: OFF_ROUTE_M, ticks: 4, cooldownMs: 20000, maxReroutes: 12 });
+    const layer = $("gmap-layer");
+    if (layer) layer.classList.add("navigating");
     $("gmap-btn-me") && $("gmap-btn-me").classList.add("active");
     $("gmap-card").classList.remove("show");
     S.map.setZoom(17);
@@ -437,8 +513,42 @@
 
   function stopNavigation() {
     S.navigating = false;
+    S.offRouteTracker = null;
+    const layer = $("gmap-layer");
+    if (layer) layer.classList.remove("navigating");
     const nav = $("gmap-nav");
     if (nav) nav.classList.remove("show");
+  }
+
+  async function reroute() {
+    if (!S.place || S.rerouting) return;
+    S.rerouting = true;
+    setStatus("მარშრუტი გადაითვალა...");
+    const from = S.carPos || currentCenter();
+    try {
+      let routes, note = "";
+      try {
+        routes = await fetchGoogleRoutes(from, S.place.loc, 0);
+      } catch (ge) {
+        console.warn("[GMap] Reroute Routes API:", ge && ge.message);
+        const o = await fetchRoute(from, S.place.loc);
+        routes = [{ coords: o.coords, durationSec: o.durationSec, staticSec: o.durationSec, delaySec: 0, distanceM: o.distanceM, steps: [], source: "osrm" }];
+        note = fallbackNote((ge && ge.code) || "");
+      }
+      S.routes = routes;
+      S.routeIdx = 0;
+      S.stepIdx = 0;
+      S.segIdx = 0;
+      drawRoutes();
+      renderRouteOptions();
+      updateNavBanner();
+      setStatus(note || "მარშრუტი გადაითვალა");
+      setTimeout(() => setStatus(""), 3000);
+    } catch (e) {
+      console.warn("[GMap] reroute failed:", e && e.message);
+    } finally {
+      S.rerouting = false;
+    }
   }
 
   async function routeToPlace() {
@@ -591,7 +701,7 @@
     if (btn) btn.hidden = !S.enabled;
   }
 
-  const api = { init, open, close, isOpen: () => S.open, decodePolyline, parseRoutesResponse, routesRequestBody, nextStepIndex, fmtDist, buildLoaderUrl, createDebouncer, osrmUrl, summarizeRoute, mapStyles, bearing, meters, CATEGORIES };
+  const api = { init, open, close, isOpen: () => S.open, distToPolylineM, nearestOnPolyline, createOffRouteTracker, decodePolyline, parseRoutesResponse, routesRequestBody, nextStepIndex, fmtDist, buildLoaderUrl, createDebouncer, osrmUrl, summarizeRoute, mapStyles, bearing, meters, CATEGORIES };
   if (typeof document !== "undefined") {
     if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", () => init());
     else init();

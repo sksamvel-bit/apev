@@ -411,6 +411,7 @@ function fetchFirestorePage(pageToken) {
         return reject(new Error('Firestore status ' + res.statusCode));
       }
       let body = '';
+      res.setEncoding('utf8'); // decode across chunk borders: a Georgian character split between two chunks became U+FFFD
       res.on('data', chunk => body += chunk);
       res.on('end', () => {
         try {
@@ -576,6 +577,7 @@ function searchNominatimProxy(query, bias) {
           return resolve(cached ? cached.data : []);
         }
         let body = '';
+        res.setEncoding('utf8'); // keep multi-byte (Georgian) characters intact across chunks
         res.on('data', chunk => body += chunk);
         res.on('end', () => {
           try {
@@ -1015,6 +1017,7 @@ const server = http.createServer((req, res) => {
   if (pathname === '/api/session/send' && req.method === 'POST') {
     let bodyStr = '';
     let tooBig = false;
+    req.setEncoding('utf8');
     req.on('data', chunk => {
       bodyStr += chunk;
       if (bodyStr.length > MAX_BODY && !tooBig) {

@@ -13,7 +13,7 @@ ok(/^https:\/\/r.*\/11\.5,41\.5;12\.5,42\.5\?/.test(G.osrmUrl('https://r/', { la
 ok(Math.abs(G.bearing({ lat: 0, lng: 0 }, { lat: 1, lng: 0 }) - 0) < 1e-6 && Math.abs(G.bearing({ lat: 0, lng: 0 }, { lat: 0, lng: 1 }) - 90) < 1e-6, 'bearing north/east');
 ok(Math.abs(G.meters({ lat: 0, lng: 0 }, { lat: 0, lng: 0.001 }) - 111.2) < 1, 'distance ~111 m per 0.001 deg lng');
 ok(G.mapStyles(false).length < G.mapStyles(true).length, 'night styles extend day styles');
-ok(G.CATEGORIES.length === 4 && G.CATEGORIES.every(c => c.type && c.label), 'categories defined');
+ok(G.CATEGORIES.length === 1 && G.CATEGORIES[0].id === 'ev' && G.CATEGORIES.every(c => c.type && c.label), 'only the charging category is offered');
 
 // ---- Routes API helpers ----
 const pl = G.decodePolyline('_p~iF~ps|U_ulLnnqC_mqNvxq`@');
@@ -35,6 +35,30 @@ ok(G.nextStepIndex(steps, { lat: 0, lng: 0.0001 }, 0) === 1, 'at the first step 
 ok(G.nextStepIndex(steps, { lat: 0, lng: -0.005 }, 0) === 0 && G.nextStepIndex(steps, { lat: 0, lng: 0.05 }, 0) === 2, 'before the first step -> 0; past the last -> last');
 ok(G.nextStepIndex(steps, { lat: 0, lng: 0.0145 }, 1) === 2, 'between steps -> next is the nearer upcoming one');
 ok(G.fmtDist(320) === '320 მ' && G.fmtDist(1500) === '1.5 კმ' && G.fmtDist(12000) === '12 კმ', 'distance format');
+
+// ---- off-route / reroute ----
+const line = [{ lat: 0, lng: 0 }, { lat: 0, lng: 0.01 }]; // ~1113 m east
+ok(G.distToPolylineM({ lat: 0.0001, lng: 0.005 }, line) < 12 && G.distToPolylineM({ lat: 0.0001, lng: 0.005 }, line) > 10, 'on the line: ~11 m off');
+ok(Math.abs(G.distToPolylineM({ lat: 0, lng: 0.02 }, line) - 1113) < 3, 'beyond the end: distance to the end point');
+ok(G.distToPolylineM({ lat: 1, lng: 1 }, []) === Infinity, 'empty polyline -> Infinity');
+const tr = G.createOffRouteTracker({ thresholdM: 45, ticks: 3, cooldownMs: 10000, maxReroutes: 2 });
+let t0 = 1000000, fired = [];
+for (let i = 0; i < 3; i++) fired.push(tr.update(80, t0 + i * 1000));
+ok(!fired[0] && !fired[1] && fired[2], 'reroute fires after 3 consecutive off-route fixes');
+ok(!tr.update(80, t0 + 3000) && !tr.update(80, t0 + 4000) && !tr.update(80, t0 + 5000), 'cooldown blocks an immediate second reroute');
+tr.update(10, t0 + 6000);
+let again = false; for (let i = 0; i < 3; i++) again = tr.update(80, t0 + 12000 + i * 1000);
+ok(again, 'after the cooldown a new deviation reroutes again');
+let third = false; for (let i = 0; i < 4; i++) third = tr.update(80, t0 + 40000 + i * 1000) || third;
+ok(!third, 'per-trip reroute cap stops a loop (each reroute is a paid call)');
+const tr2 = G.createOffRouteTracker({ ticks: 3 });
+tr2.update(80, 1); tr2.update(80, 2); tr2.update(5, 3);
+ok(!tr2.update(80, 4) && !tr2.update(80, 5), 'a fix back on the route resets the counter');
+const longLine = []; for (let i = 0; i <= 400; i++) longLine.push({ lat: 0, lng: i * 0.0005 });
+const nr = G.nearestOnPolyline({ lat: 0.0001, lng: 0.15 }, longLine, 290, 310);
+ok(nr.i === 299 || nr.i === 300, 'windowed search finds the segment near the car');
+ok(G.nearestOnPolyline({ lat: 0, lng: 0.01 }, longLine, 290, 310).d > 1000, 'a window away from the car reports far (caller then scans the whole line)');
+ok(Math.abs(G.nearestOnPolyline({ lat: 0.0001, lng: 0.15 }, longLine).d - G.distToPolylineM({ lat: 0.0001, lng: 0.15 }, longLine)) < 1e-9, 'full scan == distToPolylineM');
 
 // debounce
 (async () => {
