@@ -32,6 +32,7 @@ ok(!/console\.(log|warn|error)\([^)]*ROUTES_KEY/.test(srv), 'routes key is never
 ok(!/'route-quota\.js'/.test(srv.match(/STATIC_WHITELIST = new Set\(\[([\s\S]*?)\]\)/)[1]), 'route-quota.js is not served to browsers');
 const cli = fs.readFileSync(__dirname + '/../gmap.js', 'utf8');
 ok(/pathname === '\/api\/route-permit'/.test(srv) && !/PUBLIC_AUTH_PATHS[^;]*route-permit/.test(srv), 'server has /api/route-permit behind the PIN gate');
+ok(/route-permit[\s\S]*?ROUTE_QUOTA\.tryConsume\(\)/.test(srv), 'the permit endpoint spends one call of the daily/monthly cap');
 {
   const f = cli.slice(cli.indexOf('async function fetchGoogleRoutes'), cli.indexOf('function fallbackNote'));
   ok(f.indexOf('/api/route-permit') > -1 && f.indexOf('/api/route-permit') < f.indexOf('routes.googleapis.com'), 'browser asks the server for a permit before every Routes call (cap stays server-side)');
@@ -86,4 +87,35 @@ ok(/pathname === '\/api\/route-permit'/.test(srv) && !/PUBLIC_AUTH_PATHS[^;]*rou
   ok(createUpstashRedisAdapter() === null, 'Upstash adapter returns null when env credentials missing');
   const upstash = createUpstashRedisAdapter({ url: 'https://example.upstash.io', token: 'secret' });
   ok(upstash && upstash.name === 'upstash', 'Upstash adapter instantiates cleanly with url and token');
+
+  // 5. A call before the slow store answers: nothing is written until the store was read, then the counts are added up
+  {
+    let cloud = { day: ts.day, dayCount: 90, month: ts.month, monthCount: 900 }, writes = [], answer;
+    const slow = { load() { return new Promise((r) => { answer = () => r(Object.assign({}, cloud)); }); }, save(st) { writes.push(Object.assign({}, st)); cloud = Object.assign({}, st); } };
+    const q = createRouteQuota({ adapter: slow, dayCap: 100, now: () => now });
+    ok(q.tryConsume().ok && writes.length === 0, 'early call is counted in memory but not written over the stored count');
+    answer(); await q.init();
+    const s = q.snapshot();
+    ok(s.day === 91 && s.month === 901 && cloud.dayCount === 91, 'after the read: stored 90 + early 1 = 91 (cap not reset by a fresh instance)');
+  }
+
+  // 6. Store unreachable at start: no write ever replaces the real count, and the read is retried later
+  {
+    let cloud = { day: ts.day, dayCount: 99, month: ts.month, monthCount: 99 }, writes = 0, reads = 0, clock = now;
+    const flaky = { load() { reads++; return reads === 1 ? Promise.reject(new Error('timeout')) : Promise.resolve(Object.assign({}, cloud)); }, save(st) { writes++; cloud = Object.assign({}, st); } };
+    const q = createRouteQuota({ adapter: flaky, dayCap: 100, now: () => clock, retryMs: 60000 });
+    await q.init();
+    ok(q.tryConsume().ok && writes === 0 && cloud.dayCount === 99 && !q.isSynced(), 'failed read: keeps counting in memory, the stored 99 is not overwritten with 1');
+    clock += 61000; q.tryConsume(); await new Promise((r) => setTimeout(r, 0));
+    ok(q.isSynced() && reads === 2, 'the read is retried on a later call after retryMs');
+    ok(q.snapshot().day === 101 && !q.tryConsume().ok, 'after the retry the cap counts stored 99 + 2 local calls and refuses');
+  }
+
+  // 7. Upstash adapter: an unreachable server rejects (not "empty"), so the guard cannot mistake it for a fresh store
+  {
+    const dead = createUpstashRedisAdapter({ url: 'https://127.0.0.1:1', token: 'x', timeoutMs: 1500 });
+    let rejected = false;
+    try { await dead.load(); } catch (_) { rejected = true; }
+    ok(rejected, 'Upstash load rejects when the store cannot be reached');
+  }
 })();

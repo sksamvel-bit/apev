@@ -47,8 +47,10 @@ function createUpstashRedisAdapter(opts) {
 
   return {
     name: 'upstash',
+    // Resolves null only when the key really does not exist yet; a network error, timeout or bad answer REJECTS, so the guard
+    // can tell "empty store" from "store unreachable" and never overwrites real counts after a failed read.
     load() {
-      return new Promise((resolve) => {
+      return new Promise((resolve, reject) => {
         try {
           const u = new URL(`${baseUrl}/get/${encodeURIComponent(key)}`);
           const req = https.request(u, {
@@ -60,17 +62,19 @@ function createUpstashRedisAdapter(opts) {
             res.setEncoding('utf8');
             res.on('data', c => { data += c; });
             res.on('end', () => {
+              if (res.statusCode !== 200) return reject(new Error('upstash HTTP ' + res.statusCode));
               try {
                 const j = JSON.parse(data);
+                if (j.result == null) return resolve(null);
                 const val = typeof j.result === 'string' ? JSON.parse(j.result) : j.result;
-                resolve((val && typeof val === 'object') ? val : null);
-              } catch (_) { resolve(null); }
+                if (val && typeof val === 'object') resolve(val); else reject(new Error('upstash: unexpected value'));
+              } catch (e) { reject(e); }
             });
           });
-          req.on('error', () => resolve(null));
-          req.on('timeout', () => { req.destroy(); resolve(null); });
+          req.on('error', reject);
+          req.on('timeout', () => { req.destroy(new Error('upstash timeout')); });
           req.end();
-        } catch (_) { resolve(null); }
+        } catch (e) { reject(e); }
       });
     },
     save(st) {
@@ -104,39 +108,39 @@ function createRouteQuota(opts) {
   const o = Object.assign({ file: null, adapter: null, dayCap: 100, monthCap: 4000, now: () => Date.now() }, opts || {});
   let st = { day: '', dayCount: 0, month: '', monthCount: 0 };
   const adapter = o.adapter || (o.file ? createFileAdapter(o.file) : null);
+  const retryMs = o.retryMs || 60000;
+  // Nothing is written to the store until its state has been read once. Before that the guard still counts in memory:
+  // a write from a fresh instance (count 1) must not overwrite the real count, and a failed read must not reset the cap.
+  let synced = !adapter || typeof adapter.load !== 'function';
+  let loading = null, lastLoad = -Infinity;
 
-  function applyState(incoming) {
-    if (incoming && typeof incoming === 'object') {
-      if (incoming.day && (!st.day || incoming.day >= st.day)) {
-        st.day = String(incoming.day);
-        st.dayCount = incoming.dayCount | 0;
-      }
-      if (incoming.month && (!st.month || incoming.month >= st.month)) {
-        st.month = String(incoming.month);
-        st.monthCount = incoming.monthCount | 0;
-      }
+  /** Calls spent before the store answered are added to what it holds for the same day / month. */
+  function merge(stored) {
+    if (!stored || typeof stored !== 'object') return;
+    if (stored.day) {
+      if (stored.day === st.day) st.dayCount += stored.dayCount | 0;
+      else if (!st.day || stored.day > st.day) { st.day = String(stored.day); st.dayCount = stored.dayCount | 0; }
+    }
+    if (stored.month) {
+      if (stored.month === st.month) st.monthCount += stored.monthCount | 0;
+      else if (!st.month || stored.month > st.month) { st.month = String(stored.month); st.monthCount = stored.monthCount | 0; }
     }
   }
 
-  let readyPromise = null;
-  if (adapter && typeof adapter.load === 'function') {
-    try {
-      const res = adapter.load();
-      if (res && typeof res.then === 'function') {
-        readyPromise = res.then(loaded => {
-          applyState(loaded);
-          return st;
-        }).catch(() => st);
-      } else {
-        applyState(res);
-        readyPromise = Promise.resolve(st);
-      }
-    } catch (_) {
-      readyPromise = Promise.resolve(st);
+  /** Reads the store once; on failure keeps counting in memory and tries again on a later call (after retryMs). */
+  function load() {
+    lastLoad = o.now();
+    const done = (stored) => { merge(stored); synced = true; save(); return true; };
+    let res;
+    try { res = adapter.load(); } catch (_) { return Promise.resolve(false); }
+    if (res && typeof res.then === 'function') {
+      loading = res.then(done, () => false).then((ok) => { loading = null; return ok; });
+      return loading;
     }
-  } else {
-    readyPromise = Promise.resolve(st);
+    return Promise.resolve(done(res));
   }
+
+  const readyPromise = (synced ? Promise.resolve(true) : load()).then(() => st);
 
   function roll() {
     const s = tbilisiStamp(o.now());
@@ -145,6 +149,7 @@ function createRouteQuota(opts) {
   }
 
   function save() {
+    if (!synced) return;
     if (adapter && typeof adapter.save === 'function') {
       try {
         const p = adapter.save(st);
@@ -155,6 +160,7 @@ function createRouteQuota(opts) {
 
   return {
     tryConsume() {
+      if (!synced && !loading && o.now() - lastLoad >= retryMs) load();
       roll();
       if (st.dayCount >= o.dayCap) return { ok: false, reason: 'day', day: st.dayCount, month: st.monthCount };
       if (st.monthCount >= o.monthCap) return { ok: false, reason: 'month', day: st.dayCount, month: st.monthCount };
@@ -164,6 +170,7 @@ function createRouteQuota(opts) {
     snapshot() { roll(); return { day: st.dayCount, month: st.monthCount, dayCap: o.dayCap, monthCap: o.monthCap }; },
     init() { return readyPromise; },
     ready: readyPromise,
+    isSynced() { return synced; },
     adapter
   };
 }
