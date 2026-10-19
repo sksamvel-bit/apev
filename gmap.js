@@ -262,6 +262,14 @@
     return Math.abs(((next.heading - prev.heading) % 360 + 540) % 360 - 180) >= minDeg;
   }
 
+  /** ?gscale=s (0.5..1, test only): the map renders s x s of the pixels and is stretched back to full screen with a CSS
+   *  transform, to measure whether the MCU2 is limited by pixel fill. Text gets softer and taps on map icons can be off. */
+  function scaledBoxStyle(s) {
+    if (!(s > 0 && s < 1)) return "position:absolute;inset:0";
+    const pct = Math.round(s * 1000) / 10;
+    return "position:absolute;left:0;top:0;width:" + pct + "%;height:" + pct + "%;transform:scale(" + (1 / s).toFixed(4) + ");transform-origin:0 0";
+  }
+
   /** Frames per second over ~1 s windows: tick(nowMs) returns the fps when a window closes, otherwise null. */
   function createFpsMeter() {
     let t0 = null, n = 0;
@@ -284,7 +292,7 @@
     enabled: false, key: "", open: false, map: null, traffic: null, trafficOn: true, loading: null, g: null,
     carMarker: null, carPos: null, carHeading: 0, follow: true, placeMarker: null, catMarkers: [], activeCat: null,
     routeLines: [], routes: [], routeIdx: 0, stepIdx: 0, segIdx: 0, offRouteTracker: null, rerouting: false, voice: null, glide: null, raf: null, lastFrame: 0, idle: 0, lastFix: null,
-    vector: false, mapId: "", carRot: null, carTimer: null, lastCam: null, lastMarker: null, camCount: 0, gfps: 0, debug: false,
+    vector: false, mapId: "", carRot: null, carTimer: null, lastCam: null, lastMarker: null, camCount: 0, gfps: 0, gscale: 0, debug: false,
     navigating: false, place: null, sessionToken: null, night: null, timers: []
   };
 
@@ -351,7 +359,7 @@
     const { Map, TrafficLayer } = S.g.maps;
     const box = $("gmap-canvas");
     const el = document.createElement("div");   // a fresh element per map: a Map ID cannot be added to an existing map
-    el.style.cssText = "position:absolute;inset:0";
+    el.style.cssText = scaledBoxStyle(S.gscale);
     box.textContent = "";
     box.appendChild(el);
     S.night = !!window.__night;
@@ -459,7 +467,8 @@
       if (!S.open) { S.debugRaf = null; return; }
       const fps = meter.tick(t);
       if (fps != null) {
-        box.textContent = "Google " + (S.vector ? "3D" : "classic") + "  fps " + fps.toFixed(1) + "  camera " + (S.camCount - cam0) + "/s  arrow " + Math.round(1000 / carFrameMs()) + " fps";
+        box.textContent = "Google " + (S.vector ? "3D" : "classic") + "  fps " + fps.toFixed(1) + "  camera " + (S.camCount - cam0) + "/s  arrow " + Math.round(1000 / carFrameMs()) + " fps" +
+          "  traffic " + (S.trafficOn ? "on" : "off") + (S.gscale ? "  scale " + S.gscale : "") + (S.mapId ? "" : "  DEMO_MAP_ID");
         cam0 = S.camCount;
       }
       S.debugRaf = requestAnimationFrame(loop);
@@ -926,12 +935,14 @@
     S.debug = /[?&]debug=1/.test(q);
     const gf = /[?&]gfps=(\d+)/.exec(q);
     if (gf) S.gfps = Math.min(30, Math.max(2, parseInt(gf[1], 10)));
+    const gs = /[?&]gscale=(0?\.\d+|1(?:\.0+)?)/.exec(q);
+    if (gs) { const v = parseFloat(gs[1]); S.gscale = v >= 1 ? 0 : Math.max(0.5, v); }
     try { S.vector = localStorage.getItem("gmapVector") === "1"; } catch (_) { S.vector = false; }
     const btn = $("btn-google-mode");
     if (btn) btn.hidden = !S.enabled;
   }
 
-  const api = { init, open, close, isOpen: () => S.open, distToPolylineM, nearestOnPolyline, createOffRouteTracker, createVoiceCues, createCarGlide, aheadPoint, mapOptions, cameraNeedsUpdate, createFpsMeter, decodePolyline, parseRoutesResponse, routesRequestBody, nextStepIndex, fmtDist, buildLoaderUrl, createDebouncer, osrmUrl, summarizeRoute, mapStyles, bearing, meters, CATEGORIES };
+  const api = { init, open, close, isOpen: () => S.open, distToPolylineM, nearestOnPolyline, createOffRouteTracker, createVoiceCues, createCarGlide, aheadPoint, mapOptions, cameraNeedsUpdate, createFpsMeter, scaledBoxStyle, decodePolyline, parseRoutesResponse, routesRequestBody, nextStepIndex, fmtDist, buildLoaderUrl, createDebouncer, osrmUrl, summarizeRoute, mapStyles, bearing, meters, CATEGORIES };
   if (typeof document !== "undefined") {
     if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", () => init());
     else init();

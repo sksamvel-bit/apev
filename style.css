@@ -2155,6 +2155,11 @@ input {
 #gmap-card-route { font-size: 1rem; margin-bottom: 10px; min-height: 1.2em; }
 #gmap-card-go { width: 100%; background: var(--accent-blue); color: #fff; border: 0; border-radius: 12px; padding: 14px; font-size: 1.05rem; cursor: pointer; }
 #gmap-card-go:disabled { opacity: 0.6; }
+/* Google mode covers the whole screen: switch the main UI off underneath, so the browser does not keep compositing it
+   (the GPS dot pulses forever, MapLibre's canvas and DOM markers). visibility keeps MapLibre's size for resume(). */
+body.gmap-open #map-viewport { visibility: hidden; }
+body.gmap-open .top-bar, body.gmap-open #nav-hud, body.gmap-open #route-preview-card, body.gmap-open .car-hud-stats,
+body.gmap-open #chargers-drawer, body.gmap-open #map-style-menu { display: none; }
 body.gmap-open .dock-controls { display: none; } /* the Google layer has its own close button */
 #btn-google-mode[hidden] { display: none; }
 

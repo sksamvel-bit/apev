@@ -78,6 +78,12 @@ ok(/gmap-btn-night/.test(src) && /gmap-btn-vector/.test(src), 'Google panel wire
   ok(out != null && Math.abs(out - 10) < 0.01, 'fps meter: 10 frames in 1 s -> 10 fps');
 }
 ok(/S\.vector \? 100 : 50/.test(src) && /gfps=/.test(src), '3D map moves the camera at 10 fps (classic 20), ?gfps=N overrides');
+ok(G.scaledBoxStyle(0) === 'position:absolute;inset:0' && G.scaledBoxStyle(1) === 'position:absolute;inset:0', 'gscale off: the map fills the screen at full resolution');
+ok(/width:75%;height:75%;transform:scale\(1\.3333\)/.test(G.scaledBoxStyle(0.75)), 'gscale 0.75: 75% box stretched x1.333 back to full screen');
+{
+  const css = fs.readFileSync(__dirname + '/../style.css', 'utf8');
+  ok(/body\.gmap-open #map-viewport \{ visibility: hidden; \}/.test(css) && /body\.gmap-open \.top-bar/.test(css), 'Google mode switches the main UI off underneath (no hidden compositing)');
+}
 ok(/__setMainMapPaused\(true\)/.test(src) && /__setMainMapPaused\(false\)/.test(src), 'Google mode pauses the main map on open and resumes it on close');
 ok(/__gmapNavigating = true/.test(src) && /__gmapNavigating = false/.test(src), 'Google navigation marks itself so routing.js stays quiet');
 
