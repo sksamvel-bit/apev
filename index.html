@@ -14,9 +14,9 @@
   <link rel="apple-touch-icon" href="icon-192.png">
   
   <!-- MapLibre GL CSS (Local Offline) -->
-  <link rel="stylesheet" href="maplibre-gl.css?v=3.10.31">
+  <link rel="stylesheet" href="maplibre-gl.css?v=3.10.33">
   <!-- Custom Stylesheet -->
-  <link rel="stylesheet" href="style.css?v=3.10.31">
+  <link rel="stylesheet" href="style.css?v=3.10.33">
 </head>
 <body>
 
@@ -203,12 +203,16 @@
       <button id="gmap-btn-zoom-out" class="gmap-btn" type="button" title="დაშორება">−</button>
       <button id="gmap-btn-close" class="gmap-btn gmap-close" type="button" title="მთავარ რუკაზე დაბრუნება">✕</button>
     </div>
+    <div id="gmap-nav"><div id="gmap-nav-dist"></div><div id="gmap-nav-text"></div><button id="gmap-nav-stop" type="button" title="მარშრუტის შეჩერება">✕</button></div>
     <div id="gmap-card">
       <button id="gmap-card-close" type="button" class="gmap-card-x" title="დახურვა">✕</button>
       <div id="gmap-card-title"></div>
       <div id="gmap-card-addr"></div>
       <div id="gmap-card-route"></div>
-      <button id="gmap-card-go" type="button">მარშრუტი</button>
+      <div class="gmap-depart-row"><label for="gmap-depart">გასვლა:</label>
+        <select id="gmap-depart"><option value="0">ახლა</option><option value="30">+30 წთ</option><option value="60">+1 სთ</option><option value="120">+2 სთ</option><option value="240">+4 სთ</option></select></div>
+      <div id="gmap-card-routes"></div>
+      <div class="gmap-card-btns"><button id="gmap-card-go" type="button">მარშრუტი</button><button id="gmap-card-start" type="button" hidden>დაწყება</button></div>
     </div>
   </div>
 
@@ -477,7 +481,7 @@
         </div>
       </div>
       <div class="modal-footer">
-        <span class="settings-version-tag" style="margin-right: auto; font-size: 0.8rem; color: var(--text-secondary); opacity: 0.8;">ვერსია: v3.10.31</span>
+        <span class="settings-version-tag" style="margin-right: auto; font-size: 0.8rem; color: var(--text-secondary); opacity: 0.8;">ვერსია: v3.10.33</span>
         <button id="modal-cancel-btn" class="btn-secondary">გაუქმება</button>
         <button id="modal-save-btn" class="btn-primary">შენახვა</button>
       </div>
@@ -485,24 +489,24 @@
   </div>
 
   <!-- MapLibre GL JS (Local Offline - Hardware Accelerated WebGL Engine) -->
-  <script src="maplibre-gl.js?v=3.10.31"></script>
-  <script src="map-gl.js?v=3.10.31"></script>
+  <script src="maplibre-gl.js?v=3.10.33"></script>
+  <script src="map-gl.js?v=3.10.33"></script>
   <!-- QR Code Generator -->
   <script src="qrcode.min.js"></script>
   <!-- Application Engines -->
-  <script src="speech.js?v=3.10.31"></script>
-  <script src="weather.js?v=3.10.31"></script>
-  <script src="battery.js?v=3.10.31"></script>
-  <script src="chargers.js?v=3.10.31"></script>
-  <script src="charger-list.js?v=3.10.31"></script>
-  <script src="search.js?v=3.10.31"></script>
-  <script src="tesla-style.js?v=3.10.31"></script>
-  <script src="traffic-signals.js?v=3.10.31"></script>
-  <script src="traffic.js?v=3.10.31"></script>
-  <script src="routing.js?v=3.10.31"></script>
-  <script src="speed-limit.js?v=3.10.31"></script>
-  <script src="sim-drive.js?v=3.10.31"></script>
-  <script src="gmap.js?v=3.10.31"></script>
-  <script src="app.js?v=3.10.31"></script>
+  <script src="speech.js?v=3.10.33"></script>
+  <script src="weather.js?v=3.10.33"></script>
+  <script src="battery.js?v=3.10.33"></script>
+  <script src="chargers.js?v=3.10.33"></script>
+  <script src="charger-list.js?v=3.10.33"></script>
+  <script src="search.js?v=3.10.33"></script>
+  <script src="tesla-style.js?v=3.10.33"></script>
+  <script src="traffic-signals.js?v=3.10.33"></script>
+  <script src="traffic.js?v=3.10.33"></script>
+  <script src="routing.js?v=3.10.33"></script>
+  <script src="speed-limit.js?v=3.10.33"></script>
+  <script src="sim-drive.js?v=3.10.33"></script>
+  <script src="gmap.js?v=3.10.33"></script>
+  <script src="app.js?v=3.10.33"></script>
 </body>
 </html>

@@ -15,6 +15,27 @@ ok(Math.abs(G.meters({ lat: 0, lng: 0 }, { lat: 0, lng: 0.001 }) - 111.2) < 1, '
 ok(G.mapStyles(false).length < G.mapStyles(true).length, 'night styles extend day styles');
 ok(G.CATEGORIES.length === 4 && G.CATEGORIES.every(c => c.type && c.label), 'categories defined');
 
+// ---- Routes API helpers ----
+const pl = G.decodePolyline('_p~iF~ps|U_ulLnnqC_mqNvxq`@');
+ok(pl.length === 3 && Math.abs(pl[0].lat - 38.5) < 1e-6 && Math.abs(pl[0].lng + 120.2) < 1e-6 && Math.abs(pl[2].lat - 43.252) < 1e-6 && Math.abs(pl[2].lng + 126.453) < 1e-6, 'polyline decoder matches Google reference example');
+const resp = { routes: [
+  { duration: '900s', staticDuration: '600s', distanceMeters: 5000, polyline: { encodedPolyline: '_p~iF~ps|U_ulLnnqC' }, routeLabels: ['DEFAULT_ROUTE'],
+    legs: [{ steps: [{ distanceMeters: 100, startLocation: { latLng: { latitude: 41.7, longitude: 44.8 } }, navigationInstruction: { instructions: 'Turn left', maneuver: 'TURN_LEFT' } }, { distanceMeters: 50, startLocation: { latLng: { latitude: 41.71, longitude: 44.81 } } }] }] },
+  { duration: '1000s', distanceMeters: 6000, polyline: { encodedPolyline: '_p~iF~ps|U_ulLnnqC' } }, { duration: '5s' } ] };
+const pr = G.parseRoutesResponse(resp);
+ok(pr.length === 2, 'routes without polyline are dropped');
+ok(pr[0].durationSec === 900 && pr[0].delaySec === 300 && pr[0].distanceM === 5000 && pr[0].coords.length === 2, 'traffic delay = duration - staticDuration');
+ok(pr[0].steps.length === 1 && pr[0].steps[0].text === 'Turn left' && pr[0].steps[0].loc.lat === 41.7, 'steps without instruction are skipped; loc parsed');
+ok(pr[1].delaySec === 0 && G.parseRoutesResponse(null).length === 0, 'missing staticDuration / empty response handled');
+const body = G.routesRequestBody({ lat: 1, lng: 2 }, { lat: 3, lng: 4 }, 0);
+ok(body.routingPreference === 'TRAFFIC_AWARE' && body.computeAlternativeRoutes && body.languageCode === 'ka' && !body.departureTime && body.origin.location.latLng.longitude === 2, 'request: traffic-aware, alternatives, Georgian, now');
+ok(G.routesRequestBody({ lat: 1, lng: 2 }, { lat: 3, lng: 4 }, 60).departureTime > new Date().toISOString(), 'planned departure sends a future departureTime');
+const steps = [{ loc: { lat: 0, lng: 0 } }, { loc: { lat: 0, lng: 0.01 } }, { loc: { lat: 0, lng: 0.02 } }];
+ok(G.nextStepIndex(steps, { lat: 0, lng: 0.0001 }, 0) === 1, 'at the first step start -> aim at the second');
+ok(G.nextStepIndex(steps, { lat: 0, lng: -0.005 }, 0) === 0 && G.nextStepIndex(steps, { lat: 0, lng: 0.05 }, 0) === 2, 'before the first step -> 0; past the last -> last');
+ok(G.nextStepIndex(steps, { lat: 0, lng: 0.0145 }, 1) === 2, 'between steps -> next is the nearer upcoming one');
+ok(G.fmtDist(320) === '320 მ' && G.fmtDist(1500) === '1.5 კმ' && G.fmtDist(12000) === '12 კმ', 'distance format');
+
 // debounce
 (async () => {
   let n = 0; const d = G.createDebouncer(() => n++, 30);

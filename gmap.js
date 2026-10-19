@@ -82,11 +82,71 @@
     return 12742000 * Math.asin(Math.sqrt(h));
   }
 
+
+  // ---------- Google Routes API (traffic-aware) helpers ----------
+  /** Decodes a Google encoded polyline (precision 1e5) into [{lat,lng}]. */
+  function decodePolyline(str) {
+    const out = []; let i = 0, lat = 0, lng = 0;
+    while (i < str.length) {
+      for (const axis of [0, 1]) {
+        let shift = 0, result = 0, b;
+        do { b = str.charCodeAt(i++) - 63; result |= (b & 31) << shift; shift += 5; } while (b >= 32 && i < str.length + 1);
+        const d = (result & 1) ? ~(result >> 1) : (result >> 1);
+        if (axis === 0) lat += d; else lng += d;
+      }
+      out.push({ lat: lat / 1e5, lng: lng / 1e5 });
+    }
+    return out;
+  }
+
+  const secs = (d) => { const m = /^(\d+(?:\.\d+)?)s$/.exec(String(d || "")); return m ? parseFloat(m[1]) : 0; };
+
+  /** Routes API computeRoutes response -> our route objects (alternatives, traffic ETA, steps with maneuver text). */
+  function parseRoutesResponse(json) {
+    const list = (json && json.routes) || [];
+    return list.filter((r) => r && r.polyline && r.polyline.encodedPolyline).map((r) => {
+      const steps = [];
+      ((r.legs && r.legs) || []).forEach((leg) => (leg.steps || []).forEach((st) => {
+        const ni = st.navigationInstruction;
+        const ll = st.startLocation && st.startLocation.latLng;
+        if (ni && ni.instructions && ll) steps.push({ text: ni.instructions, maneuver: ni.maneuver || "", distanceM: st.distanceMeters || 0, loc: { lat: ll.latitude, lng: ll.longitude } });
+      }));
+      const durationSec = secs(r.duration), staticSec = secs(r.staticDuration) || durationSec;
+      return { coords: decodePolyline(r.polyline.encodedPolyline), durationSec, staticSec, delaySec: Math.max(0, durationSec - staticSec), distanceM: r.distanceMeters || 0, steps, label: (r.routeLabels || []).join(",") };
+    });
+  }
+
+  function routesRequestBody(from, to, departInMin) {
+    const body = {
+      origin: { location: { latLng: { latitude: from.lat, longitude: from.lng } } },
+      destination: { location: { latLng: { latitude: to.lat, longitude: to.lng } } },
+      travelMode: "DRIVE", routingPreference: "TRAFFIC_AWARE", computeAlternativeRoutes: true,
+      languageCode: "ka", units: "METRIC"
+    };
+    if (departInMin > 0) body.departureTime = new Date(Date.now() + departInMin * 60000 + 30000).toISOString();
+    return body;
+  }
+
+  /** Index of the maneuver the car is heading to. Progress along each step-to-step segment (projection t): a maneuver is "reached"
+   *  once the car's projection passes the end of the segment leading to it; before the first start we aim at step 0. Never goes back. */
+  function nextStepIndex(steps, pos, from) {
+    const n = steps.length;
+    if (!n) return -1;
+    const k0 = Math.cos(pos.lat * Math.PI / 180);
+    const xy = (p) => ({ x: (p.lng - pos.lng) * k0, y: p.lat - pos.lat });
+    const t = (a, b) => { const A = xy(a), B = xy(b), dx = B.x - A.x, dy = B.y - A.y, L = dx * dx + dy * dy; return L ? ((0 - A.x) * dx + (0 - A.y) * dy) / L : 1; };
+    if (!from && t(steps[0].loc, n > 1 ? steps[1].loc : steps[0].loc) <= 0 && meters(pos, steps[0].loc) > 25) return 0;
+    for (let k = Math.max(from || 0, 1); k < n; k++) if (t(steps[k - 1].loc, steps[k].loc) < 1) return k;
+    return n - 1;
+  }
+
+  function fmtDist(m) { return m >= 1000 ? (m / 1000).toFixed(m >= 10000 ? 0 : 1) + " კმ" : Math.round(m / 10) * 10 + " მ"; }
+
   // ---------- the mode ----------
   const S = {
     enabled: false, key: "", open: false, map: null, traffic: null, trafficOn: true, loading: null, g: null,
     carMarker: null, carPos: null, carHeading: 0, follow: true, placeMarker: null, catMarkers: [], activeCat: null,
-    routeLines: [], place: null, sessionToken: null, night: null, timers: []
+    routeLines: [], routes: [], routeIdx: 0, stepIdx: 0, navigating: false, place: null, sessionToken: null, night: null, timers: []
   };
 
   const $ = (id) => document.getElementById(id);
@@ -169,6 +229,7 @@
     if (!S.carMarker) S.carMarker = new S.g.core.Marker({ position: pos, map: S.map, icon: markerIcon(), zIndex: 999, clickable: false });
     else if (moved) { S.carMarker.setPosition(pos); S.carMarker.setIcon(markerIcon()); }
     if (S.follow && moved) S.map.panTo(pos);
+    if (S.navigating) updateNavBanner();
     const night = !!window.__night;
     if (night !== S.night) { S.night = night; S.map.setOptions({ styles: mapStyles(night) }); }
   }
@@ -239,12 +300,13 @@
   }
 
   function clearRoute() { S.routeLines.forEach((l) => l.setMap(null)); S.routeLines = []; }
+  function resetRoutes() { clearRoute(); S.routes = []; stopNavigation(); const b = $("gmap-card-routes"); if (b) b.textContent = ""; const st = $("gmap-card-start"); if (st) st.hidden = true; }
 
   function showPlace(p) {
     const loc = p.loc && typeof p.loc.lat === "function" ? { lat: p.loc.lat(), lng: p.loc.lng() } : p.loc;
     if (!loc) return;
     S.place = { name: p.name, address: p.address, loc };
-    clearRoute();
+    resetRoutes();
     if (!S.placeMarker) S.placeMarker = new S.g.core.Marker({ map: S.map, zIndex: 900 });
     S.placeMarker.setPosition(loc);
     S.placeMarker.setMap(S.map);
@@ -265,7 +327,7 @@
     const card = $("gmap-card");
     if (card) card.classList.remove("show");
     if (S.placeMarker) S.placeMarker.setMap(null);
-    clearRoute();
+    resetRoutes();
     S.place = null;
   }
 
@@ -288,25 +350,123 @@
     throw lastErr || new Error("მარშრუტი ვერ მოიძებნა");
   }
 
+  /** Traffic-aware routes via our server (/api/route): the server holds the key and enforces the daily/monthly call cap. */
+  async function fetchGoogleRoutes(from, to, departInMin) {
+    const url = "/api/route?from=" + from.lat.toFixed(6) + "," + from.lng.toFixed(6) + "&to=" + to.lat.toFixed(6) + "," + to.lng.toFixed(6) + "&depart=" + (departInMin || 0);
+    const r = await fetch(url, { cache: "no-store", credentials: "same-origin" });
+    if (!r.ok) {
+      let code = "http" + r.status;
+      try { const j = await r.json(); if (j && j.error) code = j.error + (j.reason ? ":" + j.reason : ""); } catch (_) {}
+      const e = new Error("Routes: " + code); e.code = code; throw e;
+    }
+    const routes = parseRoutesResponse(await r.json());
+    if (!routes.length) { const e = new Error("Routes: no route"); e.code = "empty"; throw e; }
+    return routes;
+  }
+
+  function fallbackNote(code) {
+    if (/^cap/.test(code)) return "Google მარშრუტების ლიმიტი ამოიწურა (" + (/month/.test(code) ? "თვის" : "დღის") + "), ნაჩვენებია OSRM მარშრუტი ტრაფიკის გარეშე.";
+    if (code === "no-key") return "Google მარშრუტის გასაღები არ არის დაყენებული (GOOGLE_ROUTES_KEY), ნაჩვენებია OSRM მარშრუტი ტრაფიკის გარეშე.";
+    return "Google მარშრუტი ვერ მუშაობს, ნაჩვენებია OSRM მარშრუტი ტრაფიკის გარეშე.";
+  }
+
+  function drawRoutes() {
+    clearRoute();
+    const { Polyline } = S.g.maps;
+    // alternatives first (grey, under), the chosen one last (white casing + blue)
+    S.routes.forEach((rt, i) => {
+      if (i === S.routeIdx) return;
+      const l = new Polyline({ path: rt.coords, map: S.map, strokeColor: "#8a8f98", strokeOpacity: 0.9, strokeWeight: 6, zIndex: 5, clickable: true });
+      l.addListener("click", () => selectRoute(i));
+      S.routeLines.push(l);
+    });
+    const sel = S.routes[S.routeIdx];
+    S.routeLines.push(new Polyline({ path: sel.coords, map: S.map, strokeColor: "#ffffff", strokeOpacity: 1, strokeWeight: 10, zIndex: 10 }));
+    S.routeLines.push(new Polyline({ path: sel.coords, map: S.map, strokeColor: "#3e6ae1", strokeOpacity: 1, strokeWeight: 6, zIndex: 11 }));
+  }
+
+  function renderRouteOptions() {
+    const box = $("gmap-card-routes");
+    if (!box) return;
+    box.textContent = "";
+    S.routes.forEach((rt, i) => {
+      const b = document.createElement("button");
+      b.type = "button";
+      b.className = "gmap-route-opt" + (i === S.routeIdx ? " active" : "");
+      const t = document.createElement("span");
+      t.className = "gmap-route-time";
+      t.textContent = summarizeRoute(rt.durationSec, rt.distanceM);
+      b.appendChild(t);
+      const n = document.createElement("span");
+      n.className = "gmap-route-note";
+      n.textContent = rt.source === "osrm" ? "საცობების გარეშე" : (rt.delaySec >= 120 ? "საცობი +" + Math.round(rt.delaySec / 60) + " წთ" : "თავისუფალია");
+      b.appendChild(n);
+      b.addEventListener("click", () => selectRoute(i));
+      box.appendChild(b);
+    });
+  }
+
+  function selectRoute(i) {
+    if (!S.routes[i]) return;
+    S.routeIdx = i; S.stepIdx = 0;
+    drawRoutes(); renderRouteOptions(); updateNavBanner();
+  }
+
+  function updateNavBanner() {
+    const nav = $("gmap-nav");
+    if (!nav) return;
+    const rt = S.routes[S.routeIdx];
+    if (!S.navigating || !rt || !rt.steps.length) { nav.classList.remove("show"); return; }
+    if (S.carPos) S.stepIdx = nextStepIndex(rt.steps, S.carPos, S.stepIdx);
+    const st = rt.steps[S.stepIdx];
+    const d = S.carPos ? meters(S.carPos, st.loc) : st.distanceM;
+    $("gmap-nav-dist").textContent = fmtDist(d);
+    $("gmap-nav-text").textContent = st.text;
+    nav.classList.add("show");
+  }
+
+  function startNavigation() {
+    if (!S.routes.length) return;
+    S.navigating = true; S.follow = true; S.stepIdx = 0;
+    $("gmap-btn-me") && $("gmap-btn-me").classList.add("active");
+    $("gmap-card").classList.remove("show");
+    S.map.setZoom(17);
+    if (S.carPos) S.map.panTo(S.carPos);
+    updateNavBanner();
+  }
+
+  function stopNavigation() {
+    S.navigating = false;
+    const nav = $("gmap-nav");
+    if (nav) nav.classList.remove("show");
+  }
+
   async function routeToPlace() {
     if (!S.place) return;
     const btn = $("gmap-card-go"), info = $("gmap-card-route");
     btn.disabled = true;
     info.textContent = "ითვლება...";
+    const from = S.carPos || currentCenter();
+    const sel = $("gmap-depart");
+    const depart = sel ? parseInt(sel.value, 10) || 0 : 0;
     try {
-      const from = S.carPos || currentCenter();
-      const r = await fetchRoute(from, S.place.loc);
-      clearRoute();
-      const { Polyline } = S.g.maps;
-      S.routeLines = [
-        new Polyline({ path: r.coords, map: S.map, strokeColor: "#ffffff", strokeOpacity: 1, strokeWeight: 10, zIndex: 10 }),
-        new Polyline({ path: r.coords, map: S.map, strokeColor: "#3e6ae1", strokeOpacity: 1, strokeWeight: 6, zIndex: 11 })
-      ];
+      let routes, note = "";
+      try {
+        routes = await fetchGoogleRoutes(from, S.place.loc, depart);
+      } catch (ge) {
+        console.warn("[GMap] Routes API:", ge && ge.message);
+        const o = await fetchRoute(from, S.place.loc);
+        routes = [{ coords: o.coords, durationSec: o.durationSec, staticSec: o.durationSec, delaySec: 0, distanceM: o.distanceM, steps: [], source: "osrm" }];
+        note = fallbackNote((ge && ge.code) || "");
+      }
+      S.routes = routes; S.routeIdx = 0; S.stepIdx = 0;
+      drawRoutes(); renderRouteOptions();
       const bounds = new S.g.core.LatLngBounds();
-      r.coords.forEach((c) => bounds.extend(c));
+      routes[0].coords.forEach((c) => bounds.extend(c));
       S.follow = false;
       S.map.fitBounds(bounds, 90);
-      info.textContent = summarizeRoute(r.durationSec, r.distanceM) + " (საცობების გარეშე ანგარიში)";
+      info.textContent = note || (depart > 0 ? "პროგნოზი გასვლისთვის +" + depart + " წთ-ში" : "");
+      $("gmap-card-start").hidden = !routes[0].steps.length;
     } catch (e) {
       info.textContent = "მარშრუტი ვერ დაითვალა: " + (e && e.message);
     } finally { btn.disabled = false; }
@@ -371,6 +531,7 @@
   function close() {
     if (!S.open) return;
     S.open = false;
+    stopNavigation();
     S.timers.forEach(clearInterval);
     S.timers = [];
     const layer = $("gmap-layer");
@@ -398,6 +559,8 @@
     });
     on("gmap-card-close", "click", closeCard);
     on("gmap-card-go", "click", routeToPlace);
+    on("gmap-card-start", "click", startNavigation);
+    on("gmap-nav-stop", "click", () => { stopNavigation(); const c = $("gmap-card"); if (c && S.place) c.classList.add("show"); });
     const input = $("gmap-search-input");
     if (input) {
       const deb = createDebouncer(suggest, 300);
@@ -428,7 +591,7 @@
     if (btn) btn.hidden = !S.enabled;
   }
 
-  const api = { init, open, close, isOpen: () => S.open, buildLoaderUrl, createDebouncer, osrmUrl, summarizeRoute, mapStyles, bearing, meters, CATEGORIES };
+  const api = { init, open, close, isOpen: () => S.open, decodePolyline, parseRoutesResponse, routesRequestBody, nextStepIndex, fmtDist, buildLoaderUrl, createDebouncer, osrmUrl, summarizeRoute, mapStyles, bearing, meters, CATEGORIES };
   if (typeof document !== "undefined") {
     if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", () => init());
     else init();

@@ -2155,5 +2155,22 @@ input {
 #gmap-card-route { font-size: 1rem; margin-bottom: 10px; min-height: 1.2em; }
 #gmap-card-go { width: 100%; background: var(--accent-blue); color: #fff; border: 0; border-radius: 12px; padding: 14px; font-size: 1.05rem; cursor: pointer; }
 #gmap-card-go:disabled { opacity: 0.6; }
-body.gmap-open .dock-controls, body.gmap-open #btn-google-mode { z-index: 1000; }
+body.gmap-open .dock-controls { display: none; } /* the Google layer has its own close button */
 #btn-google-mode[hidden] { display: none; }
+
+/* Google mode: route options, departure, turn banner */
+.gmap-depart-row { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; color: #cbd5e1; font-size: 0.95rem; }
+.gmap-depart-row select { flex: 1; background: #0b0e14; color: #fff; border: 1px solid rgba(255,255,255,0.15); border-radius: 10px; padding: 10px; font-size: 1rem; }
+#gmap-card-routes { display: flex; flex-direction: column; gap: 6px; margin-bottom: 10px; }
+.gmap-route-opt { display: flex; justify-content: space-between; align-items: center; background: #0b0e14; color: #fff; border: 1px solid rgba(255,255,255,0.15); border-radius: 12px; padding: 12px 14px; font-size: 1rem; cursor: pointer; }
+.gmap-route-opt.active { border-color: var(--accent-blue); background: rgba(0,136,255,0.18); }
+.gmap-route-note { color: #9aa0a8; font-size: 0.85rem; }
+.gmap-card-btns { display: flex; gap: 8px; }
+.gmap-card-btns button { flex: 1; }
+#gmap-card-start { background: #16a34a; color: #fff; border: 0; border-radius: 12px; padding: 14px; font-size: 1.05rem; cursor: pointer; }
+#gmap-card-start[hidden] { display: none; }
+#gmap-nav { display: none; position: absolute; left: 12px; top: 12px; z-index: 4; width: min(460px, 52vw); background: #0f5132; color: #fff; border-radius: 16px; padding: 14px 54px 14px 18px; box-shadow: 0 8px 24px rgba(0,0,0,0.5); }
+#gmap-nav.show { display: block; }
+#gmap-nav-dist { font-size: 2rem; font-weight: 700; line-height: 1.1; }
+#gmap-nav-text { font-size: 1.1rem; margin-top: 4px; }
+#gmap-nav-stop { position: absolute; top: 8px; right: 8px; background: transparent; border: 0; color: #fff; font-size: 1.2rem; padding: 8px 12px; cursor: pointer; }

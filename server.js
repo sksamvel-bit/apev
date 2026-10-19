@@ -6,6 +6,7 @@ const zlib = require('zlib');
 const https = require('https');
 const vm = require('vm');
 const crypto = require('crypto');
+const { createRouteQuota } = require('./route-quota.js');
 
 const PORT = process.env.PORT || 3000;
 const PUBLIC_DIR = __dirname;
@@ -229,6 +230,8 @@ function isPublicAuthPath(p) {
   return false;
 }
 
+// Routes API spending guard (Google cannot cap it in the console): ROUTES_DAILY_CAP (default 100) / ROUTES_MONTHLY_CAP (default 4000).
+const ROUTE_QUOTA = createRouteQuota({ file: path.join(__dirname, 'routes-usage.json'), dayCap: parseInt(process.env.ROUTES_DAILY_CAP, 10) || 100, monthCap: parseInt(process.env.ROUTES_MONTHLY_CAP, 10) || 4000 });
 const ALLOWED_EVENT_TYPES = new Set(['destination','gps']);
 const CODE_RE = /^[A-Z0-9]{12,32}$/;
 const MAX_BODY = 8 * 1024;
@@ -805,6 +808,48 @@ const server = http.createServer((req, res) => {
       res.end(JSON.stringify({ error: 'Unauthorized' }));
       return;
     }
+  }
+
+  // API Endpoint: /api/route - Google Routes API (traffic-aware) through the server, with a hard daily/monthly call cap.
+  // Why server-side: the console cannot cap Routes API spend, and the key stays off the browser. GET ?from=lat,lng&to=lat,lng&depart=minutes.
+  // Behind the PIN gate. Answers 429 {error:'cap'} when the cap is used up (the page then falls back to OSRM), 503 when no key is set.
+  if (pathname === '/api/route') {
+    const rkey = (process.env.GOOGLE_ROUTES_KEY || '').trim();
+    res.setHeader('Cache-Control', 'no-store');
+    const sendJson = (code, obj) => { res.writeHead(code, { 'Content-Type': 'application/json; charset=utf-8' }); res.end(JSON.stringify(obj)); };
+    if (!rkey) return sendJson(503, { error: 'no-key' });
+    const pt = (v) => { const m = /^(-?\d{1,3}(?:\.\d+)?),(-?\d{1,3}(?:\.\d+)?)$/.exec(String(v || '')); if (!m) return null; const lat = +m[1], lng = +m[2]; return Math.abs(lat) <= 90 && Math.abs(lng) <= 180 ? { latitude: lat, longitude: lng } : null; };
+    const q = new URL(req.url, 'http://x').searchParams;
+    const from = pt(q.get('from')), to = pt(q.get('to'));
+    const depart = Math.min(Math.max(parseInt(q.get('depart') || '0', 10) || 0, 0), 24 * 60);
+    if (!from || !to) return sendJson(400, { error: 'bad-coordinates' });
+    const gate = ROUTE_QUOTA.tryConsume();
+    if (!gate.ok) return sendJson(429, { error: 'cap', reason: gate.reason });
+    const body = {
+      origin: { location: { latLng: from } }, destination: { location: { latLng: to } },
+      travelMode: 'DRIVE', routingPreference: 'TRAFFIC_AWARE', computeAlternativeRoutes: true, languageCode: 'ka', units: 'METRIC'
+    };
+    if (depart > 0) body.departureTime = new Date(Date.now() + depart * 60000 + 30000).toISOString();
+    const payload = JSON.stringify(body);
+    const greq = https.request({
+      hostname: 'routes.googleapis.com', path: '/directions/v2:computeRoutes', method: 'POST', timeout: 10000,
+      headers: {
+        'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(payload), 'X-Goog-Api-Key': rkey,
+        'X-Goog-FieldMask': 'routes.duration,routes.staticDuration,routes.distanceMeters,routes.polyline.encodedPolyline,routes.routeLabels,routes.legs.steps.navigationInstruction,routes.legs.steps.distanceMeters,routes.legs.steps.startLocation'
+      }
+    }, (gres) => {
+      const chunks = []; let size = 0;
+      gres.on('data', (c) => { size += c.length; if (size < 2 * 1024 * 1024) chunks.push(c); });
+      gres.on('end', () => {
+        if (gres.statusCode !== 200) { console.warn('[route] Google answered HTTP ' + gres.statusCode); return sendJson(502, { error: 'upstream', status: gres.statusCode }); }
+        res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
+        res.end(Buffer.concat(chunks));
+      });
+    });
+    greq.on('timeout', () => greq.destroy(new Error('timeout')));
+    greq.on('error', (e) => { console.warn('[route] upstream error: ' + (e && e.message)); if (!res.headersSent) sendJson(502, { error: 'upstream' }); });
+    greq.end(payload);
+    return;
   }
 
   // API Endpoint: /api/gmaps-config - hands the (referrer-restricted) Google Maps browser key to the signed-in page.
