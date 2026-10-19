@@ -632,14 +632,35 @@
     throw lastErr || new Error("მარშრუტი ვერ მოიძებნა");
   }
 
-  /** Traffic-aware routes via our server (/api/route): the server holds the key and enforces the daily/monthly call cap. */
+  const ROUTES_FIELD_MASK = "routes.duration,routes.staticDuration,routes.distanceMeters,routes.polyline.encodedPolyline,routes.routeLabels," +
+    "routes.legs.steps.navigationInstruction,routes.legs.steps.distanceMeters,routes.legs.steps.startLocation";
+
+  /** Traffic-aware routes. The server only counts (/api/route-permit enforces the daily/monthly cap); the browser then asks Google
+   *  with the referrer-restricted Maps key. Google answers this request with 503 "Deadline expired" when it comes from Render,
+   *  and with 200 from a desktop or the car's browser (verified 2026-10-19), so the call cannot stay on the server. */
   async function fetchGoogleRoutes(from, to, departInMin) {
-    const url = "/api/route?from=" + from.lat.toFixed(6) + "," + from.lng.toFixed(6) + "&to=" + to.lat.toFixed(6) + "," + to.lng.toFixed(6) + "&depart=" + (departInMin || 0);
-    const r = await fetch(url, { cache: "no-store", credentials: "same-origin" });
+    const fail = (code) => { const e = new Error("Routes: " + code); e.code = code; return e; };
+    const p = await fetch("/api/route-permit", { cache: "no-store", credentials: "same-origin" });
+    if (!p.ok) {
+      let code = "http" + p.status;
+      try { const j = await p.json(); if (j && j.error) code = j.error + (j.reason ? ":" + j.reason : ""); } catch (_) {}
+      throw fail(code);
+    }
+    if (!S.key) throw fail("no-key");
+    const ctrl = new AbortController();
+    const timer = setTimeout(() => ctrl.abort(), 10000);
+    let r;
+    try {
+      r = await fetch("https://routes.googleapis.com/directions/v2:computeRoutes", {
+        method: "POST", signal: ctrl.signal, cache: "no-store",
+        headers: { "Content-Type": "application/json", "X-Goog-Api-Key": S.key, "X-Goog-FieldMask": ROUTES_FIELD_MASK },
+        body: JSON.stringify(routesRequestBody(from, to, departInMin))
+      });
+    } finally { clearTimeout(timer); }
     if (!r.ok) {
-      let code = "http" + r.status;
-      try { const j = await r.json(); if (j && j.error) code = j.error + (j.reason ? ":" + j.reason : ""); } catch (_) {}
-      const e = new Error("Routes: " + code); e.code = code; throw e;
+      let code = "google" + r.status;
+      try { const j = await r.json(); if (j && j.error && j.error.status) code += ":" + j.error.status; } catch (_) {}
+      throw fail(code);
     }
     const routes = parseRoutesResponse(await r.json());
     if (!routes.length) { const e = new Error("Routes: no route"); e.code = "empty"; throw e; }
@@ -648,8 +669,10 @@
 
   function fallbackNote(code) {
     if (/^cap/.test(code)) return "Google მარშრუტების ლიმიტი ამოიწურა (" + (/month/.test(code) ? "თვის" : "დღის") + "), ნაჩვენებია OSRM მარშრუტი ტრაფიკის გარეშე.";
-    if (code === "no-key") return "Google მარშრუტის გასაღები არ არის დაყენებული (GOOGLE_ROUTES_KEY), ნაჩვენებია OSRM მარშრუტი ტრაფიკის გარეშე.";
-    return "Google მარშრუტი ვერ მუშაობს, ნაჩვენებია OSRM მარშრუტი ტრაფიკის გარეშე.";
+    if (code === "no-key") return "Google-ის გასაღები არ არის (GOOGLE_MAPS_KEY), ნაჩვენებია OSRM მარშრუტი ტრაფიკის გარეშე.";
+    if (/^google403/.test(code)) return "Google-მა მარშრუტი უარყო: რუკის გასაღებზე (Maps Platform API Key) Routes API უნდა იყოს ჩართული. ნაჩვენებია OSRM მარშრუტი.";
+    // the code at the end (e.g. google503:UNAVAILABLE) lets the driver send us the exact reason from the car
+    return "Google მარშრუტი ვერ მუშაობს (" + (code || "?") + "), ნაჩვენებია OSRM მარშრუტი ტრაფიკის გარეშე.";
   }
 
   function drawRoutes() {

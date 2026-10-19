@@ -31,4 +31,10 @@ ok(!/PUBLIC_AUTH_PATHS[^;]*api\/route/.test(srv), '/api/route is behind the PIN 
 ok(!/console\.(log|warn|error)\([^)]*ROUTES_KEY/.test(srv), 'routes key is never logged');
 ok(!/'route-quota\.js'/.test(srv.match(/STATIC_WHITELIST = new Set\(\[([\s\S]*?)\]\)/)[1]), 'route-quota.js is not served to browsers');
 const cli = fs.readFileSync(__dirname + '/../gmap.js', 'utf8');
-ok(!/X-Goog-Api-Key/i.test(cli) && /\/api\/route/.test(cli), 'browser no longer calls the Routes API directly (no key header, uses /api/route)');
+ok(/pathname === '\/api\/route-permit'/.test(srv) && !/PUBLIC_AUTH_PATHS[^;]*route-permit/.test(srv), 'server has /api/route-permit behind the PIN gate');
+ok(/route-permit[\s\S]*?ROUTE_QUOTA\.tryConsume\(\)/.test(srv), 'the permit endpoint spends one call of the daily/monthly cap');
+{
+  const f = cli.slice(cli.indexOf('async function fetchGoogleRoutes'), cli.indexOf('function fallbackNote'));
+  ok(f.indexOf('/api/route-permit') > -1 && f.indexOf('/api/route-permit') < f.indexOf('routes.googleapis.com'), 'browser asks the server for a permit before every Routes call (cap stays server-side)');
+  ok(/X-Goog-Api-Key": S\.key/.test(f), 'browser Routes call uses the referrer-restricted Maps key from /api/gmaps-config');
+}

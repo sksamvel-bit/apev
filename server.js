@@ -871,6 +871,17 @@ const server = http.createServer((req, res) => {
     return;
   }
 
+  // API Endpoint: /api/route-permit - one Routes API call from the browser = one permit. Since v3.10.42 the page calls Google Routes
+  // itself (Google answers 503 "Deadline expired" to the same request from Render, 200 from a desktop/car browser), and the
+  // daily/monthly cap stays here. Behind the PIN gate. 200 {ok,day,month} or 429 {error:'cap',reason}.
+  if (pathname === '/api/route-permit') {
+    res.setHeader('Cache-Control', 'no-store');
+    const gate = ROUTE_QUOTA.tryConsume();
+    res.writeHead(gate.ok ? 200 : 429, { 'Content-Type': 'application/json; charset=utf-8' });
+    res.end(JSON.stringify(gate.ok ? { ok: true, day: gate.day, month: gate.month } : { error: 'cap', reason: gate.reason }));
+    return;
+  }
+
   // API Endpoint: /api/gmaps-config - hands the (referrer-restricted) Google Maps browser key to the signed-in page.
   // Behind the PIN gate above (not a public path). The key is never logged. Without GOOGLE_MAPS_KEY the Google mode stays off.
   if (pathname === '/api/gmaps-config') {
