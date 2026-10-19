@@ -264,6 +264,12 @@ const GOOGLE_QUOTAS = {
   details: skuQuota('details', 300, 8000),          // free 10,000 (Essentials fields only)
   nearby: skuQuota('nearby', 120, 4000)             // free 5,000
 };
+// Startup line in the Render log: where the counters live and whether the store answered (never prints the token)
+ROUTE_QUOTA.init().then(() => {
+  const s = ROUTE_QUOTA.status();
+  console.log('[quota] store=' + s.store + ' synced=' + s.synced + (s.lastError ? ' error=' + s.lastError : '') +
+    (quotaAdapter ? '' : (process.env.UPSTASH_REDIS_REST_URL || process.env.UPSTASH_REDIS_REST_TOKEN ? ' (Upstash needs BOTH UPSTASH_REDIS_REST_URL and UPSTASH_REDIS_REST_TOKEN)' : '')));
+});
 /** Next Tbilisi day and the first day of next month, as YYYY-MM-DD (when a day / month cap resets). */
 function quotaResetDates(nowMs) {
   const d = new Date(nowMs + 4 * 3600 * 1000);
@@ -934,7 +940,9 @@ const server = http.createServer((req, res) => {
     const out = {};
     for (const sku of Object.keys(GOOGLE_QUOTAS)) out[sku] = Object.assign(GOOGLE_QUOTAS[sku].snapshot(), { googleFreeMonthly: GOOGLE_FREE_MONTHLY[sku] });
     res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' });
-    res.end(JSON.stringify({ resets: quotaResetDates(Date.now()), usage: out }));
+    const storage = { upstashUrlSet: !!process.env.UPSTASH_REDIS_REST_URL, upstashTokenSet: !!process.env.UPSTASH_REDIS_REST_TOKEN };
+    for (const sku of Object.keys(GOOGLE_QUOTAS)) storage[sku] = GOOGLE_QUOTAS[sku].status();
+    res.end(JSON.stringify({ resets: quotaResetDates(Date.now()), usage: out, storage }));
     return;
   }
 

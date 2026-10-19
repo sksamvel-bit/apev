@@ -45,8 +45,9 @@ function createUpstashRedisAdapter(opts) {
   const key = o.key || 'routes_usage_quota';
   if (!baseUrl || !token) return null;
 
-  return {
+  const api = {
     name: 'upstash',
+    lastError: '',
     // Resolves null only when the key really does not exist yet; a network error, timeout or bad answer REJECTS, so the guard
     // can tell "empty store" from "store unreachable" and never overwrites real counts after a failed read.
     load() {
@@ -62,7 +63,7 @@ function createUpstashRedisAdapter(opts) {
             res.setEncoding('utf8');
             res.on('data', c => { data += c; });
             res.on('end', () => {
-              if (res.statusCode !== 200) return reject(new Error('upstash HTTP ' + res.statusCode));
+              if (res.statusCode !== 200) return reject(new Error('upstash read HTTP ' + res.statusCode + ': ' + String(data).slice(0, 160)));
               try {
                 const j = JSON.parse(data);
                 if (j.result == null) return resolve(null);
@@ -91,17 +92,25 @@ function createUpstashRedisAdapter(opts) {
             },
             timeout: o.timeoutMs || 4000
           }, (res) => {
-            res.resume();
-            res.on('end', () => resolve(true));
+            // a refused write (wrong / read-only token: 401, 403) must not look like success
+            let body = '';
+            res.setEncoding('utf8');
+            res.on('data', (c) => { body += c; });
+            res.on('end', () => {
+              const ok = res.statusCode >= 200 && res.statusCode < 300;
+              api.lastError = ok ? '' : 'upstash write HTTP ' + res.statusCode + ': ' + body.slice(0, 160);
+              resolve(ok);
+            });
           });
-          req.on('error', () => resolve(false));
-          req.on('timeout', () => { req.destroy(); resolve(false); });
+          req.on('error', (e) => { api.lastError = 'upstash write: ' + e.message; resolve(false); });
+          req.on('timeout', () => { api.lastError = 'upstash write timeout'; req.destroy(); resolve(false); });
           req.write(payload);
           req.end();
-        } catch (_) { resolve(false); }
+        } catch (e) { api.lastError = 'upstash write: ' + e.message; resolve(false); }
       });
     }
   };
+  return api;
 }
 
 function createRouteQuota(opts) {
@@ -113,6 +122,7 @@ function createRouteQuota(opts) {
   // a write from a fresh instance (count 1) must not overwrite the real count, and a failed read must not reset the cap.
   let synced = !adapter || typeof adapter.load !== 'function';
   let loading = null, lastLoad = -Infinity;
+  let lastError = '', lastSavedAt = 0;   // shown by /api/google-usage: is the store really written?
 
   /** Calls spent before the store answered are added to what it holds for the same day / month. */
   function merge(stored) {
@@ -132,9 +142,9 @@ function createRouteQuota(opts) {
     lastLoad = o.now();
     const done = (stored) => { merge(stored); synced = true; save(); return true; };
     let res;
-    try { res = adapter.load(); } catch (_) { return Promise.resolve(false); }
+    try { res = adapter.load(); } catch (e) { lastError = 'read: ' + (e && e.message); return Promise.resolve(false); }
     if (res && typeof res.then === 'function') {
-      loading = res.then(done, () => false).then((ok) => { loading = null; return ok; });
+      loading = res.then(done, (e) => { lastError = 'read: ' + (e && e.message); return false; }).then((ok) => { loading = null; return ok; });
       return loading;
     }
     return Promise.resolve(done(res));
@@ -151,10 +161,12 @@ function createRouteQuota(opts) {
   function save() {
     if (!synced) return;
     if (adapter && typeof adapter.save === 'function') {
+      const note = (ok) => { if (ok === false) lastError = adapter.lastError || 'write failed'; else { lastError = ''; lastSavedAt = o.now(); } };
       try {
         const p = adapter.save(st);
-        if (p && typeof p.catch === 'function') p.catch(() => {});
-      } catch (_) { /* ignore write failure */ }
+        if (p && typeof p.then === 'function') p.then(note, (e) => { lastError = 'write: ' + (e && e.message); });
+        else note(p);
+      } catch (e) { lastError = 'write: ' + (e && e.message); }
     }
   }
 
@@ -172,6 +184,7 @@ function createRouteQuota(opts) {
     init() { return readyPromise; },
     ready: readyPromise,
     isSynced() { return synced; },
+    status() { return { store: adapter ? (adapter.name || 'custom') : 'memory', synced, lastError, lastSavedAt: lastSavedAt ? new Date(lastSavedAt).toISOString() : null }; },
     adapter
   };
 }

@@ -135,4 +135,17 @@ ok(!/PUBLIC_AUTH_PATHS[^;]*google-(permit|usage)/.test(srv), '/api/google-permit
     try { await dead.load(); } catch (_) { rejected = true; }
     ok(rejected, 'Upstash load rejects when the store cannot be reached');
   }
+
+  // 8. A refused write (e.g. read-only token) shows up in status() instead of passing silently
+  {
+    const ro = { name: 'mock-ro', lastError: '', load() { return Promise.resolve(null); }, save() { this.lastError = 'upstash write HTTP 401: NOPERM'; return Promise.resolve(false); } };
+    const q = createRouteQuota({ adapter: ro, dayCap: 5, now: () => now });
+    await q.init(); await new Promise((r) => setTimeout(r, 0));
+    const s1 = q.status();
+    ok(s1.store === 'mock-ro' && s1.synced && /401/.test(s1.lastError) && s1.lastSavedAt === null, 'status() reports the refused write: ' + s1.lastError);
+    const okStore = { name: 'mock-ok', load() { return Promise.resolve(null); }, save() { return Promise.resolve(true); } };
+    const q2 = createRouteQuota({ adapter: okStore, dayCap: 5, now: () => now });
+    await q2.init(); await new Promise((r) => setTimeout(r, 0));
+    ok(q2.status().lastError === '' && !!q2.status().lastSavedAt, 'a successful write clears the error and records the time');
+  }
 })();
