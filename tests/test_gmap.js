@@ -29,6 +29,40 @@ ok(G.CATEGORIES.length === 1 && G.CATEGORIES[0].id === 'ev' && G.CATEGORIES.ever
   const v3 = G.createVoiceCues(); v3.update(1, st, 40, 40); v3.reset();
   ok(v3.update(1, st, 40, 40) === 'მოუხვიეთ მარჯვნივ', 'reset (after a reroute) allows the prompt again');
 }
+// ---- smooth car (glide), look-ahead camera, raster/vector options ----
+{
+  const U = require('../map-gl.js');
+  const gl = G.createCarGlide(U);
+  gl.setFix({ lat: 41.7, lng: 44.8, headingDeg: 0, speedMs: 10 }, 0);
+  let f = null; for (let t = 50; t <= 500; t += 50) f = gl.frame(t, 50);
+  const north = G.meters({ lat: 41.7, lng: 44.8 }, f);
+  ok(f.lat > 41.7 && north > 2 && north < 6 && f.moving, 'glide: dead reckoning moves the arrow forward between fixes (' + north.toFixed(1) + ' m in 0.5 s at 10 m/s)');
+  gl.setFix({ lat: 41.70005, lng: 44.8, headingDeg: 90, speedMs: 10 }, 1000);
+  const h1 = gl.frame(1050, 50).heading;
+  ok(h1 > 0 && h1 < 45, 'glide: heading turns smoothly, not in one jump (' + h1.toFixed(1) + ' deg)');
+  const g2 = G.createCarGlide(U);
+  g2.setFix({ lat: 41.7, lng: 44.8, headingDeg: 350, speedMs: 10 }, 0); g2.frame(50, 50);
+  g2.setFix({ lat: 41.7, lng: 44.8, headingDeg: 10, speedMs: 10 }, 100);
+  const h2 = g2.frame(150, 50).heading;
+  ok(h2 > 350 || h2 < 10, 'glide: 350 -> 10 turns through north (' + h2.toFixed(1) + ')');
+  const g3 = G.createCarGlide(U);
+  g3.setFix({ lat: 41.7, lng: 44.8, headingDeg: 0, speedMs: 0 }, 0); g3.frame(50, 50);
+  g3.setFix({ lat: 41.8, lng: 44.9, headingDeg: 0, speedMs: 0 }, 100);
+  const j = g3.frame(150, 50);
+  ok(Math.abs(j.lat - 41.8) < 1e-9 && Math.abs(j.lng - 44.9) < 1e-9, 'glide: a far jump (GPS lock) snaps instead of crawling');
+  let still = true; for (let t = 200; t < 3000; t += 50) still = g3.frame(t, 50).moving;
+  ok(still === false, 'glide: a standing car stops animating (the loop can sleep)');
+  ok(G.createCarGlide(U).frame(0, 16) === null, 'glide: no fix -> no frame');
+  const c = G.aheadPoint(U, { lat: 41.7, lng: 44.8 }, 0, 16, 800, 0.25);
+  const ahead = G.meters({ lat: 41.7, lng: 44.8 }, c);
+  ok(c.lat > 41.7 && Math.abs(ahead - 800 * 0.25 * 156543.03392 * Math.cos(41.7 * Math.PI / 180) / 65536) < 3, 'look-ahead: camera centre is a quarter screen ahead of the car (' + ahead.toFixed(0) + ' m at z16)');
+  const r = G.mapOptions(false, true, { center: { lat: 1, lng: 2 }, zoom: 16 });
+  ok(Array.isArray(r.styles) && !r.mapId && !r.renderingType, 'raster map: JSON styles, no Map ID');
+  const v = G.mapOptions(true, true, { center: { lat: 1, lng: 2 }, zoom: 16, heading: 120 });
+  ok(v.mapId === 'DEMO_MAP_ID' && v.renderingType === 'VECTOR' && v.colorScheme === 'DARK' && v.heading === 120 && !v.styles, 'vector map: Map ID (DEMO fallback), dark colour scheme, keeps the heading');
+  ok(G.mapOptions(true, false, { center: { lat: 1, lng: 2 }, zoom: 16 }).colorScheme === 'LIGHT', 'vector map: light by day');
+}
+ok(/gmap-btn-night/.test(src) && /gmap-btn-vector/.test(src), 'Google panel wires the night and vector buttons');
 ok(/__setMainMapPaused\(true\)/.test(src) && /__setMainMapPaused\(false\)/.test(src), 'Google mode pauses the main map on open and resumes it on close');
 ok(/__gmapNavigating = true/.test(src) && /__gmapNavigating = false/.test(src), 'Google navigation marks itself so routing.js stays quiet');
 

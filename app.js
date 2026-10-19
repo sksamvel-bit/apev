@@ -134,7 +134,7 @@ function initClock() {
 const OFM_STYLE_URL = "https://tiles.openfreemap.org/styles/liberty";
 const OFM_STYLE_CACHE_KEY = "tesla_nav_ofm_style_v1";
 const MAP_STYLE_KEYS = ["openfreemap", "google-roads"];
-const APP_VERSION = "3.10.35";
+const APP_VERSION = "3.10.36";
 const MAP_DEFAULT_ZOOM = 16;      // MapLibre zoom (Leaflet-equivalent 17)
 // Performance experiments (all default to the normal behaviour): ?labels=0 hides the base-map labels/icons, ?markers=0 skips the
 // charger DOM markers, ?pitch=N sets the heading-up tilt (0-60). Used to find what makes the car's browser slow.
@@ -586,6 +586,7 @@ function toggleNightMode() {
   applyNightMode(!isNightMode);
   showToast(isNightMode ? "🌙 ღამის რეჟიმი ჩართულია" : "☀️ დღის რეჟიმი ჩართულია", "info", 1800);
 }
+window.toggleNightMode = toggleNightMode; // the Google mode panel has its own 🌙 button
 
 function applyNightMode(enable) {
   const nightChanged = isNightMode !== enable;
@@ -1085,6 +1086,7 @@ function updateVehicleMarker(lat, lng, headingDeg, speedKmh, accuracyMeters = nu
     // gets this (not continuousHeading, which is already smoothed per fix and would make turns lag by seconds).
     mapCamera.setFix({ lng, lat, headingDeg: lastKnownValidHeading, speedMs: speedKmh / 3.6 });
   }
+  window.__carFix = { lat, lng, headingDeg: lastKnownValidHeading, speedMs: speedKmh / 3.6 }; // Google mode (gmap.js) glides its arrow from this
 
   // Dirty check: only update DOM textContent when speed actually changes
   if (speedKmh !== lastRenderedSpeed) {

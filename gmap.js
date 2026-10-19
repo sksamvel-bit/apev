@@ -218,13 +218,49 @@
     };
   }
 
+  /** Smooth car for the Google map: dead reckoning between the 1 Hz GPS fixes plus exponential smoothing, the same model and
+   *  time constants as FollowCamera in map-gl.js, whose math helpers (advance, shortestDelta, normDeg) are passed in as `util`. */
+  function createCarGlide(util) {
+    let fix = null, pos = null, heading = 0;
+    const hasHeading = (h) => h != null && isFinite(h);
+    return {
+      setFix(f, now) {
+        fix = { lat: f.lat, lng: f.lng, headingDeg: f.headingDeg, speedMs: f.speedMs || 0, t: now };
+        if (!pos) { pos = { lat: f.lat, lng: f.lng }; if (hasHeading(f.headingDeg)) heading = util.normDeg(f.headingDeg); }
+      },
+      frame(now, dt) {
+        if (!fix) return null;
+        const age = Math.max(0, Math.min(1500, now - fix.t));
+        let tgt = { lat: fix.lat, lng: fix.lng };
+        if (fix.speedMs > 1 && hasHeading(fix.headingDeg)) { const a = util.advance(fix.lng, fix.lat, fix.headingDeg, fix.speedMs * age / 1000); tgt = { lat: a.lat, lng: a.lng }; }
+        if (Math.abs(tgt.lat - pos.lat) > 0.003 || Math.abs(tgt.lng - pos.lng) > 0.003) pos = tgt;   // far jump (GPS just locked): snap
+        else { const k = 1 - Math.exp(-dt / 220); pos = { lat: pos.lat + (tgt.lat - pos.lat) * k, lng: pos.lng + (tgt.lng - pos.lng) * k }; }
+        let turning = false;
+        if (hasHeading(fix.headingDeg)) {
+          const d = util.shortestDelta(fix.headingDeg, heading);
+          if (Math.abs(d) > 0.2) { heading = util.normDeg(heading + d * (1 - Math.exp(-dt / (fix.speedMs > 3 ? 260 : 900)))); turning = true; }
+        }
+        const moving = fix.speedMs > 1 || turning || Math.abs(tgt.lat - pos.lat) > 1e-7 || Math.abs(tgt.lng - pos.lng) > 1e-7;
+        return { lat: pos.lat, lng: pos.lng, heading, moving };
+      }
+    };
+  }
+
+  /** Camera centre that keeps the car `frac` of the screen height behind the centre, so more road ahead is visible. */
+  function aheadPoint(util, pos, headingDeg, zoom, heightPx, frac) {
+    const mpp = 156543.03392 * Math.cos(pos.lat * Math.PI / 180) / Math.pow(2, zoom);
+    const a = util.advance(pos.lng, pos.lat, headingDeg, heightPx * (frac == null ? 0.25 : frac) * mpp);
+    return { lat: a.lat, lng: a.lng };
+  }
+
   function fmtDist(m) { return m >= 1000 ? (m / 1000).toFixed(m >= 10000 ? 0 : 1) + " კმ" : Math.round(m / 10) * 10 + " მ"; }
 
   // ---------- the mode ----------
   const S = {
     enabled: false, key: "", open: false, map: null, traffic: null, trafficOn: true, loading: null, g: null,
     carMarker: null, carPos: null, carHeading: 0, follow: true, placeMarker: null, catMarkers: [], activeCat: null,
-    routeLines: [], routes: [], routeIdx: 0, stepIdx: 0, segIdx: 0, offRouteTracker: null, rerouting: false, voice: null, navigating: false, place: null, sessionToken: null, night: null, timers: []
+    routeLines: [], routes: [], routeIdx: 0, stepIdx: 0, segIdx: 0, offRouteTracker: null, rerouting: false, voice: null, glide: null, raf: null, lastFrame: 0, idle: 0, lastFix: null,
+    vector: false, mapId: "", carRot: null, navigating: false, place: null, sessionToken: null, night: null, timers: []
   };
 
   const $ = (id) => document.getElementById(id);
@@ -265,7 +301,7 @@
       const r = await fetch("/api/gmaps-config", { cache: "no-store", credentials: "same-origin" });
       if (!r.ok) return { enabled: false };
       const j = await r.json();
-      return j && j.enabled && typeof j.key === "string" && j.key ? { enabled: true, key: j.key } : { enabled: false };
+      return j && j.enabled && typeof j.key === "string" && j.key ? { enabled: true, key: j.key, mapId: typeof j.mapId === "string" ? j.mapId : "" } : { enabled: false };
     } catch (_) { return { enabled: false }; }
   }
 
@@ -274,13 +310,28 @@
     return p && isFinite(p.lat) && isFinite(p.lng) ? { lat: p.lat, lng: p.lng } : TBILISI;
   }
 
-  function createMap() {
+  /** Raster (default: light on the MCU2, JSON styles, north-up) or vector (test: needs a Map ID, can turn heading-up). */
+  function mapOptions(vector, night, view) {
+    const o = { center: view.center, zoom: view.zoom, disableDefaultUI: true, gestureHandling: "greedy", clickableIcons: false, keyboardShortcuts: false };
+    if (!vector) { o.styles = mapStyles(night); return o; }
+    o.mapId = S.mapId || "DEMO_MAP_ID";   // DEMO_MAP_ID is Google's test id; set GOOGLE_MAP_ID on the server for real use
+    o.renderingType = "VECTOR";
+    o.colorScheme = night ? "DARK" : "LIGHT";   // a Map ID map ignores `styles`; the colour scheme is fixed at creation
+    o.heading = view.heading || 0;
+    o.tilt = 0;
+    return o;
+  }
+
+  function createMap(view) {
     const { Map, TrafficLayer } = S.g.maps;
-    S.map = new Map($("gmap-canvas"), {
-      center: currentCenter(), zoom: 16, disableDefaultUI: true, gestureHandling: "greedy", clickableIcons: false,
-      keyboardShortcuts: false, styles: mapStyles(!!window.__night)
-    });
+    const box = $("gmap-canvas");
+    const el = document.createElement("div");   // a fresh element per map: a Map ID cannot be added to an existing map
+    el.style.cssText = "position:absolute;inset:0";
+    box.textContent = "";
+    box.appendChild(el);
     S.night = !!window.__night;
+    S.map = new Map(el, mapOptions(S.vector, S.night, view || { center: currentCenter(), zoom: 16 }));
+    S.carMarker = null; S.carRot = null;
     S.traffic = new TrafficLayer();
     try { S.trafficOn = localStorage.getItem("gmapTraffic") !== "0"; } catch (_) { S.trafficOn = true; }
     applyTraffic();
@@ -293,22 +344,92 @@
     if (b) b.classList.toggle("active", S.trafficOn);
   }
 
-  function markerIcon() {
-    return { path: S.g.core.SymbolPath.FORWARD_CLOSED_ARROW, scale: 6, rotation: S.carHeading, fillColor: "#3e6ae1", fillOpacity: 1, strokeColor: "#ffffff", strokeWeight: 2 };
+  /** Re-creates the map (vector on/off, or night on a vector map) and puts our overlays back on it. */
+  function rebuildMap() {
+    if (!S.map) return;
+    const c = S.map.getCenter();
+    createMap({ center: c ? { lat: c.lat(), lng: c.lng() } : currentCenter(), zoom: S.map.getZoom() || 16, heading: S.carHeading });
+    if (S.place && S.placeMarker) S.placeMarker.setMap(S.map);
+    S.catMarkers.forEach((m) => m.setMap(S.map));
+    if (S.routes.length) drawRoutes();
+    updatePanelButtons();
+    wakeCar();
   }
 
-  /** Mirrors the car position the main app already tracks (window.currentPos); the heading comes from the last movement. */
+  function updatePanelButtons() {
+    const v = $("gmap-btn-vector"); if (v) v.classList.toggle("active", S.vector);
+    const n = $("gmap-btn-night"); if (n) n.classList.toggle("active", !!window.__night);
+  }
+
+  function syncNight() {
+    const night = !!window.__night;
+    if (!S.map || night === S.night) return;
+    if (S.vector) rebuildMap();   // colorScheme is fixed at creation
+    else { S.night = night; S.map.setOptions({ styles: mapStyles(night) }); }
+    updatePanelButtons();
+  }
+
+  function markerIcon(rotation) {
+    return { path: S.g.core.SymbolPath.FORWARD_CLOSED_ARROW, scale: 6, rotation, fillColor: "#3e6ae1", fillOpacity: 1, strokeColor: "#ffffff", strokeWeight: 2 };
+  }
+
+  const CAR_FRAME_MS = 50;   // 20 fps is smooth enough for a 1 Hz GPS and cheap on the Atom
+
+  /** One frame of the glide: arrow position/rotation, and the camera while following (heading-up on the vector map). */
+  function drawCar(f) {
+    S.carHeading = f.heading;
+    const pos = { lat: f.lat, lng: f.lng };
+    const headingUp = S.vector && S.follow;
+    // the marker is drawn upright on the screen, so on a rotated map its rotation is relative to the map heading
+    const mapHeading = S.vector && S.map.getHeading ? (S.map.getHeading() || 0) : 0;
+    const rot = Math.round(headingUp ? 0 : ((f.heading - mapHeading) % 360 + 360) % 360);
+    if (!S.carMarker) { S.carMarker = new S.g.core.Marker({ position: pos, map: S.map, icon: markerIcon(rot), zIndex: 999, clickable: false }); S.carRot = rot; }
+    else { S.carMarker.setPosition(pos); if (rot !== S.carRot) { S.carMarker.setIcon(markerIcon(rot)); S.carRot = rot; } }
+    if (!S.follow) return;
+    const el = S.map.getDiv && S.map.getDiv();
+    const h = (el && el.clientHeight) || 800;
+    const center = aheadPoint(window.MapGL, pos, f.heading, S.map.getZoom() || 16, h, 0.25);
+    if (headingUp && S.map.moveCamera) S.map.moveCamera({ center, heading: f.heading });
+    else S.map.setCenter(center);
+  }
+
+  function carLoop(ts) {
+    S.raf = null;
+    if (!S.open || !S.map || !S.glide) return;
+    if (S.lastFrame && ts - S.lastFrame < CAR_FRAME_MS) { S.raf = requestAnimationFrame(carLoop); return; }
+    const dt = Math.min(1000, S.lastFrame ? ts - S.lastFrame : 16);
+    S.lastFrame = ts;
+    const f = S.glide.frame(performance.now(), dt);
+    if (f) drawCar(f);
+    S.idle = f && f.moving ? 0 : S.idle + 1;
+    if (S.idle < 30) S.raf = requestAnimationFrame(carLoop);   // sleeps when the car stands still
+    else S.lastFrame = 0;
+  }
+
+  function wakeCar() { S.idle = 0; if (!S.raf && S.open) S.raf = requestAnimationFrame(carLoop); }
+
+  /** The latest fix from the main app: window.__carFix (GPS heading snapped to the road) or, as a fallback, window.currentPos. */
+  function readFix() {
+    const f = window.__carFix;
+    if (f && isFinite(f.lat) && isFinite(f.lng)) return f;
+    const p = window.currentPos;
+    if (!p || !isFinite(p.lat) || !isFinite(p.lng)) return null;
+    if (S.lastFix && S.lastFix.lat === p.lat && S.lastFix.lng === p.lng) return S.lastFix;
+    const hd = S.carPos && meters(S.carPos, p) > 4 ? bearing(S.carPos, p) : S.carHeading;
+    return { lat: p.lat, lng: p.lng, headingDeg: hd, speedMs: 0 };
+  }
+
+  /** Polls the main app's fix (4x a second); route logic runs once per new fix, the glide animates in between. */
   function syncCar() {
     if (!S.open || !S.map) return;
-    const p = window.currentPos;
-    if (!p || !isFinite(p.lat) || !isFinite(p.lng)) return;
-    const pos = { lat: p.lat, lng: p.lng };
-    if (S.carPos && meters(S.carPos, pos) > 4) S.carHeading = bearing(S.carPos, pos);
-    const moved = !S.carPos || meters(S.carPos, pos) > 1;
+    syncNight();
+    const fix = readFix();
+    if (!fix || fix === S.lastFix) return;
+    S.lastFix = fix;
+    if (!S.glide && window.MapGL) S.glide = createCarGlide(window.MapGL);
+    if (S.glide) { S.glide.setFix(fix, performance.now()); wakeCar(); }
+    const pos = { lat: fix.lat, lng: fix.lng };
     S.carPos = pos;
-    if (!S.carMarker) S.carMarker = new S.g.core.Marker({ position: pos, map: S.map, icon: markerIcon(), zIndex: 999, clickable: false });
-    else if (moved) { S.carMarker.setPosition(pos); S.carMarker.setIcon(markerIcon()); }
-    if (S.follow && moved) S.map.panTo(pos);
     if (S.navigating && S.place && S.place.loc && meters(pos, S.place.loc) < 30) {
       stopNavigation();
       setStatus("დანიშნულების ადგილზე ხართ");
@@ -325,8 +446,6 @@
       }
       updateNavBanner();
     }
-    const night = !!window.__night;
-    if (night !== S.night) { S.night = night; S.map.setOptions({ styles: mapStyles(night) }); }
   }
 
   // ---------- search (Places API New) ----------
@@ -534,7 +653,7 @@
     $("gmap-btn-me") && $("gmap-btn-me").classList.add("active");
     $("gmap-card").classList.remove("show");
     S.map.setZoom(17);
-    if (S.carPos) S.map.panTo(S.carPos);
+    wakeCar();
     updateNavBanner();
   }
 
@@ -664,7 +783,8 @@
       S.follow = true;
       $("gmap-btn-me") && $("gmap-btn-me").classList.add("active");
       syncCar();
-      S.timers.push(setInterval(syncCar, 1000));
+      updatePanelButtons();
+      S.timers.push(setInterval(syncCar, 250));
     } catch (e) {
       setStatus((e && e.message) || "Google რუკა მიუწვდომელია");
     }
@@ -676,6 +796,8 @@
     stopNavigation();
     S.timers.forEach(clearInterval);
     S.timers = [];
+    if (S.raf) { cancelAnimationFrame(S.raf); S.raf = null; }
+    S.lastFrame = 0;
     const layer = $("gmap-layer");
     if (layer) layer.classList.remove("show");
     document.body.classList.remove("gmap-open");
@@ -693,12 +815,19 @@
       if (!S.map) return;
       S.follow = true;
       $("gmap-btn-me").classList.add("active");
-      if (S.carPos) S.map.panTo(S.carPos);
+      wakeCar();   // the glide re-centres (and on the vector map turns heading-up) on its next frame
     });
     on("gmap-btn-traffic", "click", () => {
       S.trafficOn = !S.trafficOn;
       try { localStorage.setItem("gmapTraffic", S.trafficOn ? "1" : "0"); } catch (_) {}
       applyTraffic();
+    });
+    on("gmap-btn-night", "click", () => { if (window.toggleNightMode) window.toggleNightMode(); syncNight(); });
+    on("gmap-btn-vector", "click", () => {
+      S.vector = !S.vector;
+      try { localStorage.setItem("gmapVector", S.vector ? "1" : "0"); } catch (_) {}
+      rebuildMap();
+      say(S.vector ? "ვექტორული რუკა (სატესტო): მანქანის მიმართულებით ბრუნავს" + (S.mapId ? "" : ", DEMO_MAP_ID") : "კლასიკური რუკა (ჩრდილოეთი ზემოთ)");
     });
     on("gmap-card-close", "click", closeCard);
     on("gmap-card-go", "click", routeToPlace);
@@ -730,11 +859,13 @@
     const cfg = await fetchConfig();
     S.enabled = cfg.enabled;
     S.key = cfg.key || "";
+    S.mapId = cfg.mapId || "";
+    try { S.vector = localStorage.getItem("gmapVector") === "1"; } catch (_) { S.vector = false; }
     const btn = $("btn-google-mode");
     if (btn) btn.hidden = !S.enabled;
   }
 
-  const api = { init, open, close, isOpen: () => S.open, distToPolylineM, nearestOnPolyline, createOffRouteTracker, createVoiceCues, decodePolyline, parseRoutesResponse, routesRequestBody, nextStepIndex, fmtDist, buildLoaderUrl, createDebouncer, osrmUrl, summarizeRoute, mapStyles, bearing, meters, CATEGORIES };
+  const api = { init, open, close, isOpen: () => S.open, distToPolylineM, nearestOnPolyline, createOffRouteTracker, createVoiceCues, createCarGlide, aheadPoint, mapOptions, decodePolyline, parseRoutesResponse, routesRequestBody, nextStepIndex, fmtDist, buildLoaderUrl, createDebouncer, osrmUrl, summarizeRoute, mapStyles, bearing, meters, CATEGORIES };
   if (typeof document !== "undefined") {
     if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", () => init());
     else init();

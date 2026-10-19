@@ -859,7 +859,9 @@ const server = http.createServer((req, res) => {
   if (pathname === '/api/gmaps-config') {
     const key = (process.env.GOOGLE_MAPS_KEY || '').trim();
     res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' });
-    res.end(JSON.stringify(key ? { enabled: true, key } : { enabled: false }));
+    // GOOGLE_MAP_ID (optional): a vector Map ID from Google Cloud for the heading-up test map; without it the page uses DEMO_MAP_ID
+    const mapId = (process.env.GOOGLE_MAP_ID || '').trim();
+    res.end(JSON.stringify(key ? { enabled: true, key, mapId } : { enabled: false }));
     return;
   }
 
