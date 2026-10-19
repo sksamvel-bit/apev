@@ -40,8 +40,11 @@ function createFileAdapter(filePath) {
 
 function createUpstashRedisAdapter(opts) {
   const o = opts || {};
-  const baseUrl = (o.url || '').replace(/\/+$/, '');
-  const token = o.token || '';
+  // Values pasted into Render's multi-line field often carry a line break, spaces, quotes or the "NAME=" prefix; a line break in
+  // the token made Node refuse the Authorization header ("Invalid character in header content"). URLs and tokens have no spaces.
+  const clean = (v) => String(v || '').replace(/\s+/g, '').replace(/^[A-Z_]+=/, '').replace(/^["']+|["']+$/g, '');
+  const baseUrl = clean(o.url).replace(/\/+$/, '');
+  const token = clean(o.token);
   const key = o.key || 'routes_usage_quota';
   if (!baseUrl || !token) return null;
 

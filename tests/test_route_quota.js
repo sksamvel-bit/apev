@@ -136,6 +136,22 @@ ok(!/PUBLIC_AUTH_PATHS[^;]*google-(permit|usage)/.test(srv), '/api/google-permit
     ok(rejected, 'Upstash load rejects when the store cannot be reached');
   }
 
+  // 7b. A token pasted with a line break / quotes / NAME= prefix (Render's multi-line field) still makes a valid header
+  {
+    const http = require('http');
+    let seen = null;
+    const srv = http.createServer((req, res) => { seen = req.headers.authorization; res.writeHead(200, { 'Content-Type': 'application/json' }); res.end('{"result":null}'); });
+    await new Promise((r) => srv.listen(0, '127.0.0.1', r));
+    const port = srv.address().port;
+    // http:// test server: swap the https module for http only inside this check
+    const https = require('https'); const orig = https.request; https.request = http.request;
+    try {
+      const a = createUpstashRedisAdapter({ url: ' "http://127.0.0.1:' + port + '/"\n', token: 'UPSTASH_REDIS_REST_TOKEN="AXabc123\nxyz"\r\n' });
+      let err = null; try { await a.load(); } catch (e) { err = e; }
+      ok(!err && seen === 'Bearer AXabc123xyz', 'token with line break, quotes and NAME= prefix is cleaned (header: ' + seen + (err ? ', error ' + err.message : '') + ')');
+    } finally { https.request = orig; srv.close(); }
+  }
+
   // 8. A refused write (e.g. read-only token) shows up in status() instead of passing silently
   {
     const ro = { name: 'mock-ro', lastError: '', load() { return Promise.resolve(null); }, save() { this.lastError = 'upstash write HTTP 401: NOPERM'; return Promise.resolve(false); } };
