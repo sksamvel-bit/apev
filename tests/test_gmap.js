@@ -63,6 +63,21 @@ ok(G.CATEGORIES.length === 1 && G.CATEGORIES[0].id === 'ev' && G.CATEGORIES.ever
   ok(G.mapOptions(true, false, { center: { lat: 1, lng: 2 }, zoom: 16 }).colorScheme === 'LIGHT', 'vector map: light by day');
 }
 ok(/gmap-btn-night/.test(src) && /gmap-btn-vector/.test(src), 'Google panel wires the night and vector buttons');
+
+// ---- 3D load: camera dead-band, fps meter ----
+{
+  const p = { lat: 41.7, lng: 44.8, heading: 90 };
+  ok(G.cameraNeedsUpdate(null, p, 1, 1), 'camera: first frame always moves');
+  ok(!G.cameraNeedsUpdate(p, { lat: 41.700003, lng: 44.8, heading: 90.4 }, 1, 1), 'camera: under 1 m and 1 deg -> skipped (no vector re-render)');
+  ok(G.cameraNeedsUpdate(p, { lat: 41.70002, lng: 44.8, heading: 90 }, 1, 1), 'camera: 2 m move -> updated');
+  ok(G.cameraNeedsUpdate(p, { lat: 41.7, lng: 44.8, heading: 92 }, 1, 1), 'camera: 2 deg turn -> updated');
+  ok(G.cameraNeedsUpdate({ lat: 41.7, lng: 44.8, heading: 359.5 }, { lat: 41.7, lng: 44.8, heading: 1 }, 1, 1), 'camera: turn across north counts the short way (1.5 deg)');
+  ok(!G.cameraNeedsUpdate({ lat: 41.7, lng: 44.8, heading: null }, { lat: 41.7, lng: 44.8, heading: null }, 1, 1), 'camera: classic map (no heading) only moves on distance');
+  const m = G.createFpsMeter(); let out = null;
+  m.tick(0); for (let t = 100; t <= 1000; t += 100) { const v = m.tick(t); if (v != null) out = v; }
+  ok(out != null && Math.abs(out - 10) < 0.01, 'fps meter: 10 frames in 1 s -> 10 fps');
+}
+ok(/S\.vector \? 100 : 50/.test(src) && /gfps=/.test(src), '3D map moves the camera at 10 fps (classic 20), ?gfps=N overrides');
 ok(/__setMainMapPaused\(true\)/.test(src) && /__setMainMapPaused\(false\)/.test(src), 'Google mode pauses the main map on open and resumes it on close');
 ok(/__gmapNavigating = true/.test(src) && /__gmapNavigating = false/.test(src), 'Google navigation marks itself so routing.js stays quiet');
 

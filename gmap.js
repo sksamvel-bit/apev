@@ -253,6 +253,30 @@
     return { lat: a.lat, lng: a.lng };
   }
 
+  /** Camera dead-band: skip a camera move that would not change the picture (less than ~half a pixel / under a degree).
+   *  Every moveCamera() on the vector map re-renders it, which is the expensive part on the MCU2. */
+  function cameraNeedsUpdate(prev, next, minM, minDeg) {
+    if (!prev) return true;
+    if (meters(prev, next) >= minM) return true;
+    if (next.heading == null || prev.heading == null) return false;
+    return Math.abs(((next.heading - prev.heading) % 360 + 540) % 360 - 180) >= minDeg;
+  }
+
+  /** Frames per second over ~1 s windows: tick(nowMs) returns the fps when a window closes, otherwise null. */
+  function createFpsMeter() {
+    let t0 = null, n = 0;
+    return {
+      tick(now) {
+        if (t0 === null) { t0 = now; n = 0; return null; }
+        n++;
+        if (now - t0 < 1000) return null;
+        const fps = n * 1000 / (now - t0);
+        t0 = now; n = 0;
+        return fps;
+      }
+    };
+  }
+
   function fmtDist(m) { return m >= 1000 ? (m / 1000).toFixed(m >= 10000 ? 0 : 1) + " კმ" : Math.round(m / 10) * 10 + " მ"; }
 
   // ---------- the mode ----------
@@ -260,7 +284,8 @@
     enabled: false, key: "", open: false, map: null, traffic: null, trafficOn: true, loading: null, g: null,
     carMarker: null, carPos: null, carHeading: 0, follow: true, placeMarker: null, catMarkers: [], activeCat: null,
     routeLines: [], routes: [], routeIdx: 0, stepIdx: 0, segIdx: 0, offRouteTracker: null, rerouting: false, voice: null, glide: null, raf: null, lastFrame: 0, idle: 0, lastFix: null,
-    vector: false, mapId: "", carRot: null, navigating: false, place: null, sessionToken: null, night: null, timers: []
+    vector: false, mapId: "", carRot: null, carTimer: null, lastCam: null, lastMarker: null, camCount: 0, gfps: 0, debug: false,
+    navigating: false, place: null, sessionToken: null, night: null, timers: []
   };
 
   const $ = (id) => document.getElementById(id);
@@ -331,7 +356,7 @@
     box.appendChild(el);
     S.night = !!window.__night;
     S.map = new Map(el, mapOptions(S.vector, S.night, view || { center: currentCenter(), zoom: 16 }));
-    S.carMarker = null; S.carRot = null;
+    S.carMarker = null; S.carRot = null; S.lastMarker = null; S.lastCam = null;
     S.traffic = new TrafficLayer();
     try { S.trafficOn = localStorage.getItem("gmapTraffic") !== "0"; } catch (_) { S.trafficOn = true; }
     applyTraffic();
@@ -373,7 +398,9 @@
     return { path: S.g.core.SymbolPath.FORWARD_CLOSED_ARROW, scale: 6, rotation, fillColor: "#3e6ae1", fillOpacity: 1, strokeColor: "#ffffff", strokeWeight: 2 };
   }
 
-  const CAR_FRAME_MS = 50;   // 20 fps is smooth enough for a 1 Hz GPS and cheap on the Atom
+  // Arrow/camera rate: 20 fps on the classic map; 10 fps on the vector (3D) map, where every camera move re-renders the whole map.
+  // ?gfps=N (2..30) overrides both, for measuring in the car.
+  function carFrameMs() { return S.gfps ? 1000 / S.gfps : (S.vector ? 100 : 50); }
 
   /** One frame of the glide: arrow position/rotation, and the camera while following (heading-up on the vector map). */
   function drawCar(f) {
@@ -383,12 +410,20 @@
     // the marker is drawn upright on the screen, so on a rotated map its rotation is relative to the map heading
     const mapHeading = S.vector && S.map.getHeading ? (S.map.getHeading() || 0) : 0;
     const rot = Math.round(headingUp ? 0 : ((f.heading - mapHeading) % 360 + 360) % 360);
-    if (!S.carMarker) { S.carMarker = new S.g.core.Marker({ position: pos, map: S.map, icon: markerIcon(rot), zIndex: 999, clickable: false }); S.carRot = rot; }
-    else { S.carMarker.setPosition(pos); if (rot !== S.carRot) { S.carMarker.setIcon(markerIcon(rot)); S.carRot = rot; } }
-    if (!S.follow) return;
+    if (!S.carMarker) { S.carMarker = new S.g.core.Marker({ position: pos, map: S.map, icon: markerIcon(rot), zIndex: 999, clickable: false }); S.carRot = rot; S.lastMarker = pos; }
+    else {
+      if (!S.lastMarker || meters(S.lastMarker, pos) >= 0.3) { S.carMarker.setPosition(pos); S.lastMarker = pos; }
+      if (rot !== S.carRot) { S.carMarker.setIcon(markerIcon(rot)); S.carRot = rot; }
+    }
+    if (!S.follow) { S.lastCam = null; return; }
     const el = S.map.getDiv && S.map.getDiv();
     const h = (el && el.clientHeight) || 800;
-    const center = aheadPoint(window.MapGL, pos, f.heading, S.map.getZoom() || 16, h, 0.25);
+    const zoom = S.map.getZoom() || 16;
+    const center = aheadPoint(window.MapGL, pos, f.heading, zoom, h, 0.25);
+    const cam = { lat: center.lat, lng: center.lng, heading: headingUp ? f.heading : null };
+    const halfPx = 0.5 * 156543.03392 * Math.cos(center.lat * Math.PI / 180) / Math.pow(2, zoom);
+    if (!cameraNeedsUpdate(S.lastCam, cam, halfPx, 1)) return;
+    S.lastCam = cam; S.camCount++;
     if (headingUp && S.map.moveCamera) S.map.moveCamera({ center, heading: f.heading });
     else S.map.setCenter(center);
   }
@@ -396,17 +431,41 @@
   function carLoop(ts) {
     S.raf = null;
     if (!S.open || !S.map || !S.glide) return;
-    if (S.lastFrame && ts - S.lastFrame < CAR_FRAME_MS) { S.raf = requestAnimationFrame(carLoop); return; }
     const dt = Math.min(1000, S.lastFrame ? ts - S.lastFrame : 16);
     S.lastFrame = ts;
     const f = S.glide.frame(performance.now(), dt);
     if (f) drawCar(f);
     S.idle = f && f.moving ? 0 : S.idle + 1;
-    if (S.idle < 30) S.raf = requestAnimationFrame(carLoop);   // sleeps when the car stands still
+    // the next frame is timed with setTimeout (no idle rAF wake-ups every 16 ms just to check the clock); sleeps when standing
+    if (S.idle < 1500 / carFrameMs()) S.carTimer = setTimeout(() => { S.carTimer = null; S.raf = requestAnimationFrame(carLoop); }, Math.max(0, carFrameMs() - 8));
     else S.lastFrame = 0;
   }
 
-  function wakeCar() { S.idle = 0; if (!S.raf && S.open) S.raf = requestAnimationFrame(carLoop); }
+  function wakeCar() { S.idle = 0; if (!S.raf && !S.carTimer && S.open) S.raf = requestAnimationFrame(carLoop); }
+
+  /** ?debug=1: the browser's real frame rate while Google mode is open (the main HUD only measures our MapLibre map). */
+  function startDebugMeter() {
+    if (!S.debug || S.debugRaf) return;
+    let box = $("gmap-debug");
+    if (!box) {
+      box = document.createElement("div");
+      box.id = "gmap-debug";
+      box.style.cssText = "position:absolute;left:12px;bottom:12px;z-index:5;background:rgba(0,0,0,.7);color:#7CFC00;font:14px monospace;padding:6px 10px;border-radius:8px;pointer-events:none";
+      $("gmap-layer").appendChild(box);
+    }
+    const meter = createFpsMeter();
+    let cam0 = S.camCount;
+    const loop = (t) => {
+      if (!S.open) { S.debugRaf = null; return; }
+      const fps = meter.tick(t);
+      if (fps != null) {
+        box.textContent = "Google " + (S.vector ? "3D" : "classic") + "  fps " + fps.toFixed(1) + "  camera " + (S.camCount - cam0) + "/s  arrow " + Math.round(1000 / carFrameMs()) + " fps";
+        cam0 = S.camCount;
+      }
+      S.debugRaf = requestAnimationFrame(loop);
+    };
+    S.debugRaf = requestAnimationFrame(loop);
+  }
 
   /** The latest fix from the main app: window.__carFix (GPS heading snapped to the road) or, as a fallback, window.currentPos. */
   function readFix() {
@@ -784,6 +843,7 @@
       $("gmap-btn-me") && $("gmap-btn-me").classList.add("active");
       syncCar();
       updatePanelButtons();
+      startDebugMeter();
       S.timers.push(setInterval(syncCar, 250));
     } catch (e) {
       setStatus((e && e.message) || "Google რუკა მიუწვდომელია");
@@ -797,6 +857,8 @@
     S.timers.forEach(clearInterval);
     S.timers = [];
     if (S.raf) { cancelAnimationFrame(S.raf); S.raf = null; }
+    if (S.carTimer) { clearTimeout(S.carTimer); S.carTimer = null; }
+    S.lastCam = null;
     S.lastFrame = 0;
     const layer = $("gmap-layer");
     if (layer) layer.classList.remove("show");
@@ -860,12 +922,16 @@
     S.enabled = cfg.enabled;
     S.key = cfg.key || "";
     S.mapId = cfg.mapId || "";
+    const q = (typeof location !== "undefined" && location.search) || "";
+    S.debug = /[?&]debug=1/.test(q);
+    const gf = /[?&]gfps=(\d+)/.exec(q);
+    if (gf) S.gfps = Math.min(30, Math.max(2, parseInt(gf[1], 10)));
     try { S.vector = localStorage.getItem("gmapVector") === "1"; } catch (_) { S.vector = false; }
     const btn = $("btn-google-mode");
     if (btn) btn.hidden = !S.enabled;
   }
 
-  const api = { init, open, close, isOpen: () => S.open, distToPolylineM, nearestOnPolyline, createOffRouteTracker, createVoiceCues, createCarGlide, aheadPoint, mapOptions, decodePolyline, parseRoutesResponse, routesRequestBody, nextStepIndex, fmtDist, buildLoaderUrl, createDebouncer, osrmUrl, summarizeRoute, mapStyles, bearing, meters, CATEGORIES };
+  const api = { init, open, close, isOpen: () => S.open, distToPolylineM, nearestOnPolyline, createOffRouteTracker, createVoiceCues, createCarGlide, aheadPoint, mapOptions, cameraNeedsUpdate, createFpsMeter, decodePolyline, parseRoutesResponse, routesRequestBody, nextStepIndex, fmtDist, buildLoaderUrl, createDebouncer, osrmUrl, summarizeRoute, mapStyles, bearing, meters, CATEGORIES };
   if (typeof document !== "undefined") {
     if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", () => init());
     else init();
