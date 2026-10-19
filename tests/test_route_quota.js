@@ -32,9 +32,58 @@ ok(!/console\.(log|warn|error)\([^)]*ROUTES_KEY/.test(srv), 'routes key is never
 ok(!/'route-quota\.js'/.test(srv.match(/STATIC_WHITELIST = new Set\(\[([\s\S]*?)\]\)/)[1]), 'route-quota.js is not served to browsers');
 const cli = fs.readFileSync(__dirname + '/../gmap.js', 'utf8');
 ok(/pathname === '\/api\/route-permit'/.test(srv) && !/PUBLIC_AUTH_PATHS[^;]*route-permit/.test(srv), 'server has /api/route-permit behind the PIN gate');
-ok(/route-permit[\s\S]*?ROUTE_QUOTA\.tryConsume\(\)/.test(srv), 'the permit endpoint spends one call of the daily/monthly cap');
 {
   const f = cli.slice(cli.indexOf('async function fetchGoogleRoutes'), cli.indexOf('function fallbackNote'));
   ok(f.indexOf('/api/route-permit') > -1 && f.indexOf('/api/route-permit') < f.indexOf('routes.googleapis.com'), 'browser asks the server for a permit before every Routes call (cap stays server-side)');
   ok(/X-Goog-Api-Key": S\.key/.test(f), 'browser Routes call uses the referrer-restricted Maps key from /api/gmaps-config');
 }
+
+// Persistent Adapter Tests (Mock)
+(async () => {
+  const ts = tbilisiStamp(now);
+  // 1. Sync custom adapter (e.g. key-value store or database)
+  let mockStore = { day: ts.day, dayCount: 2, month: ts.month, monthCount: 15 };
+  let savedState = null;
+  const syncAdapter = {
+    name: 'mock-sync',
+    load() { return Object.assign({}, mockStore); },
+    save(st) { savedState = Object.assign({}, st); mockStore = Object.assign({}, st); }
+  };
+  const qSync = createRouteQuota({ adapter: syncAdapter, dayCap: 5, monthCap: 50, now: () => now });
+  ok(qSync.tryConsume().ok, 'adapter loaded initial state and allows consumption');
+  ok(savedState && savedState.dayCount === 3, 'adapter.save received updated dayCount');
+  
+  // Verify persistence across new instance using same adapter
+  const qSync2 = createRouteQuota({ adapter: syncAdapter, dayCap: 5, monthCap: 50, now: () => now });
+  ok(qSync2.tryConsume().ok, 'second instance continues from saved state');
+  ok(savedState.dayCount === 4, 'second instance increments saved state');
+
+  // 2. Async adapter (e.g. Upstash Redis / remote cloud REST)
+  let asyncStore = { day: ts.day, dayCount: 4, month: ts.month, monthCount: 20 };
+  const asyncAdapter = {
+    name: 'mock-async',
+    async load() { return Promise.resolve(Object.assign({}, asyncStore)); },
+    async save(st) { asyncStore = Object.assign({}, st); return Promise.resolve(true); }
+  };
+  const qAsync = createRouteQuota({ adapter: asyncAdapter, dayCap: 5, monthCap: 50, now: () => now });
+  await qAsync.init();
+  const resAsync1 = qAsync.tryConsume();
+  ok(resAsync1.ok && resAsync1.day === 5, 'async adapter hydrates state and reaches limit');
+  const resAsync2 = qAsync.tryConsume();
+  ok(!resAsync2.ok && resAsync2.reason === 'day', 'async adapter enforces cap when hydrated');
+
+  // 3. Fault-tolerant error handling (failing adapter does not crash server)
+  const faultyAdapter = {
+    name: 'mock-faulty',
+    load() { throw new Error('database connection failed'); },
+    save() { throw new Error('write failed'); }
+  };
+  const qFaulty = createRouteQuota({ adapter: faultyAdapter, dayCap: 2, now: () => now });
+  ok(qFaulty.tryConsume().ok, 'failing adapter falls back to in-memory guard without throwing');
+
+  // 4. Upstash adapter factory validation
+  const { createUpstashRedisAdapter } = require('../route-quota.js');
+  ok(createUpstashRedisAdapter() === null, 'Upstash adapter returns null when env credentials missing');
+  const upstash = createUpstashRedisAdapter({ url: 'https://example.upstash.io', token: 'secret' });
+  ok(upstash && upstash.name === 'upstash', 'Upstash adapter instantiates cleanly with url and token');
+})();

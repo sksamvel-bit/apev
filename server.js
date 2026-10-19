@@ -6,7 +6,7 @@ const zlib = require('zlib');
 const https = require('https');
 const vm = require('vm');
 const crypto = require('crypto');
-const { createRouteQuota } = require('./route-quota.js');
+const { createRouteQuota, createUpstashRedisAdapter } = require('./route-quota.js');
 
 const PORT = process.env.PORT || 3000;
 const PUBLIC_DIR = __dirname;
@@ -231,7 +231,17 @@ function isPublicAuthPath(p) {
 }
 
 // Routes API spending guard (Google cannot cap it in the console): ROUTES_DAILY_CAP (default 100) / ROUTES_MONTHLY_CAP (default 4000).
-const ROUTE_QUOTA = createRouteQuota({ file: path.join(__dirname, 'routes-usage.json'), dayCap: parseInt(process.env.ROUTES_DAILY_CAP, 10) || 100, monthCap: parseInt(process.env.ROUTES_MONTHLY_CAP, 10) || 4000 });
+// Persistence: Upstash Redis (free cloud KV, survives deploys on Render ephemeral disk) or Render Persistent Disk / local file.
+const quotaAdapter = (process.env.UPSTASH_REDIS_REST_URL && process.env.UPSTASH_REDIS_REST_TOKEN)
+  ? createUpstashRedisAdapter({ url: process.env.UPSTASH_REDIS_REST_URL, token: process.env.UPSTASH_REDIS_REST_TOKEN, key: process.env.UPSTASH_REDIS_KEY || 'routes_usage_quota' })
+  : null;
+const quotaFile = process.env.QUOTA_FILE_PATH || (process.env.DATA_DIR ? path.join(process.env.DATA_DIR, 'routes-usage.json') : path.join(__dirname, 'routes-usage.json'));
+const ROUTE_QUOTA = createRouteQuota({
+  adapter: quotaAdapter,
+  file: quotaAdapter ? null : quotaFile,
+  dayCap: parseInt(process.env.ROUTES_DAILY_CAP, 10) || 100,
+  monthCap: parseInt(process.env.ROUTES_MONTHLY_CAP, 10) || 4000
+});
 const ALLOWED_EVENT_TYPES = new Set(['destination','gps']);
 const CODE_RE = /^[A-Z0-9]{12,32}$/;
 const MAX_BODY = 8 * 1024;
