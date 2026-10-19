@@ -134,7 +134,7 @@ function initClock() {
 const OFM_STYLE_URL = "https://tiles.openfreemap.org/styles/liberty";
 const OFM_STYLE_CACHE_KEY = "tesla_nav_ofm_style_v1";
 const MAP_STYLE_KEYS = ["openfreemap", "google-roads"];
-const APP_VERSION = "3.10.30";
+const APP_VERSION = "3.10.31";
 const MAP_DEFAULT_ZOOM = 16;      // MapLibre zoom (Leaflet-equivalent 17)
 // Performance experiments (all default to the normal behaviour): ?labels=0 hides the base-map labels/icons, ?markers=0 skips the
 // charger DOM markers, ?pitch=N sets the heading-up tilt (0-60). Used to find what makes the car's browser slow.
@@ -845,6 +845,7 @@ function initGeolocation() {
         : null;
 
       currentPos = { lat, lng };
+      window.currentPos = currentPos; // read by gmap.js (Google mode)
       currentSpeedKmh = speed;
       try { const d = (window.__dbg = window.__dbg || { fixes: [] }); d.fixes.push({ t: Date.now(), lat, lng, acc: coords.accuracy, spd: coords.speed, hdg: coords.heading }); if (d.fixes.length > 40) d.fixes.shift(); } catch (_) {}
 

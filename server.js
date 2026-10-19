@@ -20,7 +20,7 @@ const STATIC_WHITELIST = new Set([
   'maplibre-gl.js','maplibre-gl.css','map-gl.js',
   'app.js','routing.js','traffic.js','traffic-signals.js','chargers.js','charger-list.js','search.js','tesla-style.js',
   'battery.js','weather.js','speech.js','speed-limit.js',
-  'sim-drive.js',
+  'sim-drive.js','gmap.js',
   'manifest.json','icon.svg','icon-192.png','icon-512.png','sw.js'
 ]);
 
@@ -805,6 +805,15 @@ const server = http.createServer((req, res) => {
       res.end(JSON.stringify({ error: 'Unauthorized' }));
       return;
     }
+  }
+
+  // API Endpoint: /api/gmaps-config - hands the (referrer-restricted) Google Maps browser key to the signed-in page.
+  // Behind the PIN gate above (not a public path). The key is never logged. Without GOOGLE_MAPS_KEY the Google mode stays off.
+  if (pathname === '/api/gmaps-config') {
+    const key = (process.env.GOOGLE_MAPS_KEY || '').trim();
+    res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' });
+    res.end(JSON.stringify(key ? { enabled: true, key } : { enabled: false }));
+    return;
   }
 
   // API Endpoint: /api/info (Network info and IP)
