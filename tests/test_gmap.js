@@ -63,6 +63,8 @@ ok(G.CATEGORIES.length === 1 && G.CATEGORIES[0].id === 'ev' && G.CATEGORIES.ever
   ok(G.mapOptions(true, false, { center: { lat: 1, lng: 2 }, zoom: 16 }).colorScheme === 'LIGHT', 'vector map: light by day');
 }
 ok(/gmap-btn-night/.test(src) && /gmap-btn-vector/.test(src), 'Google panel wires the night and vector buttons');
+ok(G.capText({ sku: 'details', reason: 'month', resetsOn: '2026-11-01' }) === 'Google-ის უფასო თვის ლიმიტი ამოიწურა: ადგილის დეტალები. განახლდება 2026-11-01-ს. მანამდე Google-ის ეს ფუნქცია არ იმუშავებს.', 'cap message names the feature and the reset date');
+ok(G.warnText({ sku: 'mapload', month: 6400, monthCap: 8000 }) === 'Google-ის უფასო თვიური ლიმიტის 80% დაიხარჯა: Google რუკის გახსნა (6400/8000)', '80 % warning text');
 
 // ---- 3D load: camera dead-band, fps meter ----
 {

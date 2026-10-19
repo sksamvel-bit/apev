@@ -5,3 +5,4 @@ pin-bindings.json
 scripts/
 cameras-cache.json
 routes-usage.json
+google-usage-*.json

@@ -32,10 +32,27 @@ ok(!/console\.(log|warn|error)\([^)]*ROUTES_KEY/.test(srv), 'routes key is never
 ok(!/'route-quota\.js'/.test(srv.match(/STATIC_WHITELIST = new Set\(\[([\s\S]*?)\]\)/)[1]), 'route-quota.js is not served to browsers');
 const cli = fs.readFileSync(__dirname + '/../gmap.js', 'utf8');
 ok(/pathname === '\/api\/route-permit'/.test(srv) && !/PUBLIC_AUTH_PATHS[^;]*route-permit/.test(srv), 'server has /api/route-permit behind the PIN gate');
-ok(/route-permit[\s\S]*?ROUTE_QUOTA\.tryConsume\(\)/.test(srv), 'the permit endpoint spends one call of the daily/monthly cap');
+ok(/pathname === '\/api\/google-permit'[\s\S]*?quota\.tryConsume\(\)/.test(srv) && /routes: ROUTE_QUOTA/.test(srv), 'the permit endpoint spends one call of the SKU cap (routes = the existing route guard)');
+ok(!/PUBLIC_AUTH_PATHS[^;]*google-(permit|usage)/.test(srv), '/api/google-permit and /api/google-usage are behind the PIN gate');
+{
+  // every cap stays under Google's free monthly usage, even if the daily cap is used up on every day of a 31-day month
+  const free = {}; for (const m of srv.match(/GOOGLE_FREE_MONTHLY = \{([^}]*)\}/)[1].matchAll(/(\w+): (\d+)/g)) free[m[1]] = +m[2];
+  const caps = { routes: [100, 4000] }; for (const m of srv.matchAll(/skuQuota\('(\w+)', (\d+), (\d+)\)/g)) caps[m[1]] = [+m[2], +m[3]];
+  const skus = Object.keys(caps);
+  ok(skus.length === 5 && skus.every((s) => free[s] > 0), 'caps for routes, mapload, autocomplete, details, nearby, each with its Google free cap');
+  ok(skus.every((s) => caps[s][1] <= 0.8 * free[s] && caps[s][0] * 31 <= free[s]), 'monthly caps <= 80 % of free and daily caps x 31 days < free: ' + skus.map((s) => s + ' ' + caps[s].join('/') + ' of ' + free[s]).join(', '));
+  const resets = eval('(' + srv.match(/function quotaResetDates[\s\S]*?\n\}/)[0] + ')');
+  const r = resets(Date.UTC(2026, 9, 31, 21, 0));   // 01:00 on 1 November in Tbilisi
+  ok(r.day === '2026-11-02' && r.month === '2026-12-01', 'reset dates follow Tbilisi time (1 Nov 01:00 -> day resets 2 Nov, month 1 Dec)');
+}
 {
   const f = cli.slice(cli.indexOf('async function fetchGoogleRoutes'), cli.indexOf('function fallbackNote'));
-  ok(f.indexOf('/api/route-permit') > -1 && f.indexOf('/api/route-permit') < f.indexOf('routes.googleapis.com'), 'browser asks the server for a permit before every Routes call (cap stays server-side)');
+  ok(f.indexOf('permit("routes")') > -1 && f.indexOf('permit("routes")') < f.indexOf('routes.googleapis.com'), 'browser asks the server for a permit before every Routes call (cap stays server-side)');
+  const pre = (call, sku) => { const i = cli.indexOf(call); return i > -1 && cli.lastIndexOf('permit("' + sku + '")', i) > cli.lastIndexOf('async function', i); };
+  ok(pre('fetchAutocompleteSuggestions(', 'autocomplete') && pre('fetchFields(', 'details') && pre('searchNearby(', 'nearby'), 'search, place details and nearby search each ask for a permit first');
+  const calls = [...cli.matchAll(/createMap\(/g)].map((m) => m.index).filter((i) => cli.slice(i - 9, i) !== 'function ');
+  ok(calls.length === 2 && calls.every((i) => cli.lastIndexOf('permit("mapload")', i) > i - 400), 'every new Google map (open, 3D/night rebuild) asks for a map-load permit');
+  ok(/fetchFields\(\{ fields: \["formattedAddress", "location"\] \}\)/.test(cli), 'place details ask only Essentials fields (no displayName = 10,000 free instead of 5,000)');
   ok(/X-Goog-Api-Key": S\.key/.test(f), 'browser Routes call uses the referrer-restricted Maps key from /api/gmaps-config');
 }
 

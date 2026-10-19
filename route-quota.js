@@ -162,8 +162,9 @@ function createRouteQuota(opts) {
     tryConsume() {
       if (!synced && !loading && o.now() - lastLoad >= retryMs) load();
       roll();
-      if (st.dayCount >= o.dayCap) return { ok: false, reason: 'day', day: st.dayCount, month: st.monthCount };
+      // month first: when both are used up, "resets tomorrow" would be wrong (tomorrow is still blocked by the month)
       if (st.monthCount >= o.monthCap) return { ok: false, reason: 'month', day: st.dayCount, month: st.monthCount };
+      if (st.dayCount >= o.dayCap) return { ok: false, reason: 'day', day: st.dayCount, month: st.monthCount };
       st.dayCount++; st.monthCount++; save();
       return { ok: true, day: st.dayCount, month: st.monthCount };
     },

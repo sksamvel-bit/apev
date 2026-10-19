@@ -242,6 +242,35 @@ const ROUTE_QUOTA = createRouteQuota({
   dayCap: parseInt(process.env.ROUTES_DAILY_CAP, 10) || 100,
   monthCap: parseInt(process.env.ROUTES_MONTHLY_CAP, 10) || 4000
 });
+// Every paid Google call from the page needs a permit (v3.10.44), so the bill stays $0 after the free trial. Free monthly caps from
+// developers.google.com/maps/billing-and-pricing/pricing (checked 2026-10-20): Dynamic Maps 10,000, Autocomplete Requests 10,000,
+// Place Details Essentials 10,000 (formattedAddress+location; displayName would make it Pro = 5,000), Nearby Search Pro 5,000,
+// Compute Routes Pro (TRAFFIC_AWARE) 5,000. Our caps are ~80 % of that plus a daily share; GOOGLE_CAP_<SKU>_DAY/_MONTH override.
+const GOOGLE_FREE_MONTHLY = { routes: 5000, mapload: 10000, autocomplete: 10000, details: 10000, nearby: 5000 };
+function skuQuota(sku, dayDefault, monthDefault) {
+  const up = sku.toUpperCase();
+  const adapter = quotaAdapter ? createUpstashRedisAdapter({ url: process.env.UPSTASH_REDIS_REST_URL, token: process.env.UPSTASH_REDIS_REST_TOKEN, key: (process.env.UPSTASH_REDIS_KEY || 'routes_usage_quota') + '_' + sku }) : null;
+  return createRouteQuota({
+    adapter,
+    file: adapter ? null : path.join(path.dirname(quotaFile), 'google-usage-' + sku + '.json'),
+    dayCap: parseInt(process.env['GOOGLE_CAP_' + up + '_DAY'], 10) || dayDefault,
+    monthCap: parseInt(process.env['GOOGLE_CAP_' + up + '_MONTH'], 10) || monthDefault
+  });
+}
+const GOOGLE_QUOTAS = {
+  routes: ROUTE_QUOTA,                              // 100/day, 4,000/month (free 5,000)
+  mapload: skuQuota('mapload', 300, 8000),          // free 10,000
+  autocomplete: skuQuota('autocomplete', 300, 8000), // free 10,000
+  details: skuQuota('details', 300, 8000),          // free 10,000 (Essentials fields only)
+  nearby: skuQuota('nearby', 120, 4000)             // free 5,000
+};
+/** Next Tbilisi day and the first day of next month, as YYYY-MM-DD (when a day / month cap resets). */
+function quotaResetDates(nowMs) {
+  const d = new Date(nowMs + 4 * 3600 * 1000);
+  const next = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate() + 1));
+  const month = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth() + 1, 1));
+  return { day: next.toISOString().slice(0, 10), month: month.toISOString().slice(0, 10) };
+}
 const ALLOWED_EVENT_TYPES = new Set(['destination','gps']);
 const CODE_RE = /^[A-Z0-9]{12,32}$/;
 const MAX_BODY = 8 * 1024;
@@ -881,14 +910,31 @@ const server = http.createServer((req, res) => {
     return;
   }
 
-  // API Endpoint: /api/route-permit - one Routes API call from the browser = one permit. Since v3.10.42 the page calls Google Routes
-  // itself (Google answers 503 "Deadline expired" to the same request from Render, 200 from a desktop/car browser), and the
-  // daily/monthly cap stays here. Behind the PIN gate. 200 {ok,day,month} or 429 {error:'cap',reason}.
-  if (pathname === '/api/route-permit') {
+  // API Endpoint: /api/google-permit?sku=routes|mapload|autocomplete|details|nearby - one paid Google call from the page = one permit.
+  // (/api/route-permit = sku routes, kept for older pages.) The page calls Google itself (Routes answers 503 "Deadline expired" from
+  // Render), the caps stay here. Behind the PIN gate. 200 {ok,sku,day,month,dayCap,monthCap,warn,resetsOn} | 429 {error:'cap',...}.
+  if (pathname === '/api/google-permit' || pathname === '/api/route-permit') {
     res.setHeader('Cache-Control', 'no-store');
-    const gate = ROUTE_QUOTA.tryConsume();
-    res.writeHead(gate.ok ? 200 : 429, { 'Content-Type': 'application/json; charset=utf-8' });
-    res.end(JSON.stringify(gate.ok ? { ok: true, day: gate.day, month: gate.month } : { error: 'cap', reason: gate.reason }));
+    const sendJson = (code, obj) => { res.writeHead(code, { 'Content-Type': 'application/json; charset=utf-8' }); res.end(JSON.stringify(obj)); };
+    const sku = pathname === '/api/route-permit' ? 'routes' : new URL(req.url, 'http://x').searchParams.get('sku');
+    const quota = Object.prototype.hasOwnProperty.call(GOOGLE_QUOTAS, sku) ? GOOGLE_QUOTAS[sku] : null;
+    if (!quota) return sendJson(400, { error: 'bad-sku' });
+    const gate = quota.tryConsume();
+    const snap = quota.snapshot();
+    const resets = quotaResetDates(Date.now());
+    if (!gate.ok) {
+      console.warn('[google-cap] ' + sku + ' ' + gate.reason + ' cap reached (' + (gate.reason === 'day' ? snap.dayCap : snap.monthCap) + ')');
+      return sendJson(429, { error: 'cap', sku, reason: gate.reason, day: snap.day, month: snap.month, dayCap: snap.dayCap, monthCap: snap.monthCap, resetsOn: gate.reason === 'day' ? resets.day : resets.month });
+    }
+    return sendJson(200, { ok: true, sku, day: gate.day, month: gate.month, dayCap: snap.dayCap, monthCap: snap.monthCap, warn: gate.month >= 0.8 * snap.monthCap, resetsOn: resets.month });
+  }
+
+  // API Endpoint: /api/google-usage - this month's counts against our caps and Google's free caps (behind the PIN gate).
+  if (pathname === '/api/google-usage') {
+    const out = {};
+    for (const sku of Object.keys(GOOGLE_QUOTAS)) out[sku] = Object.assign(GOOGLE_QUOTAS[sku].snapshot(), { googleFreeMonthly: GOOGLE_FREE_MONTHLY[sku] });
+    res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' });
+    res.end(JSON.stringify({ resets: quotaResetDates(Date.now()), usage: out }));
     return;
   }
 

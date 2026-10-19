@@ -292,7 +292,7 @@
     enabled: false, key: "", open: false, map: null, traffic: null, trafficOn: true, loading: null, g: null,
     carMarker: null, carPos: null, carHeading: 0, follow: true, placeMarker: null, catMarkers: [], activeCat: null,
     routeLines: [], routes: [], routeIdx: 0, stepIdx: 0, segIdx: 0, offRouteTracker: null, rerouting: false, voice: null, glide: null, raf: null, lastFrame: 0, idle: 0, lastFix: null,
-    vector: false, mapId: "", carRot: null, carTimer: null, lastCam: null, lastMarker: null, camCount: 0, gfps: 0, gscale: 0, debug: false,
+    vector: false, mapId: "", carRot: null, carTimer: null, lastCam: null, lastMarker: null, camCount: 0, gfps: 0, gscale: 0, debug: false, warned: {}, rebuilding: false,
     navigating: false, place: null, sessionToken: null, night: null, timers: []
   };
 
@@ -300,6 +300,41 @@
   // the main app's SpeechAssistant (speech.js): Georgian TTS + chimes, honours the driver's mute button
   const speak = (text) => { try { if (window.speechAssistant) window.speechAssistant.speak(text); } catch (_) {} };
   const say = (msg) => { if (typeof window !== "undefined" && window.showToast) window.showToast(msg, "info", 3500); };
+
+  // ---------- free-tier guard: every paid Google call asks our server first (/api/google-permit) ----------
+  const SKU_LABEL = { routes: "საცობიანი მარშრუტი", mapload: "Google რუკის გახსნა", autocomplete: "ძებნა", details: "ადგილის დეტალები", nearby: "კატეგორიის ძებნა" };
+
+  /** Driver-facing text for a cap answer from /api/google-permit. */
+  function capText(j) {
+    return "Google-ის უფასო " + (j.reason === "day" ? "დღის" : "თვის") + " ლიმიტი ამოიწურა: " + (SKU_LABEL[j.sku] || j.sku) +
+      ". განახლდება " + j.resetsOn + "-ს. მანამდე Google-ის ეს ფუნქცია არ იმუშავებს.";
+  }
+
+  /** Toast once per SKU and month when 80 % of our monthly cap is used. */
+  function warnText(j) {
+    return "Google-ის უფასო თვიური ლიმიტის " + Math.round(100 * j.month / j.monthCap) + "% დაიხარჯა: " + (SKU_LABEL[j.sku] || j.sku) + " (" + j.month + "/" + j.monthCap + ")";
+  }
+
+  /** Resolves with the permit; at a cap it shows the reason and throws an Error with code "cap:<sku>:<day|month>". */
+  async function permit(sku) {
+    let r, j = null;
+    try { r = await fetch("/api/google-permit?sku=" + sku, { cache: "no-store", credentials: "same-origin" }); }
+    catch (_) { const e = new Error("ლიმიტის სერვერი მიუწვდომელია, Google-ის მოთხოვნა არ გაიგზავნა"); e.code = "permit"; throw e; }
+    try { j = await r.json(); } catch (_) {}
+    if (!r.ok) {
+      const isCap = j && j.error === "cap";
+      const e = new Error(isCap ? capText(j) : "Google-ის ნებართვა ვერ მივიღე (" + r.status + ")");
+      e.code = isCap ? "cap:" + sku + ":" + j.reason : "http" + r.status;
+      if (isCap) { setStatus(e.message); say(e.message); }
+      throw e;
+    }
+    if (j && j.warn) {
+      const k = sku + ":" + j.resetsOn;
+      if (!S.warned[k]) { S.warned[k] = true; say(warnText(j)); }
+    }
+    return j;
+  }
+  const isCap = (e) => !!(e && typeof e.code === "string" && e.code.indexOf("cap:") === 0);
 
   function setStatus(text) {
     const el = $("gmap-status");
@@ -378,7 +413,12 @@
   }
 
   /** Re-creates the map (vector on/off, or night on a vector map) and puts our overlays back on it. */
-  function rebuildMap() {
+  /** Every new google.maps.Map is a billed map load, so a rebuild needs a permit; onDenied undoes the toggle that asked for it. */
+  async function rebuildMap(onDenied) {
+    if (!S.map || S.rebuilding) return;
+    S.rebuilding = true;
+    try { await permit("mapload"); } catch (_) { S.rebuilding = false; if (onDenied) onDenied(); return; }
+    S.rebuilding = false;
     if (!S.map) return;
     const c = S.map.getCenter();
     createMap({ center: c ? { lat: c.lat(), lng: c.lng() } : currentCenter(), zoom: S.map.getZoom() || 16, heading: S.carHeading });
@@ -397,7 +437,7 @@
   function syncNight() {
     const night = !!window.__night;
     if (!S.map || night === S.night) return;
-    if (S.vector) rebuildMap();   // colorScheme is fixed at creation
+    if (S.vector) rebuildMap(() => { S.night = night; updatePanelButtons(); });   // colorScheme is fixed at creation; at the cap keep the old colours
     else { S.night = night; S.map.setOptions({ styles: mapStyles(night) }); }
     updatePanelButtons();
   }
@@ -555,12 +595,14 @@
       if (!S.sessionToken) newToken();
       const c = S.map ? S.map.getCenter() : null;
       const center = c ? { lat: c.lat(), lng: c.lng() } : currentCenter();
+      await permit("autocomplete");
       const res = await S.g.places.AutocompleteSuggestion.fetchAutocompleteSuggestions({
         input: q, sessionToken: S.sessionToken, language: "ka", region: "ge", includedRegionCodes: ["ge"],
         locationBias: { center, radius: 30000 }
       });
       renderSuggestions((res && res.suggestions) || []);
     } catch (e) {
+      if (isCap(e) || (e && e.code === "permit")) { clearResults(); if (!isCap(e)) setStatus(e.message); return; }
       setStatus("ძიება ვერ მუშაობს: ჩართულია თუ არა Places API (New) თქვენს Google პროექტში?");
       console.warn("[GMap] autocomplete:", e && e.message);
     }
@@ -568,14 +610,18 @@
 
   async function choosePrediction(pp) {
     try {
+      await permit("details");
       const place = pp.toPlace();
-      await place.fetchFields({ fields: ["displayName", "formattedAddress", "location"] });
+      // Essentials fields only (10,000 free a month): displayName would bill the call as Pro (5,000); the name comes from the suggestion
+      await place.fetchFields({ fields: ["formattedAddress", "location"] });
       S.sessionToken = null; // a session ends with the selection (billing: one session = autocomplete + one details call)
       clearResults();
+      const name = (pp.mainText && pp.mainText.text) || (pp.text && pp.text.text) || "";
       const input = $("gmap-search-input");
-      if (input) input.value = place.displayName || "";
-      showPlace({ name: place.displayName || "", address: place.formattedAddress || "", loc: place.location });
+      if (input) input.value = name;
+      showPlace({ name, address: place.formattedAddress || "", loc: place.location });
     } catch (e) {
+      if (isCap(e)) return;
       setStatus("ადგილის დეტალები ვერ ჩაიტვირთა");
       console.warn("[GMap] place details:", e && e.message);
     }
@@ -640,12 +686,7 @@
    *  and with 200 from a desktop or the car's browser (verified 2026-10-19), so the call cannot stay on the server. */
   async function fetchGoogleRoutes(from, to, departInMin) {
     const fail = (code) => { const e = new Error("Routes: " + code); e.code = code; return e; };
-    const p = await fetch("/api/route-permit", { cache: "no-store", credentials: "same-origin" });
-    if (!p.ok) {
-      let code = "http" + p.status;
-      try { const j = await p.json(); if (j && j.error) code = j.error + (j.reason ? ":" + j.reason : ""); } catch (_) {}
-      throw fail(code);
-    }
+    try { await permit("routes"); } catch (e) { throw fail(e.code || "permit"); }
     if (!S.key) throw fail("no-key");
     const ctrl = new AbortController();
     const timer = setTimeout(() => ctrl.abort(), 10000);
@@ -837,6 +878,8 @@
     S.activeCat = cat.id;
     chipEl.classList.add("active");
     try {
+      await permit("nearby");
+      if (S.activeCat !== cat.id) return;
       const c = S.map.getCenter();
       const { places } = await S.g.places.Place.searchNearby({
         fields: ["displayName", "formattedAddress", "location"], includedPrimaryTypes: [cat.type], maxResultCount: 15,
@@ -850,6 +893,7 @@
       });
       if (!places || !places.length) say("ახლოს ვერაფერი მოიძებნა");
     } catch (e) {
+      if (isCap(e)) { clearCategory(); return; }
       setStatus("კატეგორიის ძიება ვერ მუშაობს: ჩართულია თუ არა Places API (New)?");
       console.warn("[GMap] nearby:", e && e.message);
       clearCategory();
@@ -869,7 +913,7 @@
     try {
       await loadGoogle(S.key);
       if (!S.open) return;
-      if (!S.map) createMap();
+      if (!S.map) { await permit("mapload"); if (!S.open) return; createMap(); }
       setStatus("");
       S.follow = true;
       $("gmap-btn-me") && $("gmap-btn-me").classList.add("active");
@@ -878,7 +922,7 @@
       startDebugMeter();
       S.timers.push(setInterval(syncCar, 250));
     } catch (e) {
-      setStatus((e && e.message) || "Google რუკა მიუწვდომელია");
+      if (!isCap(e)) setStatus((e && e.message) || "Google რუკა მიუწვდომელია");
     }
   }
 
@@ -918,9 +962,10 @@
     });
     on("gmap-btn-night", "click", () => { if (window.toggleNightMode) window.toggleNightMode(); syncNight(); });
     on("gmap-btn-vector", "click", () => {
+      const keep = (v) => { try { localStorage.setItem("gmapVector", v ? "1" : "0"); } catch (_) {} };
       S.vector = !S.vector;
-      try { localStorage.setItem("gmapVector", S.vector ? "1" : "0"); } catch (_) {}
-      rebuildMap();
+      keep(S.vector);
+      rebuildMap(() => { S.vector = !S.vector; keep(S.vector); updatePanelButtons(); });
       say(S.vector ? "ვექტორული რუკა (სატესტო): მანქანის მიმართულებით ბრუნავს" + (S.mapId ? "" : ", DEMO_MAP_ID") : "კლასიკური რუკა (ჩრდილოეთი ზემოთ)");
     });
     on("gmap-card-close", "click", closeCard);
@@ -965,7 +1010,7 @@
     if (btn) btn.hidden = !S.enabled;
   }
 
-  const api = { init, open, close, isOpen: () => S.open, distToPolylineM, nearestOnPolyline, createOffRouteTracker, createVoiceCues, createCarGlide, aheadPoint, mapOptions, cameraNeedsUpdate, createFpsMeter, scaledBoxStyle, decodePolyline, parseRoutesResponse, routesRequestBody, nextStepIndex, fmtDist, buildLoaderUrl, createDebouncer, osrmUrl, summarizeRoute, mapStyles, bearing, meters, CATEGORIES };
+  const api = { init, open, close, isOpen: () => S.open, distToPolylineM, nearestOnPolyline, createOffRouteTracker, createVoiceCues, createCarGlide, aheadPoint, mapOptions, cameraNeedsUpdate, createFpsMeter, scaledBoxStyle, capText, warnText, decodePolyline, parseRoutesResponse, routesRequestBody, nextStepIndex, fmtDist, buildLoaderUrl, createDebouncer, osrmUrl, summarizeRoute, mapStyles, bearing, meters, CATEGORIES };
   if (typeof document !== "undefined") {
     if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", () => init());
     else init();
