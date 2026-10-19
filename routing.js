@@ -419,6 +419,11 @@ class RoutingEngine {
     return cum[i] + t * (cum[i + 1] - cum[i]);
   }
 
+  /** One voice at a time: while Google mode (gmap.js) navigates, its own prompts speak and this route stays quiet. */
+  say(text) {
+    if (this.speech && !(typeof window !== "undefined" && window.__gmapNavigating)) this.speech.speak(text);
+  }
+
   // Voice prompts BEFORE the maneuver (500 / 200 m / now; 800 / 300 / 80 m above 70 km/h)
   announceApproach(step, idx, dist, speedKmh) {
     if (!this.speech || idx === 0 || !step) return;
@@ -436,7 +441,7 @@ class RoutingEngine {
       const rounded = Math.max(10, Math.round(dist / 10) * 10);
       text = `${rounded} მეტრში, ${step.instruction}${street}`;
     }
-    this.speech.speak(text);
+    this.say(text);
   }
 
   /** Remove the grey alternatives (lines + labels) without touching the active route. */
@@ -463,7 +468,7 @@ class RoutingEngine {
             voiceText += ` ${firstStep.streetName}-ზე`;
           }
         }
-        this.speech.speak(voiceText);
+        this.say(voiceText);
       }
     }
   }
@@ -584,7 +589,7 @@ class RoutingEngine {
       window.showToast("🔄 მარშრუტს აცდით — ახლდება...", "info", 3000);
     }
     if (this.speech) {
-      this.speech.speak("მარშრუტს აცდით. ახალი მარშრუტი ითვლება.");
+      this.say("მარშრუტს აცდით. ახალი მარშრუტი ითვლება.");
     }
 
     try {

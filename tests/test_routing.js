@@ -73,4 +73,11 @@ global.fetch = async () => { if (failNext) throw new Error('network down'); retu
   for (let m = 1000; m <= 2200; m += 28) e4.updateVehiclePosition({ lat: 41.70 + m / 111139, lng: 44.80 }, 100, 0);
   console.log('100 km/h prompts:', sp);
   ok(sp.length >= 2 && /^[78]\d0 მეტრში|^[3]\d0 მეტრში|^[89]\d მეტრში|^[12]\d\d მეტრში/.test(sp[0]), 'high-speed prompts fire earlier');
+  // ---- one voice at a time: Google mode navigating -> this route is quiet ----
+  const sq = []; const e5 = new RE({ fitBounds() { }, removeLayer() { } }, null, null, { speak: t => sq.push(t) }, null); e5.onManeuverUpdate = () => { }; e5.onSummaryUpdate = () => { };
+  window.__gmapNavigating = true;
+  await e5.calculateRoute({ lat: 41.70, lng: 44.80 }, { lat: 41.72, lng: 44.82 }, true);
+  for (let m = 1000; m <= 2200; m += 28) e5.updateVehiclePosition({ lat: 41.70 + m / 111139, lng: 44.80 }, 50, 0);
+  window.__gmapNavigating = false;
+  ok(sq.length === 0, 'while Google mode navigates, routing.js says nothing');
 })();

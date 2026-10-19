@@ -262,4 +262,22 @@ test("LiteGovernor fires after 5 consecutive slow moving samples, not when parke
   assert.strictEqual(g.sample(2, true), false);    // fires once
 });
 
+test("pause() stops all frames (Google mode covers the map) and resume() continues from the latest fix", () => {
+  const { cam, calls, step, queue } = makeCam();
+  cam.setFix({ lng: 44.79, lat: 41.69, headingDeg: 0, speedMs: 10 });
+  step(33);
+  cam.pause();
+  queue.length = 0;                                // the fake caf does not drop queued frames
+  const before = calls.length;
+  cam.setFix({ lng: 44.80, lat: 41.70, headingDeg: 0, speedMs: 10 });
+  cam.setFollowing(true); cam.setMode("north-up");
+  assert.strictEqual(queue.length, 0, "no frame scheduled while paused");
+  assert.strictEqual(calls.length, before, "no jumpTo while paused");
+  cam.resume();
+  assert.strictEqual(queue.length, 1, "resume schedules a frame");
+  step(33);
+  const last = calls[calls.length - 1].cam.center;
+  near(last[0], 44.80, 1e-6, "jumps to the fix that arrived while paused");
+});
+
 console.log("\n" + passed + " tests passed" + (process.exitCode ? " - WITH FAILURES" : ""));

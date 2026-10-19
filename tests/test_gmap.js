@@ -15,6 +15,23 @@ ok(Math.abs(G.meters({ lat: 0, lng: 0 }, { lat: 0, lng: 0.001 }) - 111.2) < 1, '
 ok(G.mapStyles(false).length < G.mapStyles(true).length, 'night styles extend day styles');
 ok(G.CATEGORIES.length === 1 && G.CATEGORIES[0].id === 'ev' && G.CATEGORIES.every(c => c.type && c.label), 'only the charging category is offered');
 
+// ---- voice prompts (500 / 200 / 50 m, each once, only the closest when several are crossed) ----
+{
+  const vc = G.createVoiceCues(), st = { text: 'მოუხვიეთ მარჯვნივ' }, said = [];
+  for (let d = 900; d >= 0; d -= 20) { const t = vc.update(1, st, d, 40); if (t) said.push(t); }
+  ok(said.length === 3 && /^500 მეტრში/.test(said[0]) && /^200 მეტრში/.test(said[1]) && said[2] === 'მოუხვიეთ მარჯვნივ', 'three prompts per maneuver: ' + JSON.stringify(said));
+  ok(vc.update(1, st, 40, 40) === null, 'no repeat for the same maneuver');
+  ok(vc.update(2, { text: 'მოუხვიეთ მარცხნივ' }, 480, 40) === '480 მეტრში, მოუხვიეთ მარცხნივ', 'next maneuver starts its own tiers (says the real distance, like routing.js)');
+  const v2 = G.createVoiceCues();
+  ok(v2.update(1, st, 120, 40) === '120 მეტრში, მოუხვიეთ მარჯვნივ' && v2.update(1, st, 110, 40) === null, 'already close: only the closest tier is said');
+  ok(/^800 მეტრში/.test(G.createVoiceCues().update(1, st, 800, 100)), 'above 70 km/h prompts start at 800 m');
+  ok(G.createVoiceCues().update(0, st, 10, 40) === null, 'no prompt for the departure step (index 0)');
+  const v3 = G.createVoiceCues(); v3.update(1, st, 40, 40); v3.reset();
+  ok(v3.update(1, st, 40, 40) === 'მოუხვიეთ მარჯვნივ', 'reset (after a reroute) allows the prompt again');
+}
+ok(/__setMainMapPaused\(true\)/.test(src) && /__setMainMapPaused\(false\)/.test(src), 'Google mode pauses the main map on open and resumes it on close');
+ok(/__gmapNavigating = true/.test(src) && /__gmapNavigating = false/.test(src), 'Google navigation marks itself so routing.js stays quiet');
+
 // ---- Routes API helpers ----
 const pl = G.decodePolyline('_p~iF~ps|U_ulLnnqC_mqNvxq`@');
 ok(pl.length === 3 && Math.abs(pl[0].lat - 38.5) < 1e-6 && Math.abs(pl[0].lng + 120.2) < 1e-6 && Math.abs(pl[2].lat - 43.252) < 1e-6 && Math.abs(pl[2].lng + 126.453) < 1e-6, 'polyline decoder matches Google reference example');

@@ -134,7 +134,7 @@ function initClock() {
 const OFM_STYLE_URL = "https://tiles.openfreemap.org/styles/liberty";
 const OFM_STYLE_CACHE_KEY = "tesla_nav_ofm_style_v1";
 const MAP_STYLE_KEYS = ["openfreemap", "google-roads"];
-const APP_VERSION = "3.10.34";
+const APP_VERSION = "3.10.35";
 const MAP_DEFAULT_ZOOM = 16;      // MapLibre zoom (Leaflet-equivalent 17)
 // Performance experiments (all default to the normal behaviour): ?labels=0 hides the base-map labels/icons, ?markers=0 skips the
 // charger DOM markers, ?pitch=N sets the heading-up tilt (0-60). Used to find what makes the car's browser slow.
@@ -384,6 +384,7 @@ function initMap() {
     setInterval(() => {
       const now = performance.now(), fps = (window.__renderCount - lastCount) * 1000 / (now - lastT);
       lastCount = window.__renderCount; lastT = now;
+      if (window.__mainMapPaused) return;   // Google mode on top: 0 fps is on purpose, not a slow car
       if (gov.sample(fps, currentSpeedKmh > 3)) window.__setLite(true, true);
     }, 1000);
   }
@@ -394,7 +395,7 @@ function initMap() {
     const iv2 = setInterval(() => {
       const now = performance.now(), fps = (window.__renderCount - c2) * 1000 / (now - t2);
       c2 = window.__renderCount; t2 = now;
-      if (!PERF.lite) return;   // only after stage 1
+      if (!PERF.lite || window.__mainMapPaused) return;   // only after stage 1; never while Google mode covers the map
       if (gov2.sample(fps, currentSpeedKmh > 3)) {
         clearInterval(iv2);
         MAP_HEADING_PITCH = 0;
@@ -453,6 +454,13 @@ function initMap() {
   mapCamera.setMode(currentMapOrientation);
   mapCamera.setFix({ lng: currentPos.lng, lat: currentPos.lat, headingDeg: lastKnownValidHeading || currentHeading || 0, speedMs: 0 });
   window.mapCamera = mapCamera;
+  // Google mode (gmap.js) covers this map: stop its camera frames so the MCU2 renders one map, not two.
+  window.__mainMapPaused = false;
+  window.__setMainMapPaused = (on) => {
+    window.__mainMapPaused = !!on;
+    if (on) mapCamera.pause();
+    else { mapCamera.resume(); try { map.resize(); } catch (_) {} }
+  };
   // a route preview (fitBounds) must not be pulled back to the car, and our follow padding must not add to its padding
   window.onBeforeRouteFit = () => { setFollowCarMode(false); mapCamera.clearPadding(); };
 

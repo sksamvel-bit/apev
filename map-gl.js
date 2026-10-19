@@ -143,6 +143,7 @@
       this._rafId = null;
       this._last = 0;
       this._idle = 0;
+      this.paused = false;         // true while another full-screen map (Google mode) covers this one: no frames at all
       this._applied = null;
       this.frameCount = 0;         // diagnostics: animation frames actually processed
       this.jumpMs = 0;             // diagnostics: moving average of map.jumpTo() cost
@@ -236,12 +237,23 @@
     }
 
     wake() {
+      if (this.paused) return;
       this._idle = 0;
       if (this._rafId == null) this._rafId = this.raf((ts) => this.tick(ts));
     }
 
     stop() {
       if (this._rafId != null) { this.caf(this._rafId); this._rafId = null; }
+    }
+
+    /** Stops all camera frames until resume(); fixes keep arriving (setFix) so resume() starts from the latest one. */
+    pause() { this.paused = true; this.stop(); }
+
+    resume() {
+      if (!this.paused) return;
+      this.paused = false;
+      this._last = 0;
+      this.wake();
     }
 
     /** One animation frame (exposed for tests). `ts` is a rAF timestamp on the same clock as now(). */

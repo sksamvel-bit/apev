@@ -199,16 +199,37 @@
     return n - 1;
   }
 
+  /** Voice prompt before a maneuver, same tiers as routing.js announceApproach (500/200/50 m; 800/300/80 m above 70 km/h).
+   *  update() returns the text to say or null: each tier once per maneuver, only the closest when several are crossed at once. */
+  function createVoiceCues() {
+    let idx = -1, said = new Set();
+    return {
+      update(stepIdx, step, distM, speedKmh) {
+        if (!step || !step.text || stepIdx <= 0 || !isFinite(distM)) return null;
+        if (stepIdx !== idx) { idx = stepIdx; said = new Set(); }
+        const tiers = speedKmh > 70 ? [800, 300, 80] : [500, 200, 50];
+        let crossed = -1;
+        tiers.forEach((t, k) => { if (distM <= t && !said.has(k)) { said.add(k); crossed = k; } });
+        if (crossed < 0) return null;
+        if (crossed === tiers.length - 1) return step.text;
+        return Math.max(10, Math.round(distM / 10) * 10) + " მეტრში, " + step.text;
+      },
+      reset() { idx = -1; said = new Set(); }
+    };
+  }
+
   function fmtDist(m) { return m >= 1000 ? (m / 1000).toFixed(m >= 10000 ? 0 : 1) + " კმ" : Math.round(m / 10) * 10 + " მ"; }
 
   // ---------- the mode ----------
   const S = {
     enabled: false, key: "", open: false, map: null, traffic: null, trafficOn: true, loading: null, g: null,
     carMarker: null, carPos: null, carHeading: 0, follow: true, placeMarker: null, catMarkers: [], activeCat: null,
-    routeLines: [], routes: [], routeIdx: 0, stepIdx: 0, segIdx: 0, offRouteTracker: null, rerouting: false, navigating: false, place: null, sessionToken: null, night: null, timers: []
+    routeLines: [], routes: [], routeIdx: 0, stepIdx: 0, segIdx: 0, offRouteTracker: null, rerouting: false, voice: null, navigating: false, place: null, sessionToken: null, night: null, timers: []
   };
 
   const $ = (id) => document.getElementById(id);
+  // the main app's SpeechAssistant (speech.js): Georgian TTS + chimes, honours the driver's mute button
+  const speak = (text) => { try { if (window.speechAssistant) window.speechAssistant.speak(text); } catch (_) {} };
   const say = (msg) => { if (typeof window !== "undefined" && window.showToast) window.showToast(msg, "info", 3500); };
 
   function setStatus(text) {
@@ -291,6 +312,7 @@
     if (S.navigating && S.place && S.place.loc && meters(pos, S.place.loc) < 30) {
       stopNavigation();
       setStatus("დანიშნულების ადგილზე ხართ");
+      speak("დანიშნულების ადგილზე მიხვედით");
       setTimeout(() => setStatus(""), 5000);
     } else if (S.navigating) {
       const rt = S.routes[S.routeIdx];
@@ -495,6 +517,7 @@
     const d = S.carPos ? meters(S.carPos, st.loc) : st.distanceM;
     $("gmap-nav-dist").textContent = fmtDist(d);
     $("gmap-nav-text").textContent = st.text;
+    if (S.voice) { const t = S.voice.update(S.stepIdx, st, d, window.currentSpeedKmhForLock || 0); if (t) speak(t); }
     nav.classList.add("show");
   }
 
@@ -502,6 +525,10 @@
     if (!S.routes.length) return;
     S.navigating = true; S.follow = true; S.stepIdx = 0; S.segIdx = 0;
     S.offRouteTracker = createOffRouteTracker({ thresholdM: OFF_ROUTE_M, ticks: 4, cooldownMs: 20000, maxReroutes: 12 });
+    S.voice = createVoiceCues();
+    window.__gmapNavigating = true;   // routing.js stays quiet: one voice at a time
+    const first = S.routes[S.routeIdx] && S.routes[S.routeIdx].steps[0];
+    speak("მარშრუტი დაწყებულია." + (first && first.text ? " " + first.text : ""));
     const layer = $("gmap-layer");
     if (layer) layer.classList.add("navigating");
     $("gmap-btn-me") && $("gmap-btn-me").classList.add("active");
@@ -514,6 +541,8 @@
   function stopNavigation() {
     S.navigating = false;
     S.offRouteTracker = null;
+    S.voice = null;
+    if (typeof window !== "undefined") window.__gmapNavigating = false;
     const layer = $("gmap-layer");
     if (layer) layer.classList.remove("navigating");
     const nav = $("gmap-nav");
@@ -542,6 +571,8 @@
       drawRoutes();
       renderRouteOptions();
       updateNavBanner();
+      if (S.voice) S.voice.reset();
+      speak("მარშრუტი გადაითვალა");
       setStatus(note || "მარშრუტი გადაითვალა");
       setTimeout(() => setStatus(""), 3000);
     } catch (e) {
@@ -623,6 +654,7 @@
     S.open = true;
     layer.classList.add("show");
     document.body.classList.add("gmap-open");
+    if (window.__setMainMapPaused) window.__setMainMapPaused(true);   // one map rendering at a time on the MCU2
     setStatus("Google რუკა იტვირთება...");
     try {
       await loadGoogle(S.key);
@@ -647,6 +679,7 @@
     const layer = $("gmap-layer");
     if (layer) layer.classList.remove("show");
     document.body.classList.remove("gmap-open");
+    if (window.__setMainMapPaused) window.__setMainMapPaused(false);
     try { if (window.map && window.map.resize) setTimeout(() => window.map.resize(), 50); } catch (_) {}
   }
 
@@ -701,7 +734,7 @@
     if (btn) btn.hidden = !S.enabled;
   }
 
-  const api = { init, open, close, isOpen: () => S.open, distToPolylineM, nearestOnPolyline, createOffRouteTracker, decodePolyline, parseRoutesResponse, routesRequestBody, nextStepIndex, fmtDist, buildLoaderUrl, createDebouncer, osrmUrl, summarizeRoute, mapStyles, bearing, meters, CATEGORIES };
+  const api = { init, open, close, isOpen: () => S.open, distToPolylineM, nearestOnPolyline, createOffRouteTracker, createVoiceCues, decodePolyline, parseRoutesResponse, routesRequestBody, nextStepIndex, fmtDist, buildLoaderUrl, createDebouncer, osrmUrl, summarizeRoute, mapStyles, bearing, meters, CATEGORIES };
   if (typeof document !== "undefined") {
     if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", () => init());
     else init();
