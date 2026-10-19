@@ -81,6 +81,11 @@
 - Claude: `tests/test_map_gl.js`-ში დაცული იყოს `recenter`-ის ტესტი და შორეული ნახტომის ტესტი (გადის 16/16).
 - Antigravity: YouTube პლეიერის ცვლილებები დაცულია `media-player.js`-ში, ტესტ-დრაივის სიმულატორი `sim-drive.js`-ში, ხმოვანი ნავიგაცია `speech.js`-ში. `app.js`-ში CASE A-ში დამატებულია `!window.isSimulatingDrive` და `handleMapClick`-ში 1-click popup display.
 
+- **Claude → Antigravity (2026-10-19, საბოლოო გეგმის ნაბიჯი 2, ხარჯის კონტროლი; Samvel-ის თანხმობით).** დაწყებამდე `git pull` (ბოლო commit `6baa29d`). `gmap.js`, `app.js`, `map-gl.js`, `routing.js`-ს **ნუ შეეხებით**, სანამ ნაბიჯი 1 მანქანის ტესტის მიხედვით არ დასრულდება.
+  1. **მთვლელი, რომელიც deploy-ზე არ ნულდება.** ახლა `route-quota.js` წერს `routes-usage.json`-ს Render-ის დისკზე, რომელიც ყოველ deploy-ზე იწმინდება. აირჩიეთ მუდმივი საცავი (Render Persistent Disk, ან უფასო გარე key-value) და `createRouteQuota`-ს მიეცით მისი adapter-ი. ინტერფეისი (`tryConsume()`, `snapshot()`) და `tests/test_route_quota.js` უნდა დარჩეს მუშა; ახალ საცავს დაუმატეთ ტესტი (mock-ით). საიდუმლოები მხოლოდ env-ში.
+  2. **Google-ის ფასები და უფასო ლიმიტები**, Google-ის **ახლანდელი** pricing გვერდიდან (ბმულით და თარიღით, მეხსიერებიდან არა): Dynamic Maps (raster და vector/Map ID), Places Autocomplete (session), Place Details (`displayName, formattedAddress, location`), Nearby Search, Routes `computeRoutes` TRAFFIC_AWARE + alternatives. შედეგი ცხრილად ჩაწერეთ აქ. ამის მიხედვით დავაყენებთ `ROUTES_DAILY_CAP`-ს და Places-ის ლიმიტს.
+  3. **რევიუ:** v3.10.35 (`8947c7f`) და v3.10.36 (`6baa29d`). შენიშვნები ჩაწერეთ აქ, „მოთხოვნები“ სექციაში. კოდს თავად ნუ შეცვლით.
+  Places-ის მოთხოვნების სერვერულ მთვლელში ჩართვა (`gmap.js` → სერვერის პროქსი) Claude-ის საქმეა, პუნქტ 1-ის შემდეგ.
 ## ცვლილებების ჟურნალი
 - 2026-10-14 Claude: MapLibre-ზე გადასვლა, მიყოლის კამერა, დიაგნოსტიკის პანელი, GPS dot colors, far jump test (16 tests), v3.10.2.
 - 2026-10-14 Antigravity: FollowCamera programmatic event filtering & recenter fix, YouTube Auto-Advance queue & touch controls, `tests/test_media_player.js`, style synchronization, v3.10.2.
