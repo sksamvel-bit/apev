@@ -832,12 +832,20 @@ const server = http.createServer((req, res) => {
       travelMode: 'DRIVE', routingPreference: 'TRAFFIC_AWARE', computeAlternativeRoutes: true, languageCode: 'ka', units: 'METRIC'
     };
     if (depart > 0) body.departureTime = new Date(Date.now() + depart * 60000 + 30000).toISOString();
+    // ?try=noalt,en,unaware,nosteps (diagnostics, each still counts against the cap): strip parts of the request one by one
+    // to find which one makes Google answer 503 "Deadline expired" for Georgia.
+    const tries = new Set(String(q.get('try') || '').split(',').filter((t) => ['noalt', 'en', 'unaware', 'nosteps'].includes(t)));
+    if (tries.has('noalt')) body.computeAlternativeRoutes = false;
+    if (tries.has('en')) body.languageCode = 'en';
+    if (tries.has('unaware')) body.routingPreference = 'TRAFFIC_UNAWARE';
+    const fieldMask = 'routes.duration,routes.staticDuration,routes.distanceMeters,routes.polyline.encodedPolyline,routes.routeLabels' +
+      (tries.has('nosteps') ? '' : ',routes.legs.steps.navigationInstruction,routes.legs.steps.distanceMeters,routes.legs.steps.startLocation');
     const payload = JSON.stringify(body);
     const greq = https.request({
       hostname: 'routes.googleapis.com', path: '/directions/v2:computeRoutes', method: 'POST', timeout: 10000,
       headers: {
         'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(payload), 'X-Goog-Api-Key': rkey,
-        'X-Goog-FieldMask': 'routes.duration,routes.staticDuration,routes.distanceMeters,routes.polyline.encodedPolyline,routes.routeLabels,routes.legs.steps.navigationInstruction,routes.legs.steps.distanceMeters,routes.legs.steps.startLocation'
+        'X-Goog-FieldMask': fieldMask
       }
     }, (gres) => {
       const chunks = []; let size = 0;
@@ -848,7 +856,7 @@ const server = http.createServer((req, res) => {
           let reason = '', message = '';
           try { const e = JSON.parse(Buffer.concat(chunks).toString('utf8')).error || {}; reason = String(e.status || ''); message = String(e.message || '').slice(0, 300); } catch (_) {}
           console.warn('[route] Google answered HTTP ' + gres.statusCode + (reason ? ' ' + reason : '') + (message ? ': ' + message : ''));
-          return sendJson(502, { error: 'upstream', status: gres.statusCode, reason, message });
+          return sendJson(502, { error: 'upstream', status: gres.statusCode, reason, message, tried: [...tries] });
         }
         res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
         res.end(Buffer.concat(chunks));
