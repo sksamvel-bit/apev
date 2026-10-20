@@ -10,34 +10,34 @@
  * 4. skipWaiting + clients.claim for atomic instant updates without stale caches.
  */
 
-const CACHE_NAME = 'tesla-nav-v3.10.66';
+const CACHE_NAME = 'tesla-nav-v3.10.67';
 const NAV_TIMEOUT_MS = 3000;   // a sleeping Render server: show the cached page after 3 s
 
 const PRECACHE_ASSETS = [
   '/',
   '/index.html',
-  '/style.css?v=3.10.66',
-  '/app.js?v=3.10.66',
-  '/speed-limit.js?v=3.10.66',
-  '/speed-cameras.js?v=3.10.66',
-  '/devices-panel.js?v=3.10.66',
-  '/routing.js?v=3.10.66',
-  '/chargers.js?v=3.10.66',
-  '/charger-list.js?v=3.10.66',
-  '/search.js?v=3.10.66',
-  '/tesla-style.js?v=3.10.66',
-  '/traffic-signals.js?v=3.10.66',
-  '/traffic.js?v=3.10.66',
-  '/gmap.js?v=3.10.66',
-  '/weather.js?v=3.10.66',
-  '/battery.js?v=3.10.66',
-  '/turn-audio.js?v=3.10.66',
-  '/speech.js?v=3.10.66',
-  '/maplibre-gl.js?v=3.10.66',
-  '/map-gl.js?v=3.10.66',
-  '/maplibre-gl.css?v=3.10.66',
+  '/style.css?v=3.10.67',
+  '/app.js?v=3.10.67',
+  '/speed-limit.js?v=3.10.67',
+  '/speed-cameras.js?v=3.10.67',
+  '/devices-panel.js?v=3.10.67',
+  '/routing.js?v=3.10.67',
+  '/chargers.js?v=3.10.67',
+  '/charger-list.js?v=3.10.67',
+  '/search.js?v=3.10.67',
+  '/tesla-style.js?v=3.10.67',
+  '/traffic-signals.js?v=3.10.67',
+  '/traffic.js?v=3.10.67',
+  '/gmap.js?v=3.10.67',
+  '/weather.js?v=3.10.67',
+  '/battery.js?v=3.10.67',
+  '/turn-audio.js?v=3.10.67',
+  '/speech.js?v=3.10.67',
+  '/maplibre-gl.js?v=3.10.67',
+  '/map-gl.js?v=3.10.67',
+  '/maplibre-gl.css?v=3.10.67',
   '/qrcode.min.js',
-  '/sim-drive.js?v=3.10.66',
+  '/sim-drive.js?v=3.10.67',
   '/manifest.json',
   '/icon.svg',
   '/icon-192.png',
@@ -87,7 +87,7 @@ self.addEventListener('fetch', (event) => {
   // 1. Network-First strategy for HTML documents & navigation
   // Ensures user always gets the latest deployed index.html when online,
   // but instantly loads from cache if offline or during Tesla reverse (R) switch.
-  // v3.10.66 (audit H3): Render's free server sleeps after 15 idle minutes and needs ~30-60 s to wake. A page that waits for
+  // v3.10.67 (audit H3): Render's free server sleeps after 15 idle minutes and needs ~30-60 s to wake. A page that waits for
   // the network shows a blank screen all that time, so after NAV_TIMEOUT_MS the cached page is shown and the network answer
   // (when it comes) only refreshes the cache. With nothing cached the page still waits for the network.
   if (req.mode === 'navigate' || url.pathname === '/' || url.pathname.endsWith('.html')) {

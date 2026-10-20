@@ -126,8 +126,23 @@ const failedPinAttempts = new Map();
 // Global brute-force guard: even with many IPs, at most 40 failures per 5 minutes in total.
 let globalFails = { count: 0, expireAt: 0 };
 
+// v3.10.67 (audit M2): the global guard used to lock EVERYONE out, the owner too: 41 wrong PINs from anywhere = nobody could
+// sign in for 5 minutes. Now an address someone signed in from successfully (signed-in devices' last address, or a sign-in
+// in the last 30 days) is not held back by the global guard; its own per-address limit still applies.
+const goodIps = new Map();   // ip -> last successful sign-in (ms)
+function rememberGoodIp(ip) {
+  goodIps.set(ip, Date.now());
+  if (goodIps.size > 500) goodIps.delete(goodIps.keys().next().value);
+}
+function isTrustedIp(ip) {
+  const t = goodIps.get(ip);
+  if (t && Date.now() - t < 30 * 24 * 3600 * 1000) return true;
+  const st = AUTH.state;
+  return Object.values(st.masters).some((r) => r.ip === ip) || Object.values(st.guests).some((r) => r.ip === ip);
+}
+
 function isRateLimited(ip) {
-  if (Date.now() < globalFails.expireAt && globalFails.count >= 40) return true;
+  if (Date.now() < globalFails.expireAt && globalFails.count >= 40 && !isTrustedIp(ip)) return true;
   const record = failedPinAttempts.get(ip);
   if (!record) return false;
   if (Date.now() > record.expireAt) {
@@ -1066,6 +1081,7 @@ const server = http.createServer((req, res) => {
         const result = attemptPinAuth(parsed && parsed.pin, req);
         if (result.success) {
           resetFailedAttempts(ip);
+          rememberGoodIp(ip);
           const isHttps = req.headers['x-forwarded-proto'] === 'https';
           const cookieHeader = `tesla_auth=${result.token}; Path=/; HttpOnly; SameSite=Lax; Max-Age=2592000${isHttps ? '; Secure' : ''}`;
           res.writeHead(200, {
@@ -1096,7 +1112,7 @@ const server = http.createServer((req, res) => {
       return;
     }
     const result = attemptPinAuth(keyParam, req);
-    if (result.success) resetFailedAttempts(keyIp); else recordFailedAttempt(keyIp);
+    if (result.success) { resetFailedAttempts(keyIp); rememberGoodIp(keyIp); } else recordFailedAttempt(keyIp);
     if (result.success) {
       const isHttps = req.headers['x-forwarded-proto'] === 'https';
       const cookieHeader = `tesla_auth=${result.token}; Path=/; HttpOnly; SameSite=Lax; Max-Age=2592000${isHttps ? '; Secure' : ''}`;
@@ -1126,6 +1142,15 @@ const server = http.createServer((req, res) => {
       res.writeHead(401, { 'Content-Type': 'application/json' });
       res.end(JSON.stringify({ error: 'Unauthorized' }));
       return;
+    }
+  }
+
+  // v3.10.67: opening the app renews the 30-day sign-in (sliding), so a device in daily use never has to type the PIN again
+  if (RAW_PINS.length > 0 && (pathname === '/' || pathname === '/index.html')) {
+    const tok = parseCookies(req.headers.cookie).tesla_auth;
+    if (tok && currentDevice(req)) {
+      const isHttps = req.headers['x-forwarded-proto'] === 'https';
+      res.setHeader('Set-Cookie', `tesla_auth=${tok}; Path=/; HttpOnly; SameSite=Lax; Max-Age=2592000${isHttps ? '; Secure' : ''}`);
     }
   }
 

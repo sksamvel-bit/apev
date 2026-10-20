@@ -149,6 +149,15 @@ async function up() { for (let i = 0; i < 50; i++) { await wait(200); if ((await
   ok((await req('GET', '/api/chargers/live?code=' + CODE)).status === 401, 'the code opens only search and maps link, nothing else');
   sse.destroy();
 
+  // ---- v3.10.67 (audit M2): a flood of wrong PINs from many addresses must not lock the owner out ----
+  const page = await req('GET', '/', { cookie: G1 });
+  ok(/tesla_auth=/.test((page.headers['set-cookie'] || [])[0] || '') && /Max-Age=2592000/.test(page.headers['set-cookie'][0]), 'opening the app renews the 30-day sign-in');
+  for (let i = 0; i < 42; i++) await req('POST', '/api/auth/pin', { body: { pin: 'wrong' + i }, headers: { 'X-Forwarded-For': '10.9.' + (i >> 2) + '.' + i } });
+  const stranger = await req('POST', '/api/auth/pin', { body: { pin: PINS[0] }, headers: { 'X-Forwarded-For': '99.9.9.9' } });
+  ok(stranger.status === 429, 'during the flood a never-seen address is held back (429)');
+  const ownerAgain = await req('POST', '/api/auth/pin', { body: { pin: PINS[0] } });
+  ok(ownerAgain.status === 200, 'during the flood the owner signs in from an address that signed in before');
+
   srv.kill();
   try { fs.rmSync(DATA, { recursive: true, force: true }); } catch (_) {}
   process.exitCode = fails ? 1 : 0;
