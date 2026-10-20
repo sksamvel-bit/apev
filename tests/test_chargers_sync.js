@@ -165,6 +165,7 @@ test("parseTariffsPage reads the medians by network link, skips networks without
 });
 
 test("a new median re-prices the stations that used the old one, never a station with its own price", () => {
+  GEOCHARGE_TARIFF_MEDIANS.moveo = { dc: 0.85, ac: 0.56, name: "MOVEO" };   // the snapshot, whatever tariffs-cache.json holds locally
   const old = enrichStationTariff({ operator: "moveo", power: "60 kW", price: "სტანდარტული ტარიფი" });
   assert.strictEqual(old.price, "~0.85 ₾/kWh (სავარაუდო)");
   const { applyTariffs } = require("../server.js");
