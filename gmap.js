@@ -1032,8 +1032,29 @@
       startDebugMeter();
       S.timers.push(setInterval(syncCar, 250));
     } catch (e) {
-      if (!isCap(e)) setStatus((e && e.message) || "Google რუკა მიუწვდომელია");
+      // v3.10.77: no Google map (no network, the free-tier cap, a key problem): back to our map instead of an empty layer
+      const msg = (e && e.message) || "Google რუკა მიუწვდომელია";
+      setStatus("");
+      close();
+      say(isCap(e) ? "ჩვენს რუკაზე ხართ (Google-ის ლიმიტი)" : "Google რუკა ვერ ჩაიტვირთა: " + msg + " · ჩვენს რუკაზე ხართ");
     }
+  }
+
+  // ---- v3.10.77: the Google map is the main map (Samvel). It opens by itself when the app starts, unless the driver chose
+  // our map in the settings (localStorage tesla_nav_main_map = "ours") or the address has ?map=ours / ?map=lite. ----
+  const MAIN_MAP_KEY = "tesla_nav_main_map";
+  function mainMapIsGoogle(search) {
+    const q = String(search || "");
+    if (/[?&]map=(ours|lite)\b/.test(q)) return false;
+    try { return localStorage.getItem(MAIN_MAP_KEY) !== "ours"; } catch (_) { return true; }
+  }
+  function autoOpen() {
+    // wait until our map exists (open() pauses it) so the two never render at once; give up quietly after ~15 s
+    let tries = 0;
+    const t = setInterval(() => {
+      if (S.open || ++tries > 30) { clearInterval(t); return; }
+      if (window.__setMainMapPaused && window.map) { clearInterval(t); open(); }
+    }, 500);
   }
 
   function close() {
@@ -1136,9 +1157,10 @@
     try { S.vector = localStorage.getItem("gmapVector") === "1"; } catch (_) { S.vector = false; }
     const btn = $("btn-google-mode");
     if (btn) btn.hidden = !S.enabled;
+    if (S.enabled && mainMapIsGoogle(q)) autoOpen();
   }
 
-  const api = { init, open, close, isOpen: () => S.open, isEnabled: () => S.enabled, openWithQuery, openWithDestination, focusPlace, SIDE_PROXIES, mapKey, distToPolylineM, nearestOnPolyline, createOffRouteTracker, createVoiceCues, nearestChargers, createCarGlide, aheadPoint, mapOptions, cameraNeedsUpdate, createFpsMeter, scaledBoxStyle, capText, warnText, decodePolyline, parseRoutesResponse, routesRequestBody, nextStepIndex, fmtDist, buildLoaderUrl, createDebouncer, osrmUrl, summarizeRoute, mapStyles, bearing, meters, CATEGORIES };
+  const api = { init, open, close, isOpen: () => S.open, isEnabled: () => S.enabled, mainMapIsGoogle, MAIN_MAP_KEY, openWithQuery, openWithDestination, focusPlace, SIDE_PROXIES, mapKey, distToPolylineM, nearestOnPolyline, createOffRouteTracker, createVoiceCues, nearestChargers, createCarGlide, aheadPoint, mapOptions, cameraNeedsUpdate, createFpsMeter, scaledBoxStyle, capText, warnText, decodePolyline, parseRoutesResponse, routesRequestBody, nextStepIndex, fmtDist, buildLoaderUrl, createDebouncer, osrmUrl, summarizeRoute, mapStyles, bearing, meters, CATEGORIES };
   if (typeof document !== "undefined") {
     if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", () => init());
     else init();

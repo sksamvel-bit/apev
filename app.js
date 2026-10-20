@@ -136,7 +136,7 @@ function initClock() {
 const OFM_STYLE_URL = "https://tiles.openfreemap.org/styles/liberty";
 const OFM_STYLE_CACHE_KEY = "tesla_nav_ofm_style_v1";
 const MAP_STYLE_KEYS = ["openfreemap", "google-roads"];
-const APP_VERSION = "3.10.76";
+const APP_VERSION = "3.10.77";
 const MAP_DEFAULT_ZOOM = 16;      // MapLibre zoom (Leaflet-equivalent 17)
 // Performance experiments (all default to the normal behaviour): ?labels=0 hides the base-map labels/icons, ?markers=0 skips the
 // charger DOM markers, ?pitch=N sets the heading-up tilt (0-60). Used to find what makes the car's browser slow.
@@ -2091,6 +2091,9 @@ function initEventListeners() {
     const socVal = parseInt(document.getElementById("input-initial-soc").value, 10);
     if (!isNaN(socVal)) batteryEngine.setSoC(socVal);
 
+    // v3.10.77: which map opens with the app (gmap.js reads it on the next start)
+    const mm = document.getElementById("input-main-map");
+    if (mm) { try { localStorage.setItem("tesla_nav_main_map", mm.value === "ours" ? "ours" : "google"); } catch (_) {} }
     localStorage.setItem("saved_home", document.getElementById("input-home-addr").value.trim());
     localStorage.setItem("saved_work", document.getElementById("input-work-addr").value.trim());
     modal.classList.remove("open");
@@ -2099,6 +2102,7 @@ function initEventListeners() {
   });
 
   // Populate settings inputs
+  { const mm = document.getElementById("input-main-map"); if (mm) { let v = "google"; try { v = localStorage.getItem("tesla_nav_main_map") === "ours" ? "ours" : "google"; } catch (_) {} mm.value = v; } }
   document.getElementById("input-home-addr").value = localStorage.getItem("saved_home") || "";
   document.getElementById("input-work-addr").value = localStorage.getItem("saved_work") || "";
   if (selectTeslaModel) selectTeslaModel.value = batteryEngine.modelKey;
