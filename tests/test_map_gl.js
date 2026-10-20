@@ -280,4 +280,23 @@ test("pause() stops all frames (Google mode covers the map) and resume() continu
   near(last[0], 44.80, 1e-6, "jumps to the fix that arrived while paused");
 });
 
+test("lightStyle (?map=lite, v3.10.76): keeps what a driver needs, drops the heavy layers", () => {
+  const ids = ["background", "natural_earth", "park", "park_outline", "landuse_residential", "landcover_wood", "water", "waterway_river",
+    "road_minor_casing", "road_minor", "road_trunk_primary_casing", "road_trunk_primary", "road_motorway", "bridge_street", "tunnel_minor",
+    "road_major_rail", "building", "building-3d", "poi_r1", "poi_r20", "highway-name-minor", "highway-name-major", "highway-shield-non-us",
+    "label_city", "label_country_1", "road_one_way_arrow", "housenumber", "aeroway_runway", "boundary_2", "water_name_line_label"];
+  const style = { version: 8, sources: { openmaptiles: {} }, glyphs: "g", sprite: "s", layers: ids.map((id) => ({ id })) };
+  const kept = MapGL.lightStyle(style).layers.map((l) => l.id);
+  for (const k of ["background", "park", "landcover_wood", "water", "waterway_river", "road_minor", "road_trunk_primary_casing", "road_trunk_primary",
+    "road_motorway", "bridge_street", "tunnel_minor", "highway-name-minor", "highway-name-major", "label_city", "road_one_way_arrow", "housenumber"]) {
+    assert.ok(kept.includes(k), "keeps " + k);
+  }
+  for (const d of ["natural_earth", "park_outline", "landuse_residential", "road_minor_casing", "road_major_rail", "building", "building-3d",
+    "poi_r1", "poi_r20", "highway-shield-non-us", "label_country_1", "aeroway_runway", "boundary_2", "water_name_line_label"]) {
+    assert.ok(!kept.includes(d), "drops " + d);
+  }
+  const out = MapGL.lightStyle(style);
+  assert.strictEqual(out.glyphs, "g"); assert.strictEqual(out.sprite, "s"); assert.strictEqual(style.layers.length, ids.length, "the original style is not changed");
+});
+
 console.log("\n" + passed + " tests passed" + (process.exitCode ? " - WITH FAILURES" : ""));

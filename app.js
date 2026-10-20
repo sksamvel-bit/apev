@@ -136,7 +136,7 @@ function initClock() {
 const OFM_STYLE_URL = "https://tiles.openfreemap.org/styles/liberty";
 const OFM_STYLE_CACHE_KEY = "tesla_nav_ofm_style_v1";
 const MAP_STYLE_KEYS = ["openfreemap", "google-roads"];
-const APP_VERSION = "3.10.75";
+const APP_VERSION = "3.10.76";
 const MAP_DEFAULT_ZOOM = 16;      // MapLibre zoom (Leaflet-equivalent 17)
 // Performance experiments (all default to the normal behaviour): ?labels=0 hides the base-map labels/icons, ?markers=0 skips the
 // charger DOM markers, ?pitch=N sets the heading-up tilt (0-60). Used to find what makes the car's browser slow.
@@ -151,6 +151,11 @@ const PERF = (function () {
            lite: lq === "1" || (lq == null && stored === "1"), liteAuto: lq == null };
 })();
 window.__perf = PERF;
+// v3.10.76 speed experiments for the car (URL only, nothing remembered): ?map=lite = the light base map (~34 of ~111 layers,
+// MapGL.lightStyle), ?camfps=N = follow-camera frames per second (default 30), ?dpr=N = pixel ratio (default min(device, 1.25)).
+const MAP_LIGHT = (function () { try { return new URLSearchParams(location.search).get("map") === "lite"; } catch (_) { return false; } })();
+const CAM_FPS = (function () { try { const n = parseFloat(new URLSearchParams(location.search).get("camfps")); return n >= 5 && n <= 60 ? n : null; } catch (_) { return null; } })();
+window.__mapLight = MAP_LIGHT;
 // ?style=mono is a flat map by default (pitch 0); ?pitch=N still overrides
 // Look: since v3.10.25 the grey "mono" flat map is the default; ?style=classic = the old coloured map, ?style=tesla = the Tesla palette.
 const LOOK_PARAM = (function () {
@@ -239,13 +244,13 @@ async function loadStyleJson(styleKey) {
     if (!res.ok) throw new Error("HTTP " + res.status);
     const json = await res.json();
     try { localStorage.setItem(OFM_STYLE_CACHE_KEY, JSON.stringify(json)); } catch (_) {}
-    window.__teslaBase = tuneVectorStyle(json);
+    window.__teslaBase = MAP_LIGHT ? window.MapGL.lightStyle(tuneVectorStyle(json)) : tuneVectorStyle(json);
     return teslaLook(window.__teslaBase);
   } catch (err) {
     // style server slow/unreachable: use the last good copy (the tiles themselves may still come from the browser cache)
     let cached = null;
     try { cached = JSON.parse(localStorage.getItem(OFM_STYLE_CACHE_KEY)); } catch (_) {}
-    if (cached && cached.layers) { window.__teslaBase = tuneVectorStyle(cached); return teslaLook(window.__teslaBase); }
+    if (cached && cached.layers) { window.__teslaBase = MAP_LIGHT ? window.MapGL.lightStyle(tuneVectorStyle(cached)) : tuneVectorStyle(cached); return teslaLook(window.__teslaBase); }
     throw err;
   } finally {
     clearTimeout(timer);
@@ -458,7 +463,7 @@ function initMap() {
 
   createVehiclePuck();
 
-  mapCamera = new window.MapGL.FollowCamera(map, { headingPitch: MAP_HEADING_PITCH, onFrame: onCameraFrame });
+  mapCamera = new window.MapGL.FollowCamera(map, Object.assign({ headingPitch: MAP_HEADING_PITCH, onFrame: onCameraFrame }, CAM_FPS ? { minFrameMs: 1000 / CAM_FPS } : {}));
   mapCamera.setMode(currentMapOrientation);
   mapCamera.setFix({ lng: currentPos.lng, lat: currentPos.lat, headingDeg: lastKnownValidHeading || currentHeading || 0, speedMs: 0 });
   window.mapCamera = mapCamera;
@@ -2308,7 +2313,7 @@ function initRemoteSession() {
       "gap " + f(dt) + "s  jump " + f(dist) + "m  => " + (dt && dist != null ? f(dist / dt * 3.6, 0) : "-") + " km/h",
       "follow " + isFollowCar + "  mode " + currentMapOrientation + "  fps " + f(fps, 0) + "  render " + f(rfps, 0) + "/s",
       "cost: jumpTo " + f(cam && cam.jumpMs, 1) + "ms  onFrame " + f(cam && cam.cbMs, 1) + "ms",
-      "flags: dpr " + f(map.getPixelRatio && map.getPixelRatio(), 2) + "  pitch " + (PERF.pitch != null ? PERF.pitch : "45*") + "  labels " + (PERF.labels ? "on" : "OFF") + "  markers " + (PERF.markers ? "on" : "OFF") + "  look " + (window.__teslaLook ? (window.__lookMode === "mono" ? "MONO" : "TESLA") : "classic"),
+      "flags: dpr " + f(map.getPixelRatio && map.getPixelRatio(), 2) + "  pitch " + (PERF.pitch != null ? PERF.pitch : "45*") + "  labels " + (PERF.labels ? "on" : "OFF") + "  markers " + (PERF.markers ? "on" : "OFF") + "  look " + (window.__teslaLook ? (window.__lookMode === "mono" ? "MONO" : "TESLA") : "classic") + "  map " + (MAP_LIGHT ? "LIGHT" : "full") + " " + ((map.getStyle() || {}).layers || []).length + "L" + (CAM_FPS ? "  camfps " + CAM_FPS : ""),
       "bearing " + f(map.getBearing(), 0) + "  pitch " + f(map.getPitch(), 0) + "  zoom " + f(map.getZoom(), 1) + "  pad " + padTop,
       "arrow offset from expected: dx " + f(dx, 0) + "  dy " + f(dy, 0) + " px",
       // v3.10.72 (audit L9): service worker state, the real screen size of the car browser (settings window sizing) and its name

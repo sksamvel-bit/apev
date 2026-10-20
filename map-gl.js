@@ -370,6 +370,18 @@
       (l["source-layer"] === "housenumber" || (l["source-layer"] === "transportation_name" && !/shield|one_?way|arrow/i.test(l.id)))).map((l) => l.id);
   }
 
+  // ---- v3.10.76 "light map" (?map=lite): a Tesla-like base map with ~30 of the style's ~110 layers ----
+  // Lite mode above only hides labels; every road casing, building, POI, rail and land-use layer is still drawn on each frame.
+  // This removes them from the style entirely: background, water, parks / woods, road fills (+ bridges, tunnels, the two
+  // major casings for contrast), one-way arrows, street / place names and house numbers. Our own layers are added later.
+  const LIGHT_KEEP = /^(background|park|landcover_wood|water|waterway_river|road_(minor|service_track|link|secondary_tertiary|trunk_primary|motorway|motorway_link)|road_(trunk_primary|motorway)_casing|bridge_(street|link|secondary_tertiary|trunk_primary|motorway|motorway_link)|tunnel_(minor|link|secondary_tertiary|trunk_primary|motorway)|road_one_way_arrow|highway-name-(minor|major)|label_(city|city_capital|town|village|other)|housenumber)$/;
+
+  /** The style with only the layers a driver needs (sources, sprite and glyphs untouched). */
+  function lightStyle(style) {
+    if (!style || !Array.isArray(style.layers)) return style;
+    return Object.assign({}, style, { layers: style.layers.filter((l) => l && LIGHT_KEEP.test(String(l.id))) });
+  }
+
   /** Decides when to switch Lite on automatically: `need` consecutive moving samples below `minFps`. */
   function LiteGovernor(opts) {
     opts = opts || {};
@@ -386,5 +398,5 @@
     return false;
   };
 
-  return { shortestDelta, normDeg, advance, MapUtil, LayerRegistry, FollowCamera, pickLiteHidden, pickLiteDetail, LiteGovernor };
+  return { shortestDelta, normDeg, advance, MapUtil, LayerRegistry, FollowCamera, pickLiteHidden, pickLiteDetail, LiteGovernor, lightStyle, LIGHT_KEEP };
 });
