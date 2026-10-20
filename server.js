@@ -404,7 +404,10 @@ function sendSSE(res, event, data) {
 }
 
 // In-Memory Live EV Chargers Cache & Persistent Disk Storage (dachar.ge / Revolt / Georgia EV aggregator)
+// v3.10.71 (audit L7): chargers-cache.json is the snapshot kept in git (first start, CI tests); the live list the server keeps
+// refreshing goes to chargers-live.json (git-ignored), so the repo file no longer changes on every sync
 const CHARGERS_CACHE_FILE = path.join(PUBLIC_DIR, 'chargers-cache.json');
+const CHARGERS_LIVE_FILE = path.join(process.env.DATA_DIR || PUBLIC_DIR, 'chargers-live.json');
 const CHARGERS_CACHE_TTL = 30 * 60 * 1000; // 30 minutes
 let cachedLiveChargers = null;
 let lastChargersFetch = 0;
@@ -554,12 +557,13 @@ function enrichStationTariff(station) {
 
 // Load disk cache on boot if available
 try {
-  if (fs.existsSync(CHARGERS_CACHE_FILE)) {
-    const diskData = JSON.parse(fs.readFileSync(CHARGERS_CACHE_FILE, 'utf8'));
+  const bootFile = fs.existsSync(CHARGERS_LIVE_FILE) ? CHARGERS_LIVE_FILE : CHARGERS_CACHE_FILE;
+  if (fs.existsSync(bootFile)) {
+    const diskData = JSON.parse(fs.readFileSync(bootFile, 'utf8'));
     if (diskData && Array.isArray(diskData.stations) && diskData.stations.length > 0) {
       cachedLiveChargers = deduplicateStations(diskData.stations.map(enrichStationTariff), 30);
       lastChargersFetch = diskData.timestamp || Date.now();
-      console.log(`[EV] Loaded ${cachedLiveChargers.length} charging stations from disk cache (chargers-cache.json)`);
+      console.log(`[EV] Loaded ${cachedLiveChargers.length} charging stations from ${path.basename(bootFile)}`);
     }
   }
 } catch (e) {
@@ -669,7 +673,7 @@ async function getLiveGeorgiaChargers(forceRefresh = false) {
       console.log(`[EV] Successfully synced ${dedupedStations.length} live EV charging stations across Georgia (${stations.length} raw stations deduplicated)!`);
 
       // Persist to disk for high-speed instant load & offline resilience
-      fs.writeFile(CHARGERS_CACHE_FILE, JSON.stringify({
+      fs.writeFile(CHARGERS_LIVE_FILE, JSON.stringify({
         source: 'dachar.ge & Revolt Georgia (GPS კოორდინატები); GeoCharge.ge (ტარიფები)',
         count: dedupedStations.length,
         timestamp: now,

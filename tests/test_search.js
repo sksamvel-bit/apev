@@ -155,4 +155,11 @@ test("server + phone: /api/maps-link resolves only goo.gl redirects, the car ope
   assert.ok(app.includes('payload.source === "gmaps" || (window.GMapMode && window.GMapMode.isOpen())'), "the car opens a Google link (or anything while Google mode is open) in Google mode");
 });
 
+test("home / work: the place found for that text is kept and reused (v3.10.71, audit L8)", () => {
+  const app = require("fs").readFileSync(__dirname + "/../app.js", "utf8");
+  const fn = app.slice(app.indexOf("async function handleAddressSearchAndNavigate"), app.indexOf("// ---- search: local suggestions"));
+  assert.ok(fn.indexOf("favCoords()[query]") > 0 && fn.indexOf("favCoords()[query]") < fn.indexOf("fetch(url)"), "the kept place is used before any search");
+  assert.ok(fn.includes("localStorage.setItem(FAV_COORDS_KEY"), "a found place is kept");
+});
+
 console.log("\n" + passed + " search tests passed" + (process.exitCode ? " - WITH FAILURES" : ""));

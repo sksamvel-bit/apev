@@ -8,3 +8,4 @@ routes-usage.json
 google-usage-*.json
 tariffs-cache.json
 .claude/settings.local.json
+chargers-live.json

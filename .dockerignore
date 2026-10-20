@@ -7,3 +7,6 @@ FULL_CONVERSATION_TRANSCRIPT.md
 pin-bindings.json
 tests
 *.md
+chargers-live.json
+tariffs-cache.json
+cameras-cache.json

@@ -135,7 +135,7 @@ function initClock() {
 const OFM_STYLE_URL = "https://tiles.openfreemap.org/styles/liberty";
 const OFM_STYLE_CACHE_KEY = "tesla_nav_ofm_style_v1";
 const MAP_STYLE_KEYS = ["openfreemap", "google-roads"];
-const APP_VERSION = "3.10.70";
+const APP_VERSION = "3.10.71";
 const MAP_DEFAULT_ZOOM = 16;      // MapLibre zoom (Leaflet-equivalent 17)
 // Performance experiments (all default to the normal behaviour): ?labels=0 hides the base-map labels/icons, ?markers=0 skips the
 // charger DOM markers, ?pitch=N sets the heading-up tilt (0-60). Used to find what makes the car's browser slow.
@@ -1620,8 +1620,18 @@ function renderFavoritesDropdown() {
   container.classList.add("show");
 }
 
+// v3.10.71 (audit L8): Home / Work are typed as text; the place found the first time is kept for that exact text, so the next
+// tap routes at once (no search, works without the geocoder) and always to the same place. Changing the text searches again.
+const FAV_COORDS_KEY = "tesla_nav_fav_coords";
+function favCoords() { try { return JSON.parse(localStorage.getItem(FAV_COORDS_KEY) || "{}") || {}; } catch (_) { return {}; } }
+
 async function handleAddressSearchAndNavigate(query, label) {
   try {
+    const known = favCoords()[query];
+    if (known && isFinite(known.lat) && isFinite(known.lng)) {
+      prepareRoutePreview({ lat: known.lat, lng: known.lng }, label, known.name || query);
+      return;
+    }
     showToast(`იძებნება ${label}...`, "info", 2000);
     let url = `/api/search?q=${encodeURIComponent(query)}`;
     if (currentPos && isFinite(currentPos.lat)) url += `&lat=${currentPos.lat.toFixed(3)}&lon=${currentPos.lng.toFixed(3)}`;
@@ -1629,6 +1639,13 @@ async function handleAddressSearchAndNavigate(query, label) {
     const data = await res.json();
     if (data && data.length > 0) {
       const latlng = { lat: parseFloat(data[0].lat), lng: parseFloat(data[0].lon) };
+      try {
+        const all = favCoords();
+        all[query] = { lat: latlng.lat, lng: latlng.lng, name: data[0].display_name };
+        const keys = Object.keys(all);
+        if (keys.length > 10) delete all[keys[0]];
+        localStorage.setItem(FAV_COORDS_KEY, JSON.stringify(all));
+      } catch (_) {}
       prepareRoutePreview(latlng, label, data[0].display_name);
     } else {
       showToast(`მისამართი ${label} ვერ მოიძებნა`, "error");
