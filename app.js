@@ -16,6 +16,7 @@ localStorage.setItem("tesla_nav_map_orientation", "heading-up");
 
 let trafficEngine = null;
 let trafficSignalsEngine = null;
+let camerasEngine = null;
 let routingEngine = null;
 let speechAssistant = null;
 let weatherEngine = null;
@@ -134,7 +135,7 @@ function initClock() {
 const OFM_STYLE_URL = "https://tiles.openfreemap.org/styles/liberty";
 const OFM_STYLE_CACHE_KEY = "tesla_nav_ofm_style_v1";
 const MAP_STYLE_KEYS = ["openfreemap", "google-roads"];
-const APP_VERSION = "3.10.53";
+const APP_VERSION = "3.10.54";
 const MAP_DEFAULT_ZOOM = 16;      // MapLibre zoom (Leaflet-equivalent 17)
 // Performance experiments (all default to the normal behaviour): ?labels=0 hides the base-map labels/icons, ?markers=0 skips the
 // charger DOM markers, ?pitch=N sets the heading-up tilt (0-60). Used to find what makes the car's browser slow.
@@ -650,6 +651,7 @@ function initSubsystems() {
   try { speechAssistant = new SpeechAssistant(); window.speechAssistant = speechAssistant; } catch (e) { console.warn("speechAssistant init notice:", e); }
   try { batteryEngine = new BatteryEngine(); window.batteryEngine = batteryEngine; } catch (e) { console.warn("batteryEngine init notice:", e); }
   try { weatherEngine = new WeatherEngine(); window.weatherEngine = weatherEngine; } catch (e) { console.warn("weatherEngine init notice:", e); }
+  try { camerasEngine = new SpeedCamerasEngine(); window.camerasEngine = camerasEngine; } catch (e) { console.warn("camerasEngine init notice:", e); }
   try { trafficSignalsEngine = new TrafficSignalsEngine(map, true); window.trafficSignalsEngine = trafficSignalsEngine; } catch (e) { console.warn("trafficSignalsEngine init notice:", e); }
   try { trafficEngine = new TrafficEngine(map, true); window.trafficEngine = trafficEngine; } catch (e) { console.warn("trafficEngine init notice:", e); }
   try {
@@ -821,6 +823,18 @@ function updateBatteryUI(stats) {
 }
 
 // Geolocation GPS & Live Weather Fetch
+// Speed cameras (v3.10.54, OSM): a badge next to the speedometer (it stays visible in Google mode) and one prompt per camera.
+// Nothing is drawn on the map (the v3.10.19 layer cost frames on the MCU2).
+function checkSpeedCameras(pos, speedKmh) {
+  const badge = document.getElementById("camera-badge");
+  if (!camerasEngine || !badge) return;
+  const { hit, announce } = camerasEngine.update(pos, currentHeading, speedKmh);
+  const text = window.SpeedCameras.badgeText(hit);
+  if (badge.textContent !== text) badge.textContent = text;
+  badge.classList.toggle("show", !!hit);
+  if (announce && speechAssistant) speechAssistant.speak(window.SpeedCameras.promptText(hit));
+}
+
 function initGeolocation() {
   if (!navigator.geolocation) {
     console.warn("Geolocation not supported by browser");
@@ -865,6 +879,7 @@ function initGeolocation() {
       try { const d = (window.__dbg = window.__dbg || { fixes: [] }); d.fixes.push({ t: Date.now(), lat, lng, acc: coords.accuracy, spd: coords.speed, hdg: coords.heading }); if (d.fixes.length > 40) d.fixes.shift(); } catch (_) {}
 
       updateVehicleMarker(lat, lng, rawHeading, speed, coords.accuracy);
+      checkSpeedCameras({ lat, lng }, speed);
       fetchWeatherForPos(lat, lng);
 
       if (routingEngine && routingEngine.isNavigating) {
@@ -1889,6 +1904,18 @@ function initEventListeners() {
     }
   });
 
+  const btnCameras = document.getElementById("btn-toggle-cameras");
+  if (btnCameras) {
+    if (camerasEngine) btnCameras.classList.toggle("signals-active", camerasEngine.isEnabled);
+    btnCameras.addEventListener("click", () => {
+      if (!camerasEngine) return;
+      const enabled = camerasEngine.toggle();
+      btnCameras.classList.toggle("signals-active", enabled);
+      if (!enabled) { const b = document.getElementById("camera-badge"); if (b) b.classList.remove("show"); }
+      showToast(enabled ? "📷 სიჩქარის კამერების გაფრთხილება ჩართულია (OSM, ყველა კამერა არ არის)" : "📷 სიჩქარის კამერების გაფრთხილება გამორთულია", "info", 2200);
+    });
+  }
+
   const btnSignals = document.getElementById("btn-toggle-signals");
   btnSignals.addEventListener("click", () => {
     const enabled = trafficSignalsEngine.toggle();
@@ -2198,6 +2225,7 @@ function initRemoteSession() {
           currentSpeed,
           payload.accuracy
         );
+        checkSpeedCameras({ lat: payload.lat, lng: payload.lng }, currentSpeed);
 
         if (routingEngine && routingEngine.isNavigating) {
           const signalAhead = routingEngine.updateVehiclePosition(

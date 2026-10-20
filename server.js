@@ -21,7 +21,7 @@ const STATIC_WHITELIST = new Set([
   'index.html','remote.html','style.css','qrcode.min.js',
   'maplibre-gl.js','maplibre-gl.css','map-gl.js',
   'app.js','routing.js','traffic.js','traffic-signals.js','chargers.js','charger-list.js','search.js','tesla-style.js',
-  'battery.js','weather.js','speech.js','turn-audio.js','speed-limit.js',
+  'battery.js','weather.js','speech.js','turn-audio.js','speed-limit.js','speed-cameras.js',
   'sim-drive.js','gmap.js',
   'manifest.json','icon.svg','icon-192.png','icon-512.png','sw.js'
 ]);
@@ -644,6 +644,67 @@ function photonFetch(q, bias, key, cached, resolve) {
   req.on('timeout', () => { req.destroy(); resolve(cached ? cached.data : []); });
 }
 
+// ---- Fixed speed cameras (v3.10.54; OpenStreetMap via Overpass): fetched by the server once a day, never by the browser ----
+const SpeedCameras = require('./speed-cameras.js');
+const CAMERAS_FILE = path.join(PUBLIC_DIR, 'cameras-cache.json');
+const CAMERAS_TTL_MS = 24 * 3600 * 1000;
+const CAMERAS_QUERY = '[out:json][timeout:90];node["highway"="speed_camera"](41.0,40.0,43.6,46.8);out;'; // whole of Georgia
+const CAMERAS_ENDPOINTS = ['https://overpass-api.de/api/interpreter', 'https://overpass.kumi.systems/api/interpreter'];
+let camerasCache = { t: 0, cameras: [] };
+let camerasPending = null;
+try {
+  if (fs.existsSync(CAMERAS_FILE)) {
+    const saved = JSON.parse(fs.readFileSync(CAMERAS_FILE, 'utf8'));
+    if (saved && Array.isArray(saved.cameras)) camerasCache = { t: Number(saved.t) || 0, cameras: saved.cameras };
+  }
+} catch (e) { console.warn('[cameras] cache file ignored:', e.message); }
+
+function overpassPost(endpoint, query) {
+  return new Promise((resolve, reject) => {
+    const body = 'data=' + encodeURIComponent(query);
+    const u = new URL(endpoint);
+    const req = https.request({
+      method: 'POST', hostname: u.hostname, path: u.pathname, timeout: 100000,   // the public server needs ~45 s for this (measured 2026-10-20)
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'Content-Length': Buffer.byteLength(body), 'User-Agent': 'TeslaNav/3.10 (+https://apev.onrender.com)' }
+    }, resp => {
+      let data = '';
+      resp.setEncoding('utf8');
+      resp.on('data', c => { data += c; if (data.length > 5 * 1024 * 1024) resp.destroy(); });
+      resp.on('end', () => {
+        if (resp.statusCode !== 200) return reject(new Error('HTTP ' + resp.statusCode));
+        try { resolve(JSON.parse(data)); } catch (e) { reject(new Error('bad JSON')); }
+      });
+      resp.on('error', reject);
+    });
+    req.on('error', reject);
+    req.on('timeout', () => { req.destroy(); reject(new Error('timeout')); });
+    req.write(body); req.end();
+  });
+}
+
+async function getSpeedCameras() {
+  if (camerasCache.cameras.length && Date.now() - camerasCache.t < CAMERAS_TTL_MS) return camerasCache;
+  if (camerasPending) return camerasPending;
+  camerasPending = (async () => {
+    let lastErr = null;
+    for (const ep of CAMERAS_ENDPOINTS) {
+      try {
+        const cams = SpeedCameras.parseOverpass(await overpassPost(ep, CAMERAS_QUERY));
+        if (cams.length) {
+          camerasCache = { t: Date.now(), cameras: cams };
+          try { fs.writeFileSync(CAMERAS_FILE, JSON.stringify(camerasCache)); } catch (_) {}
+          console.log(`[cameras] ${cams.length} speed cameras loaded from ${new URL(ep).hostname}`);
+          return camerasCache;
+        }
+      } catch (e) { lastErr = e; }
+    }
+    console.warn('[cameras] Overpass unavailable, serving the previous list:', lastErr && lastErr.message);
+    camerasCache.t = Date.now() - CAMERAS_TTL_MS + 15 * 60 * 1000; // try again in 15 minutes
+    return camerasCache;
+  })().finally(() => { camerasPending = null; });
+  return camerasPending;
+}
+
 // Google Maps share links from the phone (v3.10.53). A short link (maps.app.goo.gl) is resolved by reading only its redirect
 // Location header (no Google page is downloaded, no Google API is called); the coordinates come from the URL itself.
 // A link that holds only a place name falls back to our Nominatim search.
@@ -1151,6 +1212,18 @@ const server = http.createServer((req, res) => {
   }
 
   // API Endpoint: /api/suggest?q=&lat=&lon= - Photon typeahead (behind the PIN gate like /api/search); [] on any problem.
+  // API Endpoint: /api/cameras (fixed speed cameras, OSM data cached 24 h; behind the PIN gate)
+  if (pathname === '/api/cameras') {
+    getSpeedCameras().then(c => {
+      res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'private, max-age=3600' });
+      res.end(JSON.stringify({ updated: c.t, cameras: c.cameras }));
+    }).catch(() => {
+      res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
+      res.end(JSON.stringify({ updated: 0, cameras: [] }));
+    });
+    return;
+  }
+
   // API Endpoint: /api/maps-link?url=&lat=&lon= - a shared Google Maps link -> { name, lat, lng } (behind the PIN gate)
   if (pathname === '/api/maps-link') {
     const link = (urlObj.searchParams.get('url') || '').trim().slice(0, 1000);

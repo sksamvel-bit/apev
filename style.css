@@ -2210,3 +2210,7 @@ body.gmap-open .dock-controls { display: none; } /* the Google layer has its own
 .gmap-nav-turn { display: block; }
 .gmap-nav-dist, .gmap-nav-text { display: block; }
 #gmap-layer.navigating .gmap-top { display: none; }
+
+/* Speed camera warning next to the speedometer (v3.10.54): visible on our map and in Google mode, nothing is drawn on the map */
+.camera-badge { display: none; align-self: center; padding: 6px 12px; border-radius: 12px; background: rgba(14, 18, 26, 0.94); border: 2px solid #e11d48; color: #fecaca; font-size: 1.05rem; font-weight: 800; white-space: nowrap; font-feature-settings: "tnum"; }
+.camera-badge.show { display: block; }
