@@ -10,33 +10,34 @@
  * 4. skipWaiting + clients.claim for atomic instant updates without stale caches.
  */
 
-const CACHE_NAME = 'tesla-nav-v3.10.64';
+const CACHE_NAME = 'tesla-nav-v3.10.65';
+const NAV_TIMEOUT_MS = 3000;   // a sleeping Render server: show the cached page after 3 s
 
 const PRECACHE_ASSETS = [
   '/',
   '/index.html',
-  '/style.css?v=3.10.64',
-  '/app.js?v=3.10.64',
-  '/speed-limit.js?v=3.10.64',
-  '/speed-cameras.js?v=3.10.64',
-  '/devices-panel.js?v=3.10.64',
-  '/routing.js?v=3.10.64',
-  '/chargers.js?v=3.10.64',
-  '/charger-list.js?v=3.10.64',
-  '/search.js?v=3.10.64',
-  '/tesla-style.js?v=3.10.64',
-  '/traffic-signals.js?v=3.10.64',
-  '/traffic.js?v=3.10.64',
-  '/gmap.js?v=3.10.64',
-  '/weather.js?v=3.10.64',
-  '/battery.js?v=3.10.64',
-  '/turn-audio.js?v=3.10.64',
-  '/speech.js?v=3.10.64',
-  '/maplibre-gl.js?v=3.10.64',
-  '/map-gl.js?v=3.10.64',
-  '/maplibre-gl.css?v=3.10.64',
+  '/style.css?v=3.10.65',
+  '/app.js?v=3.10.65',
+  '/speed-limit.js?v=3.10.65',
+  '/speed-cameras.js?v=3.10.65',
+  '/devices-panel.js?v=3.10.65',
+  '/routing.js?v=3.10.65',
+  '/chargers.js?v=3.10.65',
+  '/charger-list.js?v=3.10.65',
+  '/search.js?v=3.10.65',
+  '/tesla-style.js?v=3.10.65',
+  '/traffic-signals.js?v=3.10.65',
+  '/traffic.js?v=3.10.65',
+  '/gmap.js?v=3.10.65',
+  '/weather.js?v=3.10.65',
+  '/battery.js?v=3.10.65',
+  '/turn-audio.js?v=3.10.65',
+  '/speech.js?v=3.10.65',
+  '/maplibre-gl.js?v=3.10.65',
+  '/map-gl.js?v=3.10.65',
+  '/maplibre-gl.css?v=3.10.65',
   '/qrcode.min.js',
-  '/sim-drive.js?v=3.10.64',
+  '/sim-drive.js?v=3.10.65',
   '/manifest.json',
   '/icon.svg',
   '/icon-192.png',
@@ -86,20 +87,27 @@ self.addEventListener('fetch', (event) => {
   // 1. Network-First strategy for HTML documents & navigation
   // Ensures user always gets the latest deployed index.html when online,
   // but instantly loads from cache if offline or during Tesla reverse (R) switch.
+  // v3.10.65 (audit H3): Render's free server sleeps after 15 idle minutes and needs ~30-60 s to wake. A page that waits for
+  // the network shows a blank screen all that time, so after NAV_TIMEOUT_MS the cached page is shown and the network answer
+  // (when it comes) only refreshes the cache. With nothing cached the page still waits for the network.
   if (req.mode === 'navigate' || url.pathname === '/' || url.pathname.endsWith('.html')) {
-    event.respondWith(
-      fetch(req)
-        .then((networkRes) => {
-          if (networkRes && networkRes.status === 200) {
-            const copy = networkRes.clone();
-            caches.open(CACHE_NAME).then((cache) => cache.put(req, copy));
-          }
-          return networkRes;
-        })
-        .catch(() => {
-          return caches.match(req).then((cached) => cached || caches.match('/index.html'));
-        })
-    );
+    const network = fetch(req).then((networkRes) => {
+      // the PIN page (signed out) is never cached as the app page
+      if (networkRes && networkRes.status === 200 && !networkRes.headers.get('X-Pin-Page')) {
+        const copy = networkRes.clone();
+        caches.open(CACHE_NAME).then((cache) => cache.put(req, copy));
+      }
+      return networkRes;
+    });
+    const cachedPage = () => caches.match(req).then((cached) => cached || caches.match('/index.html'));
+    event.respondWith(new Promise((resolve) => {
+      let done = false;
+      const finish = (res) => { if (!done && res) { done = true; resolve(res); } };
+      const timer = setTimeout(() => { cachedPage().then(finish); }, NAV_TIMEOUT_MS);
+      network.then((res) => { clearTimeout(timer); finish(res); })
+        .catch(() => { clearTimeout(timer); cachedPage().then((c) => finish(c || Response.error())); });
+    }));
+    event.waitUntil(network.catch(() => {}));
     return;
   }
 

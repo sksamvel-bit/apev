@@ -1118,7 +1118,7 @@ const server = http.createServer((req, res) => {
   // Auth Gatekeeper: if ACCESS_PIN is set and route is protected and user is not authenticated
   if (RAW_PINS.length > 0 && !isPublicAuthPath(pathname) && !(SESSION_GATED_PATHS.has(pathname) && hasActiveSession(urlObj)) && !isAuthenticated(req)) {
     if (pathname === '/' || pathname === '/index.html') {
-      res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
+      res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8', 'X-Pin-Page': '1', 'Cache-Control': 'no-store' });
       res.end(PIN_LOGIN_HTML);
       return;
     }
