@@ -2236,17 +2236,32 @@ body.gmap-open #gmap-nav { top: 60px; }
 .gmap-side .gmap-btn.active { border-color: rgba(0, 210, 255, 0.6); background: rgba(0, 136, 255, 0.22); color: var(--accent-cyan); }
 .gmap-side .gmap-btn.gmap-close { margin-top: 6px; background: rgba(225, 29, 72, 0.22); border-color: rgba(225, 29, 72, 0.6); }
 
-/* v3.10.60: devices panel in the settings window (owner only) */
-.devices-panel { margin-top: 10px; padding: 10px 12px; border: 1px solid rgba(255, 255, 255, 0.12); border-radius: 12px; background: rgba(255, 255, 255, 0.03); }
+/* v3.10.61: devices + guest PINs, the 3rd column of the settings window (owner only). The window widens to three columns
+   so everything fits without scrolling; below 1100 px the panel takes the full width under the two columns. */
+.settings-modal-window.has-devices { max-width: 1320px; width: 97%; }
+.settings-modal-window.has-devices .settings-grid-2col { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1.2fr); gap: 14px; }
+@media (max-width: 1100px) {
+  .settings-modal-window.has-devices .settings-grid-2col { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+  .settings-modal-window.has-devices .devices-panel { grid-column: 1 / -1; }
+}
+.devices-panel { padding: 8px 10px; border: 1px solid rgba(255, 255, 255, 0.12); border-radius: 12px; background: rgba(255, 255, 255, 0.03); min-width: 0; }
 .devices-panel[hidden] { display: none; }
-.devices-title { margin: 0 0 6px; font-size: 0.95rem; }
-.devices-sub { margin: 10px 0 4px; font-size: 0.8rem; color: var(--text-secondary); font-weight: 700; }
-.devices-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 8px 10px; border-radius: 10px; background: rgba(255, 255, 255, 0.04); margin-bottom: 4px; }
-.devices-row.current { border: 1px solid rgba(0, 210, 255, 0.5); }
+.devices-title { margin: 0 0 4px; font-size: 0.9rem; }
+.devices-sub { margin: 6px 0 3px; font-size: 0.74rem; color: var(--text-secondary); font-weight: 700; }
+.devices-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 4px 8px; border-radius: 9px; background: rgba(255, 255, 255, 0.04); margin-bottom: 3px; border: 1px solid transparent; }
+.devices-row.current { border-color: rgba(0, 210, 255, 0.5); }
 .devices-info { min-width: 0; }
-.devices-name { font-size: 0.9rem; font-weight: 600; }
-.devices-meta { font-size: 0.75rem; color: var(--text-secondary); }
-.devices-note { font-size: 0.75rem; color: var(--text-secondary); margin-top: 8px; }
-.devices-btn { flex-shrink: 0; min-height: 40px; padding: 6px 12px; border-radius: 10px; border: 1px solid rgba(225, 29, 72, 0.6); background: rgba(225, 29, 72, 0.15); color: #fecaca; font-weight: 700; cursor: pointer; }
+.devices-name { font-size: 0.82rem; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.devices-meta { font-size: 0.7rem; color: var(--text-secondary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.devices-acts { display: flex; gap: 4px; flex-shrink: 0; }
+.devices-btn { flex-shrink: 0; min-height: 38px; min-width: 44px; padding: 4px 10px; border-radius: 9px; border: 1px solid rgba(255, 255, 255, 0.18); background: rgba(255, 255, 255, 0.06); color: #fff; font-size: 0.8rem; font-weight: 700; cursor: pointer; }
+.devices-btn.danger { border-color: rgba(225, 29, 72, 0.6); background: rgba(225, 29, 72, 0.15); color: #fecaca; }
+.devices-btn.primary { border-color: rgba(0, 136, 255, 0.7); background: rgba(0, 136, 255, 0.25); }
 .devices-btn.armed { background: #e11d48; color: #fff; }
-.devices-all { width: 100%; margin-top: 10px; }
+.devices-btn.wide { width: 100%; margin-top: 5px; }
+.devices-edit { display: flex; gap: 4px; margin: 0 0 4px; }
+.devices-input { flex: 1; min-width: 0; min-height: 38px; padding: 4px 8px; border-radius: 9px; border: 1px solid rgba(255, 255, 255, 0.25); background: #0b0e14; color: #fff; font-size: 0.9rem; }
+.devices-newpin { margin: 4px 0; padding: 6px 10px; border-radius: 10px; border: 1px solid rgba(16, 185, 129, 0.6); background: rgba(16, 185, 129, 0.12); }
+.devices-pin { font-size: 1.5rem; font-weight: 800; letter-spacing: 3px; font-family: monospace; color: #6ee7b7; user-select: all; }
+.devices-note { font-size: 0.68rem; color: var(--text-secondary); margin-top: 5px; }
+.devices-note.warn { color: #fbbf24; }

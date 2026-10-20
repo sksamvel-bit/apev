@@ -52,6 +52,8 @@ function normalize(st) {
     if (st.masters && typeof st.masters === "object") s.masters = st.masters;
     if (st.guests && typeof st.guests === "object") s.guests = st.guests;
     s.legacyOff = !!st.legacyOff;
+    // v3.10.61: guest PINs set in the owner's panel, [{ n, id, changedAt }] (ids only; absent = use ACCESS_PIN's guests)
+    if (Array.isArray(st.guestPins)) s.guestPins = st.guestPins.filter((x) => x && Number.isInteger(x.n) && typeof x.id === "string");
   }
   return s;
 }

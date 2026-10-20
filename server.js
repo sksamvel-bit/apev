@@ -48,18 +48,53 @@ AUTH.ready.then(() => {
     ' masters=' + Object.keys(AUTH.state.masters).length + ' guests bound=' + Object.keys(AUTH.state.guests).length);
 });
 const MAX_MASTER_DEVICES = 30;
+const MAX_GUESTS = 10;
+
+/** A new guest PIN: 8 characters without look-alikes (0/o, 1/l/i), easy to type on the car screen. */
+function newGuestPin() {
+  const abc = 'abcdefghjkmnpqrstuvwxyz23456789';
+  return Array.from(crypto.randomBytes(8), (b) => abc[b % abc.length]).join('');
+}
+
+/** Why a guest PIN cannot be used (null = fine): length, characters, same as the master PIN or as another guest PIN. */
+function guestPinProblem(pin, ownSlotN) {
+  if (pin.length < 6 || pin.length > 32) return 'length';
+  if (!/^[A-Za-z0-9._-]+$/.test(pin)) return 'chars';
+  if (pin === MASTER_PIN) return 'same-as-master';
+  const ids = [pinId(pin), guestIdOf(pin)];
+  if (guestSlots().some((x) => x.n !== ownSlotN && ids.includes(x.id))) return 'duplicate';
+  return null;
+}
 
 // The cookie never contains the PIN itself, only a short one-way id derived from it.
 function pinId(pin) {
   return crypto.createHash('sha256').update('pin-id:' + pin).digest('hex').slice(0, 16);
 }
 
-function signToken(pin, deviceToken) {
-  const data = `${pinId(pin)}:${deviceToken}`;
+// A guest PIN set in the owner's panel (v3.10.61) is stored only as this keyed one-way id (the PIN itself is never stored).
+function guestIdOf(pin) {
+  return 'g' + crypto.createHmac('sha256', AUTH_SECRET).update('guest-pin:' + pin).digest('hex').slice(0, 15);
+}
+const MASTER_ID = MASTER_PIN ? pinId(MASTER_PIN) : '';
+
+/**
+ * Guest PIN slots [{ n, id }]: the panel's list once the owner changed a guest PIN there (AUTH.state.guestPins),
+ * otherwise the guest PINs of ACCESS_PIN (id = pinId, the same key their device bindings always used).
+ */
+function guestSlots() {
+  const gp = AUTH.state.guestPins;
+  if (Array.isArray(gp)) return gp;
+  return RAW_PINS.slice(1).map((p, i) => ({ n: i + 1, id: pinId(p) }));
+}
+
+function signId(id, deviceToken) {
+  const data = `${id}:${deviceToken}`;
   const sig = crypto.createHmac('sha256', AUTH_SECRET).update(data).digest('hex');
   return `${data}:${sig}`;
 }
+function signToken(pin, deviceToken) { return signId(pinId(pin), deviceToken); }
 
+/** { id, deviceToken } of a cookie we signed, else null. Whether the id is still a valid PIN is decided by the caller. */
 function verifyToken(tokenStr) {
   if (!tokenStr || typeof tokenStr !== 'string') return null;
   const parts = tokenStr.split(':');
@@ -71,9 +106,7 @@ function verifyToken(tokenStr) {
   if (bufA.length !== bufB.length || !crypto.timingSafeEqual(bufA, bufB)) {
     return null;
   }
-  const pin = RAW_PINS.find(p => pinId(p) === id);
-  if (!pin) return null;
-  return { pin, deviceToken };
+  return { id, deviceToken };
 }
 
 // Real client IP. Behind Render the LAST X-Forwarded-For entry is the one the proxy appended;
@@ -139,15 +172,17 @@ function currentDevice(req) {
   const cookies = parseCookies(req.headers.cookie);
   if (!cookies.tesla_auth) return null;
   const v = verifyToken(cookies.tesla_auth);
-  if (!v || !RAW_PINS.includes(v.pin)) return null;
+  if (!v) return null;
   const st = AUTH.state;
-  if (v.pin === MASTER_PIN) {
+  if (MASTER_ID && v.id === MASTER_ID) {
     if (v.deviceToken === 'master') return (!st.legacyOff || AUTH.degraded) ? { kind: 'master', legacy: true, ...v } : null;
     const rec = st.masters[v.deviceToken];
     if (rec) { AUTH.touch(rec); return { kind: 'master', ...v, rec }; }
     return AUTH.degraded ? { kind: 'master', ...v } : null;
   }
-  const g = st.guests[pinId(v.pin)];
+  // a guest id must still be one of the guest PINs (changed or removed PIN = signed out); degraded: the list may be unknown
+  if (!guestSlots().some((sl) => sl.id === v.id)) return AUTH.degraded ? { kind: 'guest', ...v } : null;
+  const g = st.guests[v.id];
   if (g && g.deviceToken === v.deviceToken) { AUTH.touch(g); return { kind: 'guest', ...v, rec: g }; }
   return (!g && AUTH.degraded) ? { kind: 'guest', ...v } : null;
 }
@@ -175,30 +210,31 @@ function attemptPinAuth(inputPin, req) {
     return { success: false, error: 'შეიყვანეთ PIN კოდი' };
   }
 
-  const matchedPin = RAW_PINS.find(p => {
-    const a = Buffer.from(p);
-    const b = Buffer.from(inputPin);
+  const isMaster = !!MASTER_PIN && (() => {
+    const a = Buffer.from(MASTER_PIN), b = Buffer.from(inputPin);
     return a.length === b.length && crypto.timingSafeEqual(a, b);
-  });
-
-  if (!matchedPin) {
-    return { success: false, error: 'არასწორი PIN კოდი' };
-  }
+  })();
 
   // 1. MASTER PIN (Owner): unlimited devices, each with its own token (the owner can sign one out in the devices panel)
-  if (matchedPin === MASTER_PIN) {
+  if (isMaster) {
     return { success: true, token: newMasterDevice(req).token, isMaster: true };
   }
 
-  // 2. GUEST PIN (Single-Device Lock)
-  const binding = AUTH.state.guests[pinId(matchedPin)];
+  // 2. GUEST PIN (Single-Device Lock): from ACCESS_PIN (id = pinId) or set in the owner's panel (id = guestIdOf)
+  const ids = [pinId(inputPin), guestIdOf(inputPin)];
+  const slot = guestSlots().find((sl) => ids.includes(sl.id));
+  if (!slot) {
+    return { success: false, error: 'არასწორი PIN კოდი' };
+  }
+  const gid = slot.id;
+  const binding = AUTH.state.guests[gid];
   const cookies = parseCookies(req.headers.cookie);
   const currentVerified = verifyToken(cookies.tesla_auth);
 
   if (!binding) {
     // First activation: bind to this device!
     const deviceToken = crypto.randomBytes(24).toString('hex');
-    AUTH.state.guests[pinId(matchedPin)] = {
+    AUTH.state.guests[gid] = {
       deviceToken,
       boundAt: Date.now(),
       lastSeen: Date.now(),
@@ -206,13 +242,13 @@ function attemptPinAuth(inputPin, req) {
       ua: (req.headers['user-agent'] || '').slice(0, 160)
     };
     AUTH.save();
-    console.log(`[Auth] Single-device lock engaged for Guest PIN id ${pinId(matchedPin)}`);
-    const token = signToken(matchedPin, deviceToken);
+    console.log(`[Auth] Single-device lock engaged for guest ${slot.n}`);
+    const token = signId(gid, deviceToken);
     return { success: true, token, isMaster: false };
   } else {
     // Already bound! Check if current device is the authorized bound device:
-    if (currentVerified && currentVerified.pin === matchedPin && currentVerified.deviceToken === binding.deviceToken) {
-      const token = signToken(matchedPin, binding.deviceToken);
+    if (currentVerified && currentVerified.id === gid && currentVerified.deviceToken === binding.deviceToken) {
+      const token = signId(gid, binding.deviceToken);
       return { success: true, token, isMaster: false };
     }
 
@@ -1097,11 +1133,11 @@ const server = http.createServer((req, res) => {
         return { id: AuthStore.shortId(t), label: AuthStore.deviceLabel(r.ua), ip: AuthStore.maskIp(r.ip), createdAt: r.createdAt || 0, lastSeen: r.lastSeen || 0, current: t === cur.deviceToken };
       }).sort((a, b) => b.lastSeen - a.lastSeen);
       if (!st.legacyOff) masters.push({ id: 'legacy', label: 'ძველი შესვლები (v3.10.60-მდე, ყველა ერთად)', ip: '', createdAt: 0, lastSeen: 0, current: !!cur.legacy });
-      const guests = RAW_PINS.slice(1).map((p, i) => {
-        const g = st.guests[pinId(p)];
-        return { id: 'guest-' + (i + 1), n: i + 1, bound: !!g, label: g ? AuthStore.deviceLabel(g.ua) : '', ip: g ? AuthStore.maskIp(g.ip) : '', boundAt: g ? g.boundAt || 0 : 0, lastSeen: g ? g.lastSeen || 0 : 0 };
+      const guests = guestSlots().map((sl) => {
+        const g = st.guests[sl.id];
+        return { id: 'guest-' + sl.n, n: sl.n, bound: !!g, changedAt: sl.changedAt || 0, label: g ? AuthStore.deviceLabel(g.ua) : '', ip: g ? AuthStore.maskIp(g.ip) : '', boundAt: g ? g.boundAt || 0 : 0, lastSeen: g ? g.lastSeen || 0 : 0 };
       });
-      return { masters, guests, store: AUTH.storeName, degraded: AUTH.degraded };
+      return { masters, guests, guestSource: Array.isArray(st.guestPins) ? 'panel' : 'render', maxGuests: MAX_GUESTS, store: AUTH.storeName, degraded: AUTH.degraded };
     };
     if (pathname === '/api/admin/devices' && req.method === 'GET') return send(200, view(me));
     if (req.method !== 'POST') return send(405, { error: 'method' });
@@ -1114,7 +1150,7 @@ const server = http.createServer((req, res) => {
       let p = {};
       try { p = JSON.parse(body || '{}'); } catch (_) { return send(400, { error: 'json' }); }
       // signing out the old shared cookies would sign this device out too if it still uses one: give it its own token first
-      let cur = me, cookie = null;
+      let cur = me, cookie = null, newPin = null;
       const upgradeMe = () => {
         if (!cur.legacy) return;
         const d = newMasterDevice(req);
@@ -1126,9 +1162,9 @@ const server = http.createServer((req, res) => {
         const id = String(p.id || '');
         if (id === 'legacy') { upgradeMe(); st.legacyOff = true; }
         else if (/^guest-\d+$/.test(id)) {
-          const pin = RAW_PINS[parseInt(id.slice(6), 10)];
-          if (!pin || pin === MASTER_PIN) return send(404, { error: 'unknown' });
-          delete st.guests[pinId(pin)];
+          const sl = guestSlots().find((x) => x.n === parseInt(id.slice(6), 10));
+          if (!sl) return send(404, { error: 'unknown' });
+          delete st.guests[sl.id];
         } else {
           const t = Object.keys(st.masters).find((k) => AuthStore.shortId(k) === id);
           if (!t) return send(404, { error: 'unknown' });
@@ -1140,8 +1176,37 @@ const server = http.createServer((req, res) => {
         Object.keys(st.masters).forEach((t) => { if (t !== cur.deviceToken) delete st.masters[t]; });
         st.legacyOff = true;
         st.guests = {};
+      } else if (pathname === '/api/admin/guest-pin' || pathname === '/api/admin/guest-add' || pathname === '/api/admin/guest-remove') {
+        // v3.10.61: guest PINs managed here. The first change copies the ACCESS_PIN guests into the store (as ids), and from
+        // then on the panel's list is used (the guest part of ACCESS_PIN is ignored; the master PIN stays in Render only).
+        if (!Array.isArray(st.guestPins)) st.guestPins = guestSlots().map((x) => ({ n: x.n, id: x.id }));
+        const list = st.guestPins;
+        const slotN = parseInt(String(p.id || '').slice(6), 10);
+        if (pathname === '/api/admin/guest-remove') {
+          const i = list.findIndex((x) => x.n === slotN);
+          if (i < 0) return send(404, { error: 'unknown' });
+          delete st.guests[list[i].id];
+          list.splice(i, 1);
+        } else {
+          const pin = p.generate ? newGuestPin() : String(p.pin || '').trim();
+          const bad = guestPinProblem(pin, pathname === '/api/admin/guest-pin' ? slotN : 0);
+          if (bad) return send(400, { error: bad });
+          let sl;
+          if (pathname === '/api/admin/guest-add') {
+            if (list.length >= MAX_GUESTS) return send(400, { error: 'too-many' });
+            sl = { n: list.reduce((m, x) => Math.max(m, x.n), 0) + 1 };
+            list.push(sl);
+          } else {
+            sl = list.find((x) => x.n === slotN);
+            if (!sl) return send(404, { error: 'unknown' });
+            delete st.guests[sl.id];   // the old PIN's device is signed out
+          }
+          sl.id = guestIdOf(pin);
+          sl.changedAt = Date.now();
+          if (p.generate) newPin = pin;   // shown once to the owner, never stored
+        }
       } else return send(404, { error: 'unknown' });
-      AUTH.flush().then(() => send(200, view(cur), cookie ? { 'Set-Cookie': cookie } : null));
+      AUTH.flush().then(() => send(200, Object.assign(view(cur), newPin ? { newPin } : {}), cookie ? { 'Set-Cookie': cookie } : null));
     });
     return;
   }

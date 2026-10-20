@@ -49,9 +49,10 @@ async function up() { for (let i = 0; i < 50; i++) { await wait(200); if ((await
   // pure helpers
   ok(AS.deviceLabel(TESLA) === 'Tesla' && AS.deviceLabel(IPHONE) === 'iPhone' && AS.deviceLabel('') === 'მოწყობილობა', 'device names from the user agent');
   ok(AS.maskIp('85.117.40.12') === '85.117.x.x' && AS.shortId('abc').length === 8, 'masked IP, short id');
+  ok(DP.errorText('duplicate') === 'ეს PIN სხვა სტუმარს უკვე აქვს' && /ვერ შესრულდა/.test(DP.errorText('x')), 'Georgian error texts');
   ok(DP.ago(Date.now() - 30e3) === 'ახლა' && DP.ago(Date.now() - 5 * 60e3) === '5 წთ წინ' && DP.ago(0) === '', 'relative times');
   const v = DP.rows({ masters: [{ id: 'a1', label: 'Tesla', current: true, lastSeen: Date.now() }, { id: 'legacy', label: 'ძველი', current: false }], guests: [{ id: 'guest-1', n: 1, bound: false }] });
-  ok(v.masters[0].action === null && v.masters[1].action === 'გამოყვანა' && v.guests[0].action === null, 'panel rows: no button for this device or a free guest PIN');
+  ok(v.masters[0].action === null && v.masters[1].action === 'გამოყვანა' && !v.guests[0].bound && /თავისუფალი/.test(v.guests[0].title), 'panel rows: no sign-out button for this device, a free guest PIN is shown as free');
 
   let srv = start();
   ok(await up(), 'server starts with three PINs');
@@ -100,6 +101,39 @@ async function up() { for (let i = 0; i < 50; i++) { await wait(200); if ((await
   ok(r.status === 200 && L2 && await isIn(L2), 'sign out all others from an old cookie: this device gets its own token');
   ok(!(await isIn(L)) && !(await isIn(A)), 'old shared cookies and every other device are signed out');
   ok(r.json.masters.length === 1 && r.json.masters[0].current && !r.json.masters.some((m) => m.id === 'legacy'), 'only this device is left');
+
+  // ---- v3.10.61: guest PINs managed from the panel ----
+  const post = (p, body, cookie) => req('POST', p, { cookie: cookie || L2, body });
+  let g = await post('/api/admin/guest-pin', { id: 'guest-2', pin: 'newGuest2x' });
+  ok(g.status === 200 && g.json.guestSource === 'panel' && !g.json.newPin, 'owner sets guest 2 to a typed PIN (the list now comes from the panel)');
+  ok(!(await login(PINS[2], 'x')), 'the old guest 2 PIN no longer works');
+  const G2 = await login('newGuest2x', IPHONE);
+  ok(G2 && await isIn(G2), 'the new guest 2 PIN signs in');
+  ok((await post('/api/admin/guest-pin', { id: 'guest-1', pin: 'x' }, G2)).status === 403, 'a guest cannot change PINs (403)');
+  g = await post('/api/admin/guest-pin', { id: 'guest-1', generate: true });
+  ok(g.status === 200 && /^[a-km-np-z2-9]{8}$/.test(g.json.newPin || ''), 'a generated guest PIN is shown once: ' + g.json.newPin);
+  ok(!(await login(PINS[1], 'x')), 'ACCESS_PIN guest PINs are ignored once the panel manages them');
+  const G1 = await login(g.json.newPin, TESLA);
+  ok(G1 && await isIn(G1), 'the generated PIN signs in');
+  ok((await post('/api/admin/guest-pin', { id: 'guest-1', pin: 'abc' })).json.error === 'length', 'too short: refused');
+  ok((await post('/api/admin/guest-pin', { id: 'guest-1', pin: PINS[0] })).json.error === 'same-as-master', 'the master PIN as a guest PIN: refused');
+  ok((await post('/api/admin/guest-pin', { id: 'guest-1', pin: 'newGuest2x' })).json.error === 'duplicate', 'another guest\'s PIN: refused');
+  ok((await post('/api/admin/guest-pin', { id: 'guest-1', pin: 'has space' })).json.error === 'chars', 'spaces: refused');
+  g = await post('/api/admin/guest-add', { pin: 'thirdGuest3' });
+  ok(g.status === 200 && g.json.guests.length === 3 && g.json.guests[2].n === 3, 'owner adds guest 3');
+  const G3 = await login('thirdGuest3', IPHONE);
+  ok(G3 && await isIn(G3), 'guest 3 signs in');
+  g = await post('/api/admin/guest-remove', { id: 'guest-3' });
+  ok(g.status === 200 && g.json.guests.length === 2 && !(await isIn(G3)), 'owner removes guest 3: its device is signed out');
+  g = await post('/api/admin/guest-pin', { id: 'guest-2', pin: 'newerGuest2' });
+  ok(!(await isIn(G2)) && await isIn(G1), 'changing guest 2 signs out only guest 2');
+  const store = fs.readFileSync(path.join(DATA, 'pin-bindings.json'), 'utf8');
+  ok(!store.includes('newerGuest2') && !store.includes('newGuest2x') && !store.includes('thirdGuest3'), 'no PIN is stored in plain text');
+
+  srv.kill(); await wait(300);
+  srv = start();
+  ok(await up(), 'server restarts again');
+  ok(await isIn(G1) && !!(await login('newerGuest2', TESLA)), 'after the restart the panel PINs still work');
 
   srv.kill();
   try { fs.rmSync(DATA, { recursive: true, force: true }); } catch (_) {}
