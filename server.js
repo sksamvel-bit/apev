@@ -349,6 +349,46 @@ const GEOCHARGE_TARIFF_MEDIANS = {
   gadatene: { dc: 0.78, ac: null, name: 'Gadatene' }
 };
 
+// v3.10.58: the medians above are only the starting point. The server reads geocharge.ge/tarifebi/ (updated there daily)
+// at start and once a day, keeps the last good result in tariffs-cache.json (a Render deploy starts from the snapshot above
+// and refreshes within a minute), and re-prices the stations that use a median. A page it cannot read changes nothing.
+const GeoChargeTariffs = require('./geocharge-tariffs.js');
+const TARIFFS_FILE = path.join(PUBLIC_DIR, 'tariffs-cache.json');
+const TARIFFS_REFRESH_MS = 24 * 3600 * 1000;
+let tariffsUpdated = '2026-10-15';
+function applyTariffs(parsed) {
+  Object.assign(GEOCHARGE_TARIFF_MEDIANS, parsed.tariffs);
+  tariffsUpdated = String(parsed.updated || new Date().toISOString()).slice(0, 10);
+}
+try {
+  if (fs.existsSync(TARIFFS_FILE)) {
+    const saved = JSON.parse(fs.readFileSync(TARIFFS_FILE, 'utf8'));
+    if (GeoChargeTariffs.looksValid(saved)) applyTariffs(saved);
+  }
+} catch (e) { console.warn('[tariffs] cache file ignored:', e.message); }
+
+function refreshTariffs() {
+  return new Promise((resolve) => {
+    const req = https.get(GeoChargeTariffs.URL_TARIFFS, { headers: { 'User-Agent': 'TeslaNav/3.10 (+https://apev.onrender.com)' }, timeout: 20000 }, (res) => {
+      if (res.statusCode !== 200) { res.resume(); console.warn('[tariffs] GeoCharge HTTP', res.statusCode); return resolve(false); }
+      let body = '';
+      res.setEncoding('utf8');
+      res.on('data', (c) => { body += c; if (body.length > 2 * 1024 * 1024) res.destroy(); });
+      res.on('end', () => {
+        const parsed = GeoChargeTariffs.parseTariffsPage(body);
+        if (!GeoChargeTariffs.looksValid(parsed)) { console.warn('[tariffs] GeoCharge page not understood, keeping the previous medians'); return resolve(false); }
+        applyTariffs(parsed);
+        try { fs.writeFileSync(TARIFFS_FILE, JSON.stringify(parsed)); } catch (_) {}
+        if (cachedLiveChargers) cachedLiveChargers = cachedLiveChargers.map(enrichStationTariff);
+        console.log(`[tariffs] ${Object.keys(parsed.tariffs).length} network medians from GeoCharge (updated there ${parsed.updated || '?'})`);
+        resolve(true);
+      });
+    });
+    req.on('error', (e) => { console.warn('[tariffs] GeoCharge unavailable:', e.message); resolve(false); });
+    req.on('timeout', () => { req.destroy(); });
+  });
+}
+
 function haversineMeters(lat1, lon1, lat2, lon2) {
   const R = 6371000;
   const dLat = (lat2 - lat1) * Math.PI / 180;
@@ -403,7 +443,9 @@ function deduplicateStations(stations, radiusMeters = 30) {
 function enrichStationTariff(station) {
   if (!station) return station;
   // If station already has a specific price per kWh (not generic), retain it
-  if (station.price && !station.price.includes('სტანდარტული') && !station.price.includes('უცნობი')) {
+  // (a median price we set earlier is recomputed, so a new GeoCharge median reaches the stations)
+  const fromMedian = typeof station.priceSource === 'string' && station.priceSource.startsWith('GeoCharge');
+  if (!fromMedian && station.price && !station.price.includes('სტანდარტული') && !station.price.includes('უცნობი')) {
     return station;
   }
 
@@ -426,7 +468,7 @@ function enrichStationTariff(station) {
     const rate = isDc ? (median.dc || median.ac) : (median.ac || median.dc);
     if (rate != null) {
       station.price = `~${rate.toFixed(2)} ₾/kWh (სავარაუდო)`;
-      station.priceSource = 'GeoCharge.ge (ქსელის მედიანა, 2026-10)';
+      station.priceSource = `GeoCharge.ge (ქსელის მედიანა, ${tariffsUpdated})`;
       return station;
     }
   }
@@ -572,6 +614,10 @@ if (require.main === module) {
   setInterval(() => {
     getLiveGeorgiaChargers(true).catch(e => console.warn('[EV Auto-Sync] Error:', e.message));
   }, CHARGERS_CACHE_TTL);
+
+  // GeoCharge tariff medians: soon after start, then once a day
+  setTimeout(() => { refreshTariffs().catch(() => {}); }, 10000);
+  setInterval(() => { refreshTariffs().catch(() => {}); }, TARIFFS_REFRESH_MS);
 
   // Initial background sync after 3 seconds
   setTimeout(() => {
@@ -1441,6 +1487,7 @@ if (require.main === module) {
 if (typeof module !== 'undefined' && module.exports) {
   module.exports = {
     GEOCHARGE_TARIFF_MEDIANS,
+    applyTariffs,
     haversineMeters,
     deduplicateStations,
     isDuplicateStation,

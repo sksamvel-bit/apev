@@ -140,4 +140,40 @@ test("chargers-cache.json has verified price coverage with GeoCharge attribution
   assert.strictEqual(unpriced, 12, "expected exactly 12 unverified greencharge stations without pricing: " + unpriced);
 });
 
+// ---- v3.10.58: GeoCharge medians refreshed daily ----
+const GT = require("../geocharge-tariffs.js");
+const samplePage = `<p>ბოლო განახლება: 2026-10-20 09:02</p><table><thead><tr><th>ქსელი</th></tr></thead><tbody>
+<tr><td><a href="/qselebi/mart-ev/">mart EV</a></td><td>189</td><td>0.55 .. 0.80 <span>(მედიანა 0.80)</span></td><td>0.50 .. 0.65 <span>(მედიანა 0.65)</span></td><td>—</td></tr>
+<tr><td><a href="/qselebi/charger-plus/">Charger Plus (ჩარჯერ პლუს)</a></td><td>59</td><td>—</td><td>—</td><td>59</td></tr>
+<tr><td><a href="/qselebi/moveo/">MOVEO (მოვეო)</a></td><td>11</td><td>0.70 .. 0.95 <span>(მედიანა 0.80)</span></td><td>0.56 .. 0.56 <span>(მედიანა 0.56)</span></td><td>—</td></tr>
+<tr><td><a href="/qselebi/ev-power-ge/">EV Power (ივი პაუერ)</a></td><td>61</td><td>0.76 .. 0.95 <span>(მედიანა 0.76)</span></td><td>—</td><td>—</td></tr>
+<tr><td><a href="/qselebi/electrify-georgia/">Electrify Georgia</a></td><td>28</td><td>(მედიანა 0.57)</td><td>(მედიანა 0.45)</td><td>—</td></tr>
+<tr><td><a href="/qselebi/new-net/">New Net</a></td><td>3</td><td>(მედიანა 7.50)</td><td>(მედიანა 0.40)</td><td>—</td></tr>
+</tbody></table>`;
+
+test("parseTariffsPage reads the medians by network link, skips networks without prices and absurd values", () => {
+  const p = GT.parseTariffsPage(samplePage);
+  assert.strictEqual(p.updated, "2026-10-20 09:02");
+  assert.deepStrictEqual(p.tariffs.martev, { dc: 0.8, ac: 0.65, name: "mart EV" });
+  assert.deepStrictEqual(p.tariffs.moveo, { dc: 0.8, ac: 0.56, name: "MOVEO" });
+  assert.strictEqual(p.tariffs.evpower.ac, null);
+  assert.strictEqual(p.tariffs.electrify.dc, 0.57);
+  assert.strictEqual(p.tariffs.chargerplus, undefined, "no published price: no median (station prices stay)");
+  assert.deepStrictEqual([p.tariffs.newnet.dc, p.tariffs.newnet.ac], [null, 0.4], "a value above 2 GEL is a data error");
+  assert.ok(GT.looksValid(p));
+  assert.ok(!GT.looksValid(GT.parseTariffsPage("<html>maintenance</html>")), "a page we do not understand is not used");
+});
+
+test("a new median re-prices the stations that used the old one, never a station with its own price", () => {
+  const old = enrichStationTariff({ operator: "moveo", power: "60 kW", price: "სტანდარტული ტარიფი" });
+  assert.strictEqual(old.price, "~0.85 ₾/kWh (სავარაუდო)");
+  const { applyTariffs } = require("../server.js");
+  applyTariffs(GT.parseTariffsPage(samplePage));
+  const again = enrichStationTariff(old);
+  assert.strictEqual(again.price, "~0.80 ₾/kWh (სავარაუდო)");
+  assert.ok(again.priceSource.includes("2026-10-20"), again.priceSource);
+  const own = enrichStationTariff({ operator: "moveo", power: "60 kW", price: "0.90 ₾/kWh" });
+  assert.strictEqual(own.price, "0.90 ₾/kWh");
+});
+
 console.log("\n" + passed + " chargers sync tests passed" + (process.exitCode ? " - WITH FAILURES" : ""));
