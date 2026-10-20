@@ -134,7 +134,7 @@ function initClock() {
 const OFM_STYLE_URL = "https://tiles.openfreemap.org/styles/liberty";
 const OFM_STYLE_CACHE_KEY = "tesla_nav_ofm_style_v1";
 const MAP_STYLE_KEYS = ["openfreemap", "google-roads"];
-const APP_VERSION = "3.10.46";
+const APP_VERSION = "3.10.47";
 const MAP_DEFAULT_ZOOM = 16;      // MapLibre zoom (Leaflet-equivalent 17)
 // Performance experiments (all default to the normal behaviour): ?labels=0 hides the base-map labels/icons, ?markers=0 skips the
 // charger DOM markers, ?pitch=N sets the heading-up tilt (0-60). Used to find what makes the car's browser slow.
@@ -336,11 +336,19 @@ function initMap() {
 
   // Lite mode: hide minor labels/icons (the main cost on the car's CPU). Re-applied after every style change.
   const liteHidden = new Set();
+  // While the car stands (speed < 3 km/h for 2 s) minor street names come back; they hide again when moving.
+  let detailOn = false, stillSince = 0;
   const applyLite = () => {
     try {
       if (!PERF.lite) return;
-      window.MapGL.pickLiteHidden(map.getStyle().layers, "openmaptiles").forEach((id) => {
+      const layers = map.getStyle().layers;
+      // The street names that setDetail() shows while standing stay visible. Hiding them here was a render loop: every
+      // setLayoutProperty fires "styledata" on the next frame, the handler below re-ran applyLite (hide) + setDetail (show),
+      // and MapLibre redrew ~20 times a second at every stop (seen as "render 18-22/s" in the car HUD, v3.10.46).
+      const shown = detailOn ? new Set(window.MapGL.pickLiteDetail(layers, "openmaptiles")) : null;
+      window.MapGL.pickLiteHidden(layers, "openmaptiles").forEach((id) => {
         if (id === "housenumber") return; // keep house numbers visible in Lite mode
+        if (shown && shown.has(id)) return;
         if (map.getLayoutProperty(id, "visibility") !== "none") { liteHidden.add(id); map.setLayoutProperty(id, "visibility", "none"); }
       });
     } catch (_) {}
@@ -352,8 +360,6 @@ function initMap() {
     if (on) applyLite();
     else { detailOn = false; liteHidden.forEach((id) => { try { map.setLayoutProperty(id, "visibility", "visible"); } catch (_) {} }); liteHidden.clear(); }
   };
-  // While the car stands (speed < 3 km/h for 2 s) minor street names come back; they hide again when moving.
-  let detailOn = false, stillSince = 0;
   const setDetail = (on) => {
     if (on === detailOn || !PERF.lite) return;
     detailOn = on;
@@ -2179,6 +2185,15 @@ function initRemoteSession() {
       return "housenumbers: " + (vis ? "ON" : "off(speed>75)") + "  zoom>=15 " + (map.getZoom() >= 15 ? "yes" : "NO") + "  in view " + (hnLine.n == null ? "-" : hnLine.n) + "  lite " + (PERF.lite ? "yes" : "no");
     } catch (_) { return "housenumbers: n/a"; }
   }
+  // Voice diagnosis: speech.js only speaks when the browser has a Georgian voice (no English fallback); otherwise only the chime plays.
+  function voiceLine() {
+    try {
+      const v = (window.speechSynthesis && window.speechSynthesis.getVoices()) || [];
+      const ka = v.filter((x) => /^ka/i.test(x.lang || "") || /georgian|ქართ/i.test(x.name || ""));
+      const langs = [...new Set(v.map((x) => String(x.lang || "?").slice(0, 2)))].slice(0, 12).join(",");
+      return "voices " + v.length + "  georgian " + (ka.length ? "YES (" + ka[0].name + ")" : "NO") + "  langs " + (langs || "-");
+    } catch (_) { return "voices: n/a"; }
+  }
   function render() {
     if (!el || !window.map || !window.carMarker) return;
     const d = window.__dbg || { fixes: [] }, fx = d.fixes, now = Date.now();
@@ -2207,7 +2222,8 @@ function initRemoteSession() {
       "bearing " + f(map.getBearing(), 0) + "  pitch " + f(map.getPitch(), 0) + "  zoom " + f(map.getZoom(), 1) + "  pad " + padTop,
       "arrow offset from expected: dx " + f(dx, 0) + "  dy " + f(dy, 0) + " px",
       "heading used " + f(lastKnownValidHeading, 0) + "  speed " + currentSpeedKmh + " km/h",
-      hnLine()
+      hnLine(),
+      voiceLine()
     ];
     fx.slice(-5).forEach(q => lines.push(((now - q.t) / 1000).toFixed(1).padStart(5) + "s  " + q.lat.toFixed(5) + "," + q.lng.toFixed(5) + "  a" + f(q.acc, 0) + " s" + f(q.spd) + " h" + f(q.hdg, 0)));
     el.textContent = lines.join("\n");

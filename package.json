@@ -1,11 +1,11 @@
 {
   "name": "tesla-nav",
-  "version": "3.10.46",
+  "version": "3.10.47",
   "description": "Tesla Model 3/Y Web Navigation with Live EV Chargers, Dual-Server Routing, and Mobile Remote Control",
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
-    "test": "node tests/test_routing.js && node tests/test_route_alternatives.js && node tests/test_speed_limit.js && node tests/test_speed_limit_osm.js && node tests/test_heading.js && node tests/test_traffic_signals.js && node tests/test_signals_integration.js && node tests/test_map_gl.js && node tests/test_charger_list.js && node tests/test_search.js && node tests/test_tesla_style.js && node tests/test_chargers_sync.js && node tests/test_sim_drive.js && node tests/test_speech.js && node tests/test_gmap.js && node tests/test_route_quota.js",
+    "test": "node tests/test_routing.js && node tests/test_route_alternatives.js && node tests/test_speed_limit.js && node tests/test_speed_limit_osm.js && node tests/test_heading.js && node tests/test_traffic_signals.js && node tests/test_signals_integration.js && node tests/test_map_gl.js && node tests/test_lite_loop.js && node tests/test_charger_list.js && node tests/test_search.js && node tests/test_tesla_style.js && node tests/test_chargers_sync.js && node tests/test_sim_drive.js && node tests/test_speech.js && node tests/test_gmap.js && node tests/test_route_quota.js",
     "smoke": "node tests/smoke_server.js",
     "check": "node tests/check_version.js"
   },
