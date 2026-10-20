@@ -135,7 +135,7 @@ function initClock() {
 const OFM_STYLE_URL = "https://tiles.openfreemap.org/styles/liberty";
 const OFM_STYLE_CACHE_KEY = "tesla_nav_ofm_style_v1";
 const MAP_STYLE_KEYS = ["openfreemap", "google-roads"];
-const APP_VERSION = "3.10.61";
+const APP_VERSION = "3.10.62";
 const MAP_DEFAULT_ZOOM = 16;      // MapLibre zoom (Leaflet-equivalent 17)
 // Performance experiments (all default to the normal behaviour): ?labels=0 hides the base-map labels/icons, ?markers=0 skips the
 // charger DOM markers, ?pitch=N sets the heading-up tilt (0-60). Used to find what makes the car's browser slow.
@@ -665,8 +665,6 @@ function initSubsystems() {
 
   try {
     routingEngine = new RoutingEngine(map, trafficEngine, trafficSignalsEngine, speechAssistant, batteryEngine);
-    const avoidUnpavedSaved = localStorage.getItem("avoid_unpaved") === "true";
-    routingEngine.setAvoidUnpaved(avoidUnpavedSaved);
     window.routingEngine = routingEngine;
   } catch (e) { console.warn("routingEngine init notice:", e); }
 
@@ -1905,7 +1903,7 @@ function initEventListeners() {
     const enabled = trafficEngine.toggle();
     btnTraffic.classList.toggle("traffic-active", enabled);
     if (enabled && !trafficEngine.hasKey()) {
-      showToast("🚦 საცობების ფენისთვის პარამეტრებში TomTom API გასაღებია საჭირო", "info", 4000);
+      showToast("🚦 საცობები ჩანს Google რეჟიმში (Google რუკის ღილაკი)", "info", 4000);
     } else {
       showToast(enabled ? "🚦 საცობების ფენა ჩართულია" : "🚦 საცობების ფენა გამორთულია", "info", 1800);
     }
@@ -2073,19 +2071,13 @@ function initEventListeners() {
     modal.classList.remove("open");
   });
   document.getElementById("modal-save-btn").addEventListener("click", () => {
-    const key = document.getElementById("input-tomtom-key").value.trim();
-    trafficEngine.setApiKey(key);
-    if (window.speedLimitEngine) window.speedLimitEngine.setTomTomKey(key);
-
+    // v3.10.62: the TomTom key and "avoid unpaved roads" fields were removed (TomTom has no traffic data for Georgia; the
+    // public OSRM servers cannot avoid unpaved roads, so the switch never changed a route)
     const modelType = document.getElementById("select-tesla-model").value;
     batteryEngine.setModel(modelType);
 
     const socVal = parseInt(document.getElementById("input-initial-soc").value, 10);
     if (!isNaN(socVal)) batteryEngine.setSoC(socVal);
-
-    const avoidUnpaved = document.getElementById("input-avoid-unpaved").checked;
-    localStorage.setItem("avoid_unpaved", avoidUnpaved ? "true" : "false");
-    routingEngine.setAvoidUnpaved(avoidUnpaved);
 
     localStorage.setItem("saved_home", document.getElementById("input-home-addr").value.trim());
     localStorage.setItem("saved_work", document.getElementById("input-work-addr").value.trim());
@@ -2095,10 +2087,8 @@ function initEventListeners() {
   });
 
   // Populate settings inputs
-  document.getElementById("input-tomtom-key").value = localStorage.getItem("tomtom_api_key") || "";
   document.getElementById("input-home-addr").value = localStorage.getItem("saved_home") || "";
   document.getElementById("input-work-addr").value = localStorage.getItem("saved_work") || "";
-  document.getElementById("input-avoid-unpaved").checked = localStorage.getItem("avoid_unpaved") === "true";
   if (selectTeslaModel) selectTeslaModel.value = batteryEngine.modelKey;
   document.getElementById("input-initial-soc").value = batteryEngine.currentSoC;
 
