@@ -2175,14 +2175,14 @@ input {
 /* Google mode covers the whole screen: switch the main UI off underneath, so the browser does not keep compositing it
    (the GPS dot pulses forever, MapLibre's canvas and DOM markers). visibility keeps MapLibre's size for resume(). */
 body.gmap-open #map-viewport { visibility: hidden; }
-body.gmap-open .top-bar, body.gmap-open #nav-hud, body.gmap-open #route-preview-card,
+body.gmap-open #nav-hud, body.gmap-open #route-preview-card,
 body.gmap-open #chargers-drawer, body.gmap-open #map-style-menu { display: none; }
 /* v3.10.51: speed + speed-limit badge (our OSM data, same engines as the main map) stay visible above the Google map,
    lifted clear of the Google logo in the bottom-left corner (Google's terms: the logo must not be covered) */
 body.gmap-open .car-hud-stats { z-index: 950; bottom: 72px; }
 .gmap-nav-signal { display: none; margin-top: 8px; padding: 6px 10px; border-radius: 10px; background: rgba(0,0,0,0.25); color: #fde68a; font-size: 1.05rem; font-weight: 700; }
 .gmap-nav-signal.show { display: block; }
-body.gmap-open .dock-controls { display: none; } /* the Google layer has its own close button */
+body.gmap-open .dock-controls { display: none; } /* the Google layer has its own side panel (same look, see v3.10.55 below) */
 #btn-google-mode[hidden] { display: none; }
 
 /* Google mode: route options, departure, turn banner */
@@ -2214,3 +2214,23 @@ body.gmap-open .dock-controls { display: none; } /* the Google layer has its own
 /* Speed camera warning next to the speedometer (v3.10.54): visible on our map and in Google mode, nothing is drawn on the map */
 .camera-badge { display: none; align-self: center; padding: 6px 12px; border-radius: 12px; background: rgba(14, 18, 26, 0.94); border: 2px solid #e11d48; color: #fecaca; font-size: 1.05rem; font-weight: 800; white-space: nowrap; font-feature-settings: "tnum"; }
 .camera-badge.show { display: block; }
+
+/* v3.10.55: Google mode looks like the main map. The top bar (weather, battery, clock) stays above the Google map and the
+   Google search sits where our search is (gmap.js moves .gmap-top into the bar while Google mode is open); the side panel
+   is drawn like our dock. */
+body.gmap-open .top-bar { z-index: 950; }
+body.gmap-open .top-bar .search-container { display: none; }
+.top-bar .gmap-top { position: relative; top: auto; left: auto; flex: 1; width: auto; max-width: 500px; gap: 0; }
+.top-bar .gmap-search { min-height: 34px; border-radius: var(--radius-md); border-color: var(--border-subtle); box-shadow: var(--shadow-card); }
+.top-bar .gmap-search:focus-within { border-color: var(--accent-cyan); }
+.top-bar .gmap-search input { font-size: 0.95rem; padding: 8px 12px; }
+.top-bar .gmap-search button { padding: 0 12px; }
+.top-bar #gmap-chips, .top-bar #gmap-results { position: absolute; left: 0; right: 0; top: calc(100% + 6px); }
+.top-bar #gmap-results { z-index: 2; }
+body.gmap-navigating .top-bar .gmap-top { visibility: hidden; }
+body.gmap-open #gmap-nav { top: 60px; }
+.gmap-side { top: 76px; right: 10px; gap: 3px; padding: 4px; background: rgba(14, 18, 26, 0.94); border: 1px solid rgba(255, 255, 255, 0.12); border-radius: 14px; box-shadow: 0 8px 24px rgba(0, 0, 0, 0.55), inset 0 1px 0 rgba(255, 255, 255, 0.08); max-height: calc(100vh - 92px); overflow-y: auto; scrollbar-width: none; }
+.gmap-side .gmap-btn { width: 58px; height: 42px; border-radius: 9px; background: transparent; border: 1px solid transparent; font-size: 1.15rem; display: flex; align-items: center; justify-content: center; }
+.gmap-side .gmap-btn:active { transform: scale(0.92); background: rgba(255, 255, 255, 0.18); }
+.gmap-side .gmap-btn.active { border-color: rgba(0, 210, 255, 0.6); background: rgba(0, 136, 255, 0.22); color: var(--accent-cyan); }
+.gmap-side .gmap-btn.gmap-close { margin-top: 6px; background: rgba(225, 29, 72, 0.22); border-color: rgba(225, 29, 72, 0.6); }

@@ -825,6 +825,7 @@
     speak("მარშრუტი დაწყებულია." + (first && first.text ? " " + first.text : ""));
     const layer = $("gmap-layer");
     if (layer) layer.classList.add("navigating");
+    document.body.classList.add("gmap-navigating");
     $("gmap-btn-me") && $("gmap-btn-me").classList.add("active");
     $("gmap-card").classList.remove("show");
     S.map.setZoom(17);
@@ -839,6 +840,7 @@
     if (typeof window !== "undefined") window.__gmapNavigating = false;
     const layer = $("gmap-layer");
     if (layer) layer.classList.remove("navigating");
+    if (typeof document !== "undefined") document.body.classList.remove("gmap-navigating");
     const nav = $("gmap-nav");
     if (nav) nav.classList.remove("show");
   }
@@ -956,6 +958,18 @@
   }
 
   // ---------- open / close ----------
+  /** v3.10.55: while Google mode is open its search box sits in our top bar (weather, battery, clock stay visible). */
+  function dockSearch(intoTopBar) {
+    const top = document.querySelector(".gmap-top"), bar = document.querySelector(".top-bar"), layer = $("gmap-layer");
+    if (!top || !bar || !layer) return;
+    if (intoTopBar) {
+      const slot = bar.querySelector(".search-container");
+      if (top.parentNode !== bar) bar.insertBefore(top, slot ? slot.nextSibling : null);
+    } else if (top.parentNode !== layer) {
+      layer.insertBefore(top, $("gmap-status"));
+    }
+  }
+
   async function open() {
     if (!S.enabled || S.open) return;
     const layer = $("gmap-layer");
@@ -963,6 +977,7 @@
     S.open = true;
     layer.classList.add("show");
     document.body.classList.add("gmap-open");
+    dockSearch(true);
     if (window.__setMainMapPaused) window.__setMainMapPaused(true);   // one map rendering at a time on the MCU2
     setStatus("Google რუკა იტვირთება...");
     try {
@@ -994,6 +1009,7 @@
     const layer = $("gmap-layer");
     if (layer) layer.classList.remove("show");
     document.body.classList.remove("gmap-open");
+    dockSearch(false);
     if (window.__setMainMapPaused) window.__setMainMapPaused(false);
     try { if (window.map && window.map.resize) setTimeout(() => window.map.resize(), 50); } catch (_) {}
   }

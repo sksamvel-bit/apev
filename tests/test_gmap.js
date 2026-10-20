@@ -177,4 +177,6 @@ ok(/GOOGLE_MAPS_KEY/.test(srv) && !/PUBLIC_AUTH_PATHS[^;]*gmaps-config/.test(srv
   ok(src.includes('findUpcomingSignal(pos, headingDeg, routeLatLngs())') && src.includes('fetchSignalsAlongRoute(ll)'), 'traffic lights ahead on the Google route come from our signals engine (prefetched along the route)');
   const css = fs.readFileSync(__dirname + '/../style.css', 'utf8');
   ok(css.includes('body.gmap-open .car-hud-stats { z-index: 950; bottom: 72px; }') && !css.includes('body.gmap-open #route-preview-card, body.gmap-open .car-hud-stats'), 'speed + limit badge stay visible in Google mode, above the map (z 950 > 900) and clear of the Google logo');
+  ok(css.includes("body.gmap-open .top-bar { z-index: 950; }") && !/body.gmap-open .top-bar,/.test(css) && css.includes("body.gmap-open .top-bar .search-container { display: none; }"), "v3.10.55: weather, battery and clock stay on top in Google mode, our search gives way to the Google one");
+  ok(src.includes("dockSearch(true)") && src.includes("dockSearch(false)") && src.includes("bar.insertBefore(top"), "v3.10.55: the Google search moves into the top bar on open and back on close");
 }
