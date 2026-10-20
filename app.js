@@ -136,7 +136,7 @@ function initClock() {
 const OFM_STYLE_URL = "https://tiles.openfreemap.org/styles/liberty";
 const OFM_STYLE_CACHE_KEY = "tesla_nav_ofm_style_v1";
 const MAP_STYLE_KEYS = ["openfreemap", "google-roads"];
-const APP_VERSION = "3.10.74";
+const APP_VERSION = "3.10.75";
 const MAP_DEFAULT_ZOOM = 16;      // MapLibre zoom (Leaflet-equivalent 17)
 // Performance experiments (all default to the normal behaviour): ?labels=0 hides the base-map labels/icons, ?markers=0 skips the
 // charger DOM markers, ?pitch=N sets the heading-up tilt (0-60). Used to find what makes the car's browser slow.
@@ -2313,7 +2313,7 @@ function initRemoteSession() {
       "arrow offset from expected: dx " + f(dx, 0) + "  dy " + f(dy, 0) + " px",
       // v3.10.72 (audit L9): service worker state, the real screen size of the car browser (settings window sizing) and its name
       "sw " + (!("serviceWorker" in navigator) ? "unsupported" : navigator.serviceWorker.controller ? "active" : (window.__swError ? "FAILED " + window.__swError : "not yet")) +
-        "  screen " + window.innerWidth + "x" + window.innerHeight + " @" + f(window.devicePixelRatio, 2) + "  ua " + (/Tesla\//.test(navigator.userAgent) ? "Tesla" : (navigator.userAgent.match(/(Chrome|Firefox|Safari)\/[\d.]+/) || ["?"])[0]),
+        "  screen " + window.innerWidth + "x" + window.innerHeight + " @" + f(window.devicePixelRatio, 2) + "  ua " + (/Tesla\//.test(navigator.userAgent) ? "Tesla" : /X11; Linux x86_64/.test(navigator.userAgent) && !/Android/.test(navigator.userAgent) ? "Tesla? " + ((navigator.userAgent.match(/Chrome\/\d+/) || [""])[0]) : (navigator.userAgent.match(/(Chrome|Firefox|Safari)\/[\d.]+/) || ["?"])[0]),
       "heading used " + f(lastKnownValidHeading, 0) + "  speed " + currentSpeedKmh + " km/h",
       hnLine(),
       voiceLine()

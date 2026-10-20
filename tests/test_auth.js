@@ -47,6 +47,7 @@ async function up() { for (let i = 0; i < 50; i++) { await wait(200); if ((await
 
 (async () => {
   // pure helpers
+  ok(AS.deviceLabel('Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36') === 'Tesla' && AS.deviceLabel('Mozilla/5.0 (Linux; Android 14) Chrome/120 Mobile') === 'Android', 'the real car browser (Linux x86_64 Chrome, no "Tesla" in it) is shown as Tesla; Android stays Android');
   ok(AS.deviceLabel(TESLA) === 'Tesla' && AS.deviceLabel(IPHONE) === 'iPhone' && AS.deviceLabel('') === 'მოწყობილობა', 'device names from the user agent');
   ok(AS.maskIp('85.117.40.12') === '85.117.x.x' && AS.shortId('abc').length === 8, 'masked IP, short id');
   ok(DP.errorText('duplicate') === 'ეს PIN სხვა სტუმარს უკვე აქვს' && /ვერ შესრულდა/.test(DP.errorText('x')), 'Georgian error texts');

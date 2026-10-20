@@ -2263,3 +2263,24 @@ body.gmap-open #gmap-nav { top: 60px; }
 .devices-btn { min-height: 34px; padding: 3px 9px; font-size: 0.76rem; }
 .devices-btn.wide { margin-top: 4px; }
 .devices-sub { margin: 5px 0 2px; }
+
+/* v3.10.75: the car's browser is 773x601 CSS px (measured in the car, dpr 1.53). There the devices panel runs under the two
+   setting columns at full width with its two blocks side by side, and the window drops its spare spacing and hint lines. */
+.devices-cols { display: block; }
+@media (max-width: 900px) {
+  .settings-modal-window.has-devices .devices-cols { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 10px; }
+}
+@media (max-width: 900px), (max-height: 650px) {
+  .settings-modal-window { width: calc(100% - 12px); max-width: calc(100% - 12px); max-height: calc(100vh - 8px); }
+  .settings-modal-body { padding: 6px 10px; }
+  .settings-modal-window .settings-grid-2col { gap: 8px; }
+  .settings-modal-window .settings-col { gap: 4px; }
+  .settings-modal-window .spec-tip-badge,
+  .settings-modal-window .setting-hint,
+  .devices-note { display: none; }
+  .settings-modal-window .model-specs-card { padding: 4px 8px; }
+  .devices-panel { padding: 6px 8px; }
+  .devices-title { font-size: 0.85rem; margin-bottom: 2px; }
+  .devices-row { padding: 2px 6px; }
+  .devices-btn { min-height: 32px; }
+}

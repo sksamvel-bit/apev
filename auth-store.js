@@ -27,6 +27,8 @@ function shortId(token) {
 function deviceLabel(ua) {
   const s = String(ua || "");
   if (/Tesla\//i.test(s) || /QtCarBrowser/i.test(s)) return "Tesla";
+  // the car's browser does not name itself: it reports desktop Chrome on Linux x86_64 (measured 2026-10-20, Chrome/148)
+  if (/X11; Linux x86_64/.test(s) && /Chrome\//.test(s) && !/Android/i.test(s)) return "Tesla";
   if (/iPhone/i.test(s)) return "iPhone";
   if (/iPad/i.test(s)) return "iPad";
   if (/Android/i.test(s)) return "Android";

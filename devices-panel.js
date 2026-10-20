@@ -106,7 +106,10 @@
         box.appendChild(pinBox);
       }
 
-      box.appendChild(el("div", "devices-sub", "ჩემი მოწყობილობები"));
+      // two blocks: one column in the wide (3rd column) layout, side by side on the car's small screen (v3.10.75)
+      const cols = el("div", "devices-cols"), mine = el("div", "devices-block"), guests = el("div", "devices-block");
+      cols.appendChild(mine); cols.appendChild(guests); box.appendChild(cols);
+      mine.appendChild(el("div", "devices-sub", "ჩემი მოწყობილობები"));
       for (const it of r.masters) {
         const row = el("div", "devices-row" + (it.current ? " current" : ""));
         const info = el("div", "devices-info");
@@ -114,10 +117,10 @@
         if (it.sub) info.appendChild(el("div", "devices-meta", it.sub));
         row.appendChild(info);
         if (it.action) row.appendChild(button("danger", it.action, () => act("/api/admin/revoke", { id: it.id }), "დარწმუნებული?"));
-        box.appendChild(row);
+        mine.appendChild(row);
       }
 
-      box.appendChild(el("div", "devices-sub", "სტუმრები (PIN = ერთი მოწყობილობა)"));
+      guests.appendChild(el("div", "devices-sub", "სტუმრები (PIN = ერთი მოწყობილობა)"));
       for (const it of r.guests) {
         const row = el("div", "devices-row");
         const info = el("div", "devices-info");
@@ -129,12 +132,12 @@
         if (it.bound) acts.appendChild(button("danger", "მოხსნა", () => act("/api/admin/revoke", { id: it.id }), "დარწმუნებული?"));
         acts.appendChild(button("danger", "🗑", () => act("/api/admin/guest-remove", { id: it.id }), "წავშალო?"));
         row.appendChild(acts);
-        box.appendChild(row);
-        if (editing === it.id) box.appendChild(editor(it.id));
+        guests.appendChild(row);
+        if (editing === it.id) guests.appendChild(editor(it.id));
       }
-      if (!r.guests.length) box.appendChild(el("div", "devices-meta", "სტუმრის PIN-ები არ არის"));
-      if (editing === "new") box.appendChild(editor("new"));
-      else if (r.guests.length < (data.maxGuests || 10)) box.appendChild(button("wide", "＋ სტუმრის დამატება", () => { editing = "new"; shownPin = null; render(); }));
+      if (!r.guests.length) guests.appendChild(el("div", "devices-meta", "სტუმრის PIN-ები არ არის"));
+      if (editing === "new") guests.appendChild(editor("new"));
+      else if (r.guests.length < (data.maxGuests || 10)) guests.appendChild(button("wide", "＋ სტუმრის დამატება", () => { editing = "new"; shownPin = null; render(); }));
 
       box.appendChild(button("danger wide", "🚪 ყველა სხვა მოწყობილობის გამოყვანა", () => act("/api/admin/revoke-others", {}), "დარწმუნებული? სტუმრებიც გამოვლენ"));
       box.appendChild(el("div", "devices-note", "მოხსნა: სტუმარი გამოდის, PIN რჩება · 🔑: ახალი PIN · მთავარი PIN: მხოლოდ Render-ში"));
