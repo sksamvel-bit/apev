@@ -695,6 +695,21 @@ if (require.main === module) {
     getLiveGeorgiaChargers(true).catch(e => console.warn('[EV Auto-Sync] Error:', e.message));
   }, CHARGERS_CACHE_TTL);
 
+  // v3.10.74: keep the free Render instance awake. It sleeps after 15 idle minutes and then needs 30-60 s to wake, which made
+  // the car wait. Render sets RENDER_EXTERNAL_URL; asking our own public /healthz every 10 minutes goes through Render's proxy
+  // and counts as traffic (one always-on free instance = ~744 h/month, inside the 750 free hours). KEEP_AWAKE=0 turns it off.
+  const selfUrl = (process.env.RENDER_EXTERNAL_URL || '').replace(/\/+$/, '');
+  if (selfUrl && process.env.KEEP_AWAKE !== '0') {
+    setInterval(() => {
+      try {
+        const r = https.get(selfUrl + '/healthz', { timeout: 20000, headers: { 'User-Agent': 'TeslaNav-keepalive' } }, (res) => res.resume());
+        r.on('error', () => {});
+        r.on('timeout', () => r.destroy());
+      } catch (_) {}
+    }, 10 * 60 * 1000).unref();
+    console.log('[keepalive] pinging ' + selfUrl + '/healthz every 10 min');
+  }
+
   // a deploy stops the old server with SIGTERM: write the last lastSeen times first
   process.on('SIGTERM', () => { AUTH.flush().finally(() => process.exit(0)); setTimeout(() => process.exit(0), 3000).unref(); });
   // signed-in devices: if Upstash could not be read at start, keep trying (until then signed cookies are accepted)

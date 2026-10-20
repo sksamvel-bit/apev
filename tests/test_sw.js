@@ -84,6 +84,7 @@ const wait = (ms) => new Promise((r) => setTimeout(r, ms));
 
   const srv = fs.readFileSync(path.join(__dirname, '..', 'server.js'), 'utf8');
   ok(/'X-Pin-Page': '1'/.test(srv), 'the server marks its PIN page');
+  ok(/process\.env\.RENDER_EXTERNAL_URL/.test(srv) && /selfUrl \+ '\/healthz'/.test(srv) && /10 \* 60 \* 1000\)\.unref\(\)/.test(srv) && /KEEP_AWAKE !== '0'/.test(srv), 'v3.10.74: on Render the server pings its own /healthz every 10 min (stays awake; KEEP_AWAKE=0 turns it off)');
 
   process.exitCode = fails ? 1 : 0;
   console.log(fails ? fails + ' service worker tests FAILED' : 'service worker tests passed');
