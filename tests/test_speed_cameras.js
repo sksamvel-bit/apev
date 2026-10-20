@@ -60,6 +60,9 @@ ok(new SC.SpeedCamerasEngine({ storage: store, autoLoad: false }).isEnabled === 
 // the Georgian clip pack must not read "300 მეტრში" in the camera prompt as a turn
 const TA = require('../turn-audio.js');
 ok(!TA.maneuverOf(SC.promptText(r.hit || { dist: 300, cam: near })), 'turn-audio finds no manoeuvre in the camera prompt (no wrong clip)');
+const taEng = new TA.TurnAudioEngine();
+ok(JSON.stringify(taEng.resolveAudio(SC.promptText({ dist: 250, cam: near }))) === '[]', 'the camera prompt plays no clip at all (it used to play speed_limit.mp3; audit M1)');
+ok(taEng.resolveAudio('შეანელეთ სიჩქარე').length === 1, 'a real speed prompt still plays its clip');
 
 // wiring: no map layer any more, the server proxies Overpass, the page shows a badge in the always-visible HUD
 const app = fs.readFileSync(__dirname + '/../app.js', 'utf8');

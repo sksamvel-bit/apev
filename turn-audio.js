@@ -109,6 +109,8 @@
         return [p + DISTANCE_MAP[tier + " მეტრში"], p + MANEUVER_MAP[man]];
       }
       if (man) return [p + MANEUVER_MAP[man]];
+      // a speed-camera warning has no clip of its own: the alert chime only (v3.10.66; "სიჩქარის კამერა" used to play speed_limit.mp3)
+      if (t.includes("კამერა")) return [];
       if (t.includes("შუქნიშანი")) return [p + "traffic_signal.mp3"];
       if (t.includes("სიჩქარ") || t.includes("შეანელეთ")) return [p + "speed_limit.mp3"];
       if (t.includes("საცობი")) return [p + "traffic_jam.mp3"];
