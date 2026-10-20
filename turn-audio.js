@@ -52,6 +52,30 @@
     "50 მეტრში": "in_50m.mp3"
   };
 
+  // Recorded distances. A spoken distance is snapped to the nearest one (480 -> 500, 190 -> 200): real prompts rarely say
+  // exactly 500 m (routing.js and gmap.js speak the measured distance rounded to 10 m).
+  const TIERS = [50, 100, 200, 300, 500, 800];
+  function snapDistance(m) {
+    if (!(m > 0) || m > 1000) return null;
+    let best = TIERS[0];
+    for (const t of TIERS) if (Math.abs(t - m) < Math.abs(best - m)) best = t;
+    return best;
+  }
+
+  /** MANEUVER_MAP key for a prompt, for both phrasings: routing.js ("მოუხვიეთ მარჯვნივ") and Google Routes' Georgian
+   *  instructions ("შეუხვიეთ მარცხნივ …", "განაგრძეთ გზა …", "გაემართეთ …", "დარჩით მარჯვნივ …"). null when unknown. */
+  function maneuverOf(text) {
+    const t = String(text || "");
+    const side = /მარცხნივ/.test(t) ? "left" : (/მარჯვნივ/.test(t) ? "right" : "");
+    if (/წრიულ|წრეზე|წრიდან/.test(t)) return "შედით წრიულ მოძრაობაზე";
+    if (/მობრუნდით|შემობრუნდით|გამობრუნდით/.test(t)) return "მობრუნდით უკან";
+    if (side && /ოდნავ|დარჩით|გადადით|შესასვლელ|გასასვლელ|ჩასასვლელ|ასასვლელ/.test(t)) return side === "left" ? "ოდნავ მარცხნივ" : "ოდნავ მარჯვნივ";
+    if (side && /უხვიეთ/.test(t)) return side === "left" ? "მოუხვიეთ მარცხნივ" : "მოუხვიეთ მარჯვნივ";
+    if (/^(იარეთ|განაგრძეთ|გააგრძელეთ|გაემართეთ)|პირდაპირ/.test(t)) return "იარეთ პირდაპირ";
+    if (/^დაიწყეთ/.test(t)) return "დაიწყეთ მოძრაობა";
+    return null;
+  }
+
   class TurnAudioEngine {
     constructor(options = {}) {
       this.basePath = options.basePath || BASE_AUDIO_PATH;
@@ -69,61 +93,25 @@
      */
     resolveAudio(text) {
       if (!text || typeof text !== "string") return [];
-      const trimmed = text.trim();
-
-      // 1. Direct Combined match
-      for (const [key, file] of Object.entries(COMBINED_MAP)) {
-        if (trimmed.startsWith(key)) {
-          return [this.basePath + file];
-        }
+      const t = text.trim().replace(/\s+/g, " ");
+      const p = this.basePath;
+      if (/^მარშრუტი დაწყებულია/.test(t)) return [p + "route_started.mp3"];
+      if (/მიხვედით|დანიშნულების ადგილზე/.test(t)) return [p + "arrive.mp3"];
+      if (/აცდით|ახალი მარშრუტი|გადაითვალა/.test(t)) return [p + "reroute.mp3"];
+      const dist = t.match(/^(\d+)\s*მეტრში[,.\s]*/);
+      const man = maneuverOf(dist ? t.slice(dist[0].length) : t);
+      if (dist) {
+        const tier = snapDistance(parseInt(dist[1], 10));
+        // A turn clip without its distance sounds like "turn now" hundreds of metres early: then say nothing (the chime still plays).
+        if (!tier || !man) return [];
+        const combined = COMBINED_MAP[tier + " მეტრში, " + man];
+        if (combined) return [p + combined];
+        return [p + DISTANCE_MAP[tier + " მეტრში"], p + MANEUVER_MAP[man]];
       }
-
-      // 2. Exact or prefix match in Maneuver Map
-      for (const [key, file] of Object.entries(MANEUVER_MAP)) {
-        if (trimmed.startsWith(key) || trimmed === key) {
-          return [this.basePath + file];
-        }
-      }
-
-      // 3. Alerts
-      if (trimmed.includes("შუქნიშანი")) {
-        return [this.basePath + "traffic_signal.mp3"];
-      }
-      if (trimmed.includes("სიჩქარ") || trimmed.includes("შეანელეთ")) {
-        return [this.basePath + "speed_limit.mp3"];
-      }
-      if (trimmed.includes("საცობი") || trimmed.includes("საცობია")) {
-        return [this.basePath + "traffic_jam.mp3"];
-      }
-      if (trimmed.includes("აცდით") || trimmed.includes("ახალი მარშრუტი")) {
-        return [this.basePath + "reroute.mp3"];
-      }
-      if (trimmed.includes("მიხვედით") || trimmed.includes("დანიშნულების ადგილზე")) {
-        return [this.basePath + "arrive.mp3"];
-      }
-
-      // 4. Distance + Maneuver chaining
-      // E.g., "800 მეტრში, იარეთ პირდაპირ ჭავჭავაძის გამზირზე"
-      const distMatch = trimmed.match(/^(\d+\s*მეტრში)/);
-      if (distMatch) {
-        const distKey = distMatch[1].replace(/\s+/g, " ");
-        const distFile = DISTANCE_MAP[distKey];
-        const rest = trimmed.slice(distMatch[0].length).replace(/^[,.\s]+/, "");
-        
-        let maneuverFile = null;
-        for (const [key, file] of Object.entries(MANEUVER_MAP)) {
-          if (rest.startsWith(key)) {
-            maneuverFile = file;
-            break;
-          }
-        }
-
-        const res = [];
-        if (distFile) res.push(this.basePath + distFile);
-        if (maneuverFile) res.push(this.basePath + maneuverFile);
-        if (res.length > 0) return res;
-      }
-
+      if (man) return [p + MANEUVER_MAP[man]];
+      if (t.includes("შუქნიშანი")) return [p + "traffic_signal.mp3"];
+      if (t.includes("სიჩქარ") || t.includes("შეანელეთ")) return [p + "speed_limit.mp3"];
+      if (t.includes("საცობი")) return [p + "traffic_jam.mp3"];
       return [];
     }
 
@@ -204,6 +192,8 @@
 
   return {
     TurnAudioEngine,
+    snapDistance,
+    maneuverOf,
     MANEUVER_MAP,
     COMBINED_MAP,
     DISTANCE_MAP
