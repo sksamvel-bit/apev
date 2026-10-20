@@ -2240,7 +2240,7 @@ body.gmap-open #gmap-nav { top: 60px; }
    so everything fits without scrolling; below 1100 px the panel takes the full width under the two columns. */
 .settings-modal-window.has-devices { max-width: 1320px; width: 97%; }
 .settings-modal-window.has-devices .settings-grid-2col { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1.2fr); gap: 14px; }
-@media (max-width: 1100px) {
+@media (max-width: 900px) {
   .settings-modal-window.has-devices .settings-grid-2col { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
   .settings-modal-window.has-devices .devices-panel { grid-column: 1 / -1; }
 }
@@ -2265,3 +2265,28 @@ body.gmap-open #gmap-nav { top: 60px; }
 .devices-pin { font-size: 1.5rem; font-weight: 800; letter-spacing: 3px; font-family: monospace; color: #6ee7b7; user-select: all; }
 .devices-note { font-size: 0.68rem; color: var(--text-secondary); margin-top: 5px; }
 .devices-note.warn { color: #fbbf24; }
+
+/* v3.10.63: compact settings window (Samvel: no scrolling on the car screen). Battery moved to the 2nd column, shorter
+   labels, tighter spacing everywhere; three columns down to 900 px wide. */
+.settings-modal-window .modal-header { padding: 2px 6px 2px 14px; }
+.settings-modal-window .modal-title { font-size: 0.95rem; }
+.settings-modal-window .modal-close-btn { min-width: 40px; min-height: 40px; font-size: 1.3rem; }
+.settings-modal-body { padding: 8px 12px; }
+.settings-modal-window .settings-grid-2col { gap: 10px; }
+.settings-modal-window .settings-col { gap: 6px; }
+.settings-modal-window .setting-label { font-size: 0.76rem; }
+.settings-modal-window .setting-input,
+.settings-modal-window .setting-select { min-height: 36px; padding: 4px 8px; font-size: 0.82rem; }
+.settings-modal-window .setting-hint { display: block; font-size: 0.66rem; color: var(--text-muted); margin-top: 1px; }
+.settings-modal-window .model-specs-card { padding: 5px 8px; gap: 4px; }
+.settings-modal-window .specs-grid { gap: 2px 8px; }
+.settings-modal-window .spec-label { font-size: 0.66rem; }
+.settings-modal-window .spec-val { font-size: 0.76rem; }
+.settings-modal-window .spec-tip-badge { padding: 3px 6px; font-size: 0.66rem; }
+.settings-modal-window .modal-footer { padding: 4px 12px; }
+.settings-modal-window .btn-primary,
+.settings-modal-window .btn-secondary { min-height: 38px; padding: 6px 14px; }
+.devices-row { padding: 3px 8px; margin-bottom: 2px; }
+.devices-btn { min-height: 34px; padding: 3px 9px; font-size: 0.76rem; }
+.devices-btn.wide { margin-top: 4px; }
+.devices-sub { margin: 5px 0 2px; }

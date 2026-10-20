@@ -97,7 +97,7 @@
     function render() {
       const r = rows(data);
       box.textContent = "";
-      box.appendChild(el("h3", "devices-title", "🔐 მოწყობილობები და PIN-ები"));
+      box.appendChild(el("h3", "devices-title", "🔐 მოწყობილობები"));
       if (data.degraded) box.appendChild(el("div", "devices-note warn", "⚠️ საცავი დროებით მიუწვდომელია: ცვლილებები ახლა არ შეინახება."));
       if (shownPin) {
         const pinBox = el("div", "devices-newpin");
@@ -117,7 +117,7 @@
         box.appendChild(row);
       }
 
-      box.appendChild(el("div", "devices-sub", "სტუმრები (თითო PIN ერთ მოწყობილობაზე)"));
+      box.appendChild(el("div", "devices-sub", "სტუმრები (PIN = ერთი მოწყობილობა)"));
       for (const it of r.guests) {
         const row = el("div", "devices-row");
         const info = el("div", "devices-info");
@@ -137,7 +137,7 @@
       else if (r.guests.length < (data.maxGuests || 10)) box.appendChild(button("wide", "＋ სტუმრის დამატება", () => { editing = "new"; shownPin = null; render(); }));
 
       box.appendChild(button("danger wide", "🚪 ყველა სხვა მოწყობილობის გამოყვანა", () => act("/api/admin/revoke-others", {}), "დარწმუნებული? სტუმრებიც გამოვლენ"));
-      box.appendChild(el("div", "devices-note", "„მოხსნა“: სტუმარი გამოდის, PIN რჩება. „🔑 PIN“: ახალი PIN, ძველით შესული გამოდის. მთავარი PIN იცვლება მხოლოდ Render-ში."));
+      box.appendChild(el("div", "devices-note", "მოხსნა: სტუმარი გამოდის, PIN რჩება · 🔑: ახალი PIN · მთავარი PIN: მხოლოდ Render-ში"));
       box.hidden = false;
       if (win) win.classList.add("has-devices");
     }

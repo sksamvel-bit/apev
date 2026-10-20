@@ -14,9 +14,9 @@
   <link rel="apple-touch-icon" href="icon-192.png">
   
   <!-- MapLibre GL CSS (Local Offline) -->
-  <link rel="stylesheet" href="maplibre-gl.css?v=3.10.62">
+  <link rel="stylesheet" href="maplibre-gl.css?v=3.10.63">
   <!-- Custom Stylesheet -->
-  <link rel="stylesheet" href="style.css?v=3.10.62">
+  <link rel="stylesheet" href="style.css?v=3.10.63">
 </head>
 <body>
 
@@ -424,7 +424,7 @@
   <div id="settings-modal" class="modal-overlay">
     <div class="modal-window settings-modal-window">
       <div class="modal-header">
-        <h2 class="modal-title">⚙️ Tesla პარამეტრები (Model 3 & Model Y)</h2>
+        <h2 class="modal-title">⚙️ პარამეტრები</h2>
         <button id="modal-close-btn" class="modal-close-btn">✕</button>
       </div>
       <div class="modal-body settings-modal-body">
@@ -432,7 +432,7 @@
           <!-- Left Column: Vehicle & Battery -->
           <div class="settings-col">
             <div class="setting-group">
-              <label class="setting-label">🚗 ავტომობილის მოდელი (Model 3 / Model Y):</label>
+              <label class="setting-label">🚗 მოდელი:</label>
               <select id="select-tesla-model" class="setting-select">
                 <optgroup label="─── Tesla Model 3 (2018–2023) ───">
                   <option value="m3_rwd_lfp">Model 3 RWD (2021–2023) • 60 kWh LFP (491 კმ)</option>
@@ -458,49 +458,48 @@
                   <span id="spec-battery-val" class="spec-val">-- kWh</span>
                 </div>
                 <div class="spec-item">
-                  <span class="spec-label">საშ. მოხმარება:</span>
+                  <span class="spec-label">ხარჯი:</span>
                   <span id="spec-consumption-val" class="spec-val">-- kWh/100კმ</span>
                 </div>
                 <div class="spec-item">
-                  <span class="spec-label">ქარხნული გარბენი:</span>
+                  <span class="spec-label">გარბენი:</span>
                   <span id="spec-range-val" class="spec-val">-- კმ (WLTP)</span>
                 </div>
                 <div class="spec-item">
-                  <span class="spec-label">წამყვანი თვლები:</span>
+                  <span class="spec-label">წამყვანი:</span>
                   <span id="spec-drive-val" class="spec-val">--</span>
                 </div>
               </div>
               <div id="spec-charge-tip" class="spec-tip-badge">--</div>
             </div>
 
-            <div class="setting-group">
-              <label class="setting-label">🔋 საწყისი ბატარეა (%):</label>
-              <input type="number" id="input-initial-soc" class="setting-input" min="1" max="100" placeholder="80">
-              <span style="font-size: 0.75rem; color: var(--text-muted); display: block; margin-top: 4px;">
-                ℹ️ ენერგომოდელი (შეფასება). არ უკავშირდება Tesla CAN-bus BMS ტელემეტრიას.
-              </span>
-            </div>
           </div>
 
           <!-- Right Column: Navigation & Services -->
           <div class="settings-col">
             <div class="setting-group">
-              <label class="setting-label">🏠 სახლის მისამართი (Home):</label>
+              <label class="setting-label">🏠 სახლი:</label>
               <input type="text" id="input-home-addr" class="setting-input" placeholder="მაგ. რუსთაველის გამზირი 12, თბილისი">
             </div>
 
             <div class="setting-group">
-              <label class="setting-label">🏢 სამსახურის მისამართი (Work):</label>
+              <label class="setting-label">🏢 სამსახური:</label>
               <input type="text" id="input-work-addr" class="setting-input" placeholder="მაგ. ჭავჭავაძის გამზირი 37, თბილისი">
             </div>
 
+            <div class="setting-group">
+              <label class="setting-label">🔋 ბატარეა ახლა (%):</label>
+              <input type="number" id="input-initial-soc" class="setting-input" min="1" max="100" placeholder="80">
+              <span class="setting-hint">ხელით შეყვანილი, შეფასებისთვის (მანქანიდან არ იკითხება)</span>
+            </div>
+
           </div>
-          <!-- v3.10.62: devices + guest PINs (3rd column), filled by devices-panel.js only for the MASTER PIN (the server answers 403 to anyone else) -->
+          <!-- v3.10.63: devices + guest PINs (3rd column), filled by devices-panel.js only for the MASTER PIN (the server answers 403 to anyone else) -->
           <section id="devices-panel" class="devices-panel" hidden></section>
         </div>
       </div>
       <div class="modal-footer">
-        <span class="settings-version-tag" style="margin-right: auto; font-size: 0.8rem; color: var(--text-secondary); opacity: 0.8;">ვერსია: v3.10.62</span>
+        <span class="settings-version-tag" style="margin-right: auto; font-size: 0.8rem; color: var(--text-secondary); opacity: 0.8;">ვერსია: v3.10.63</span>
         <button id="modal-cancel-btn" class="btn-secondary">გაუქმება</button>
         <button id="modal-save-btn" class="btn-primary">შენახვა</button>
       </div>
@@ -508,27 +507,27 @@
   </div>
 
   <!-- MapLibre GL JS (Local Offline - Hardware Accelerated WebGL Engine) -->
-  <script src="maplibre-gl.js?v=3.10.62"></script>
-  <script src="map-gl.js?v=3.10.62"></script>
+  <script src="maplibre-gl.js?v=3.10.63"></script>
+  <script src="map-gl.js?v=3.10.63"></script>
   <!-- QR Code Generator -->
   <script src="qrcode.min.js"></script>
   <!-- Application Engines -->
-  <script src="turn-audio.js?v=3.10.62"></script>
-  <script src="speech.js?v=3.10.62"></script>
-  <script src="weather.js?v=3.10.62"></script>
-  <script src="devices-panel.js?v=3.10.62"></script>
-  <script src="battery.js?v=3.10.62"></script>
-  <script src="chargers.js?v=3.10.62"></script>
-  <script src="charger-list.js?v=3.10.62"></script>
-  <script src="search.js?v=3.10.62"></script>
-  <script src="tesla-style.js?v=3.10.62"></script>
-  <script src="traffic-signals.js?v=3.10.62"></script>
-  <script src="traffic.js?v=3.10.62"></script>
-  <script src="routing.js?v=3.10.62"></script>
-  <script src="speed-limit.js?v=3.10.62"></script>
-  <script src="speed-cameras.js?v=3.10.62"></script>
-  <script src="sim-drive.js?v=3.10.62"></script>
-  <script src="gmap.js?v=3.10.62"></script>
-  <script src="app.js?v=3.10.62"></script>
+  <script src="turn-audio.js?v=3.10.63"></script>
+  <script src="speech.js?v=3.10.63"></script>
+  <script src="weather.js?v=3.10.63"></script>
+  <script src="devices-panel.js?v=3.10.63"></script>
+  <script src="battery.js?v=3.10.63"></script>
+  <script src="chargers.js?v=3.10.63"></script>
+  <script src="charger-list.js?v=3.10.63"></script>
+  <script src="search.js?v=3.10.63"></script>
+  <script src="tesla-style.js?v=3.10.63"></script>
+  <script src="traffic-signals.js?v=3.10.63"></script>
+  <script src="traffic.js?v=3.10.63"></script>
+  <script src="routing.js?v=3.10.63"></script>
+  <script src="speed-limit.js?v=3.10.63"></script>
+  <script src="speed-cameras.js?v=3.10.63"></script>
+  <script src="sim-drive.js?v=3.10.63"></script>
+  <script src="gmap.js?v=3.10.63"></script>
+  <script src="app.js?v=3.10.63"></script>
 </body>
 </html>
