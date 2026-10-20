@@ -61,4 +61,4 @@ URL debug flags: `?debug=1` (HUD; tapping the speed 5 times also opens it), `?li
 
 ## Workspace outside the repo
 
-The parent folder `D:\Projects\Tesla Model 3\` is not a git repo. It contains `tesla-nav-backup/` (an old v3.10.2 copy, don't edit it), `tesla-nav-backup-complete.zip`, `patch-osm-ci/` (an already-applied v3.9 patch), and `tmap-*.js` / `inspect-tmap.js` (downloaded tmap.ge bundles kept for reference). These are cleanup candidates. Ask the owner before deleting any of them.
+The parent folder `D:\Projects\Tesla Model 3\` is not a git repo. It holds only `CLAUDE.md` and `TODO_FOR_AGENT.md`. The old backups (`tesla-nav-backup/`, the zip), `patch-osm-ci/` and the tmap.ge bundles went to the Recycle Bin on 2026-10-20 with the owner's approval.
