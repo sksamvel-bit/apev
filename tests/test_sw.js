@@ -61,6 +61,27 @@ const wait = (ms) => new Promise((r) => setTimeout(r, ms));
   await navigate(h); await wait(20);
   ok(h.put.length === 0, 'the PIN login page is not cached');
 
+  // 6. v3.10.73: installing while signed out must not precache the PIN page as the app page
+  const stored = {};
+  {
+    const handlers = {};
+    const src = fs.readFileSync(path.join(__dirname, '..', 'sw.js'), 'utf8');
+    const ctx = {
+      self: { addEventListener: (t, f) => { handlers[t] = f; }, skipWaiting() {}, clients: { claim() {} } },
+      location: { origin: 'https://apev.onrender.com' },
+      caches: { open: async () => ({ put: async (k, v) => { stored[k] = v; }, addAll: async (list) => { list.forEach((k) => { stored[k] = 'asset'; }); } }), match: async () => undefined, keys: async () => [], delete: async () => true },
+      fetch: async (u) => res(u === '/' || u === '/index.html' ? 'pin page' : 'x', u === '/' || u === '/index.html' ? { 'X-Pin-Page': '1' } : {}),
+      URL, Promise, setTimeout, clearTimeout, console, Response: { error: () => ({}) }
+    };
+    vm.createContext(ctx);
+    vm.runInContext(src, ctx);
+    let done;
+    handlers.install({ waitUntil: (p) => { done = p; } });
+    await done;
+  }
+  ok(!stored['/'] && !stored['/index.html'], 'install while signed out: the PIN page is not precached as "/"');
+  ok(stored['/app.js?v=' + require('../package.json').version] === 'asset', 'install still precaches the app files');
+
   const srv = fs.readFileSync(path.join(__dirname, '..', 'server.js'), 'utf8');
   ok(/'X-Pin-Page': '1'/.test(srv), 'the server marks its PIN page');
 
