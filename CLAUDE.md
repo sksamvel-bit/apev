@@ -6,7 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 `tesla-nav` is a PWA navigation app for the Tesla Model 3/Y center screen (MCU2 Intel Atom, MCU3 AMD Ryzen) for driving in Georgia, where Tesla's own navigation has no local routing, speed limits or Georgian language. It runs in the car's Chromium browser. It is deployed at `https://apev.onrender.com` (Render, free tier) and locally at port 3000. The owner is Samvel. Project docs and most notes are written in Georgian. Reply in Georgian when the user writes in Georgian.
 
-Other docs in this folder: `README.md` (feature overview), `TEAM_NOTES.md` (**the source of truth for file ownership, priorities and the changelog**), `AGENT_HANDOVER_GUIDE.md` and `MASTER_HISTORY_AND_ARCHITECTURE.md` (long history; parts are out of date), `../TODO_FOR_AGENT.md` (things to check in the real car). `FULL_CONVERSATION_TRANSCRIPT.md` (4 MB) and `conversation-logs/` are git-ignored archives. Don't read them unless the user asks.
+**`PROJECT_DOCS.md` is the current, complete project description (Georgian): read it first.** Other docs in this folder: `README.md` (older feature overview, v3.10.29), `TEAM_NOTES.md` (**the source of truth for file ownership, priorities and the changelog**), `AGENT_HANDOVER_GUIDE.md` and `MASTER_HISTORY_AND_ARCHITECTURE.md` (long history; parts are out of date), `../TODO_FOR_AGENT.md` (things to check in the real car). `FULL_CONVERSATION_TRANSCRIPT.md` (4 MB) and `conversation-logs/` are git-ignored archives. Don't read them unless the user asks.
 
 ## Commands
 
@@ -48,6 +48,7 @@ Env vars (`.env` / Render): `PORT`, `HOST`, `ACCESS_PIN` (comma list; the first 
 
 - **Version bump touches all of these at once:** `package.json` `version`, every `?v=` in `index.html`, `APP_VERSION` in `app.js`, and `CACHE_NAME` + precache list in `sw.js`. Tesla Chromium caches aggressively, and a mismatch gives stale code in the car. `npm run check` verifies package/index/app.js.
 - **File ownership:** several agents (Claude and Antigravity) work on the repo. Check the owner table in `TEAM_NOTES.md` before editing. `index.html`, `package.json` and `server.js` are shared: keep your diff minimal and record it. After finishing, add a changelog line to `TEAM_NOTES.md` (in Georgian, with the version, what changed and what was **not** verified in the car).
+- **Keep the documentation current (owner's rule, 2026-10-20):** with every change also update `PROJECT_DOCS.md` when anything it describes changes (features, data sources, limits, files, API, rules) and bump its version/date line. The conversation history in `../history/` is exported automatically after every reply (Stop hook in `../.claude/settings.json` runs `../history/_export.js`); it stays outside git because it holds everything pasted into the chats.
 - Re-read files (or `git pull`) before editing. Another agent may have changed or reverted them. Make one commit per topic.
 - Don't change `DRIVING_LOCKOUT` (`app.js`, stays false) or work around Tesla's own in-motion video block. YouTube was removed on purpose (v3.10.28). Don't add it back unless asked.
 - Never use `backdrop-filter: blur()`. It causes heavy GPU stutter on the MCU. Performance on MCU2 (fps 6–16 was measured) comes first. Don't add heavy layers or features without the owner's approval. Put new visual changes behind a URL flag first.
