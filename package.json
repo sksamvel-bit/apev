@@ -1,6 +1,6 @@
 {
   "name": "tesla-nav",
-  "version": "3.10.78",
+  "version": "3.10.79",
   "description": "Tesla Model 3/Y Web Navigation with Live EV Chargers, Dual-Server Routing, and Mobile Remote Control",
   "main": "server.js",
   "scripts": {

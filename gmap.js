@@ -271,6 +271,30 @@
     return Math.abs(((next.heading - prev.heading) % 360 + 540) % 360 - 180) >= minDeg;
   }
 
+  /**
+   * v3.10.79 GPU camera for the Google 3D map (?gcam=gpu), the same idea as our map's FollowCamera.gpuStep: Google redraws the
+   * whole vector map on every camera move (in the car ~60 fps standing, 6-15 fps moving by day), so the camera is moved only
+   * every opts.everyMs or when the heading drifted more than opts.maxAngle; in between the last drawn picture is turned and
+   * shifted by the compositor (CSS transform on the oversized map div).
+   * prev = { t, heading, center } of the last real move (null = none yet), cur = { t, heading, pos } now,
+   * view = { zoom, w, h (map div px), hVis (visible screen height px), frac (car below the centre, of hVis) }.
+   * Returns { draw: true } or { draw: false, ox, oy (car point on screen, the turning point), theta (deg), tx, ty (px) }.
+   */
+  function gpuPlan(prev, cur, view, opts) {
+    const o = opts || {};
+    if (!prev) return { draw: true };
+    const dHead = ((cur.heading - prev.heading) % 360 + 540) % 360 - 180;
+    if (cur.t - prev.t >= (o.everyMs || 250) || Math.abs(dHead) > (o.maxAngle || 12)) return { draw: true };
+    const mpp = 156543.03392 * Math.cos(prev.center.lat * Math.PI / 180) / Math.pow(2, view.zoom);
+    const e = (cur.pos.lng - prev.center.lng) * 111320 * Math.cos(prev.center.lat * Math.PI / 180);
+    const n = (cur.pos.lat - prev.center.lat) * 111320;
+    const x = e / mpp, y = -n / mpp, phi = -prev.heading * Math.PI / 180;
+    const px = view.w / 2 + x * Math.cos(phi) - y * Math.sin(phi);   // where the car is in the picture drawn last time
+    const py = view.h / 2 + x * Math.sin(phi) + y * Math.cos(phi);
+    const ox = view.w / 2, oy = view.h / 2 + (view.frac == null ? 0.25 : view.frac) * view.hVis;   // where it must be shown
+    return { draw: false, ox, oy, theta: -dHead, tx: ox - px, ty: oy - py };
+  }
+
   /** ?gscale=s (0.5..1, test only): the map renders s x s of the pixels and is stretched back to full screen with a CSS
    *  transform, to measure whether the MCU2 is limited by pixel fill. Text gets softer and taps on map icons can be off. */
   function scaledBoxStyle(s) {
@@ -438,7 +462,8 @@
       if (S.vector && isFinite(v.heading)) S.map.setHeading(v.heading);
     } else {
       const el = document.createElement("div");   // a fresh element per map: a Map ID cannot be added to an existing map
-      el.style.cssText = scaledBoxStyle(S.gscale);
+      // the GPU camera turns the vector map picture: its div is larger than the screen (?gscale does not apply then)
+      el.style.cssText = S.gpuOn && S.vector ? "position:absolute;left:-25%;top:-25%;width:150%;height:150%;will-change:transform" : scaledBoxStyle(S.gscale);
       box.appendChild(el);
       S.map = new Map(el, mapOptions(S.vector, S.night, v));
       S.maps[key] = { map: S.map, el };
@@ -493,7 +518,7 @@
 
   // Arrow/camera rate: 20 fps on the classic map; 10 fps on the vector (3D) map, where every camera move re-renders the whole map.
   // ?gfps=N (2..30) overrides both, for measuring in the car.
-  function carFrameMs() { return S.gfps ? 1000 / S.gfps : (S.vector ? 100 : 50); }
+  function carFrameMs() { return S.gfps ? 1000 / S.gfps : (S.vector ? (S.gpuOn ? 16 : 100) : 50); }   // GPU camera: the turn is cheap, 60 fps
 
   /** One frame of the glide: arrow position/rotation, and the camera while following (heading-up on the vector map). */
   function drawCar(f) {
@@ -508,17 +533,74 @@
       if (!S.lastMarker || meters(S.lastMarker, pos) >= 0.3) { S.carMarker.setPosition(pos); S.lastMarker = pos; }
       if (rot !== S.carRot) { S.carMarker.setIcon(markerIcon(rot)); S.carRot = rot; }
     }
-    if (!S.follow) { S.lastCam = null; return; }
+    if (!S.follow) { S.lastCam = null; gpuReset(); return; }
     const el = S.map.getDiv && S.map.getDiv();
-    const h = (el && el.clientHeight) || 800;
+    const gpu = S.gpuOn && headingUp && S.map.moveCamera && el;
+    const h = ((el && el.clientHeight) || 800) / (gpu ? GPU_OVERSCAN : 1);   // the oversized div: use the visible height
     const zoom = S.map.getZoom() || 16;
     const center = aheadPoint(window.MapGL, pos, f.heading, zoom, h, 0.25);
+    if (gpu) {
+      const now = performance.now();
+      const plan = gpuPlan(S.gpuR, { t: now, heading: f.heading, pos }, { zoom, w: el.clientWidth, h: el.clientHeight, hVis: h }, { everyMs: S.gpuMs, maxAngle: 12 });
+      gpuArrow(true);
+      if (plan.draw) {
+        S.map.moveCamera({ center, heading: f.heading });
+        S.gpuR = { t: now, heading: f.heading, center };
+        S.lastCam = { lat: center.lat, lng: center.lng, heading: f.heading }; S.camCount++;
+        el.style.transform = "";
+        gpuLogo(el, 0);
+      } else {
+        el.style.transformOrigin = plan.ox.toFixed(1) + "px " + plan.oy.toFixed(1) + "px";
+        el.style.transform = "rotate(" + plan.theta.toFixed(2) + "deg) translate(" + plan.tx.toFixed(1) + "px," + plan.ty.toFixed(1) + "px)";
+        gpuLogo(el, plan.theta);
+      }
+      return;
+    }
+    gpuReset();
     const cam = { lat: center.lat, lng: center.lng, heading: headingUp ? f.heading : null };
     const halfPx = 0.5 * 156543.03392 * Math.cos(center.lat * Math.PI / 180) / Math.pow(2, zoom);
     if (!cameraNeedsUpdate(S.lastCam, cam, halfPx, 1)) return;
     S.lastCam = cam; S.camCount++;
     if (headingUp && S.map.moveCamera) S.map.moveCamera({ center, heading: f.heading });
     else S.map.setCenter(center);
+  }
+
+  // ---- v3.10.79 GPU camera helpers (?gcam=gpu) ----
+  const GPU_OVERSCAN = 1.5;   // the vector map div is 150% of the screen, centred: a 12 deg turn never shows its corners
+
+  /** Our own arrow, fixed on the screen where the car is shown (Google's marker would need a redraw for every new angle). */
+  function gpuArrow(on) {
+    let a = $("gmap-gpu-car");
+    if (on && !a) {
+      a = document.createElement("div");
+      a.id = "gmap-gpu-car";
+      const NS = "http://www.w3.org/2000/svg", svg = document.createElementNS(NS, "svg"), poly = document.createElementNS(NS, "polygon");
+      svg.setAttribute("viewBox", "0 0 24 24"); svg.setAttribute("width", "34"); svg.setAttribute("height", "34");
+      [["points", "12 2 20 21 12 16 4 21"], ["fill", "#3e6ae1"], ["stroke", "#fff"], ["stroke-width", "2"], ["stroke-linejoin", "round"]].forEach(([k, v]) => poly.setAttribute(k, v));
+      svg.appendChild(poly); a.appendChild(svg);
+      $("gmap-layer").appendChild(a);
+    }
+    if (a) a.style.display = on ? "" : "none";
+    if (S.carMarker) S.carMarker.setMap(on ? null : S.map);
+  }
+
+  /** Google's logo and data credit stay upright and readable while the picture is turned (Google's terms: always visible). */
+  function gpuLogo(el, theta) {
+    if (!S.logoEls || !S.logoEls.length || !S.logoEls[0].isConnected) {
+      const logo = el.querySelector('a[href*="maps.google.com/maps"], a[title*="Google"]');
+      S.logoEls = [logo && logo.parentElement].concat(Array.from(el.querySelectorAll(".gm-style-cc"))).filter(Boolean);
+    }
+    const t = theta ? "rotate(" + (-theta).toFixed(2) + "deg)" : "";
+    S.logoEls.forEach((n) => { n.style.transform = t; });
+  }
+
+  /** Back to the plain Google map (the driver pans, classic map, Google mode closed). */
+  function gpuReset() {
+    S.gpuR = null;
+    const el = S.map && S.map.getDiv && S.map.getDiv();
+    if (el && el.style.transform) el.style.transform = "";
+    if (el && S.logoEls) gpuLogo(el, 0);
+    if ($("gmap-gpu-car") && $("gmap-gpu-car").style.display !== "none") gpuArrow(false);
   }
 
   function carLoop(ts) {
@@ -1060,6 +1142,7 @@
   function close() {
     if (!S.open) return;
     S.open = false;
+    gpuReset();
     stopNavigation();
     S.timers.forEach(clearInterval);
     S.timers = [];
@@ -1154,13 +1237,18 @@
     if (gf) S.gfps = Math.min(30, Math.max(2, parseInt(gf[1], 10)));
     const gs = /[?&]gscale=(0?\.\d+|1(?:\.0+)?)/.exec(q);
     if (gs) { const v = parseFloat(gs[1]); S.gscale = v >= 1 ? 0 : Math.max(0.5, v); }
+    // v3.10.79 ?gcam=gpu: GPU camera on the 3D (vector) map; ?gcamms=N ms between real camera moves (default 250)
+    S.gpuOn = /[?&]gcam=gpu/.test(q);
+    const gm = /[?&]gcamms=(\d+)/.exec(q);
+    S.gpuMs = gm ? Math.min(2000, Math.max(50, parseInt(gm[1], 10))) : 250;
+    if (S.gpuOn) document.body.classList.add("gcam-gpu");
     try { S.vector = localStorage.getItem("gmapVector") === "1"; } catch (_) { S.vector = false; }
     const btn = $("btn-google-mode");
     if (btn) btn.hidden = !S.enabled;
     if (S.enabled && mainMapIsGoogle(q)) autoOpen();
   }
 
-  const api = { init, open, close, isOpen: () => S.open, isEnabled: () => S.enabled, mainMapIsGoogle, MAIN_MAP_KEY, openWithQuery, openWithDestination, focusPlace, SIDE_PROXIES, mapKey, distToPolylineM, nearestOnPolyline, createOffRouteTracker, createVoiceCues, nearestChargers, createCarGlide, aheadPoint, mapOptions, cameraNeedsUpdate, createFpsMeter, scaledBoxStyle, capText, warnText, decodePolyline, parseRoutesResponse, routesRequestBody, nextStepIndex, fmtDist, buildLoaderUrl, createDebouncer, osrmUrl, summarizeRoute, mapStyles, bearing, meters, CATEGORIES };
+  const api = { init, open, close, isOpen: () => S.open, isEnabled: () => S.enabled, camMoves: () => S.camCount, isVector: () => !!S.vector, gpuOn: () => !!S.gpuOn, mainMapIsGoogle, MAIN_MAP_KEY, gpuPlan, openWithQuery, openWithDestination, focusPlace, SIDE_PROXIES, mapKey, distToPolylineM, nearestOnPolyline, createOffRouteTracker, createVoiceCues, nearestChargers, createCarGlide, aheadPoint, mapOptions, cameraNeedsUpdate, createFpsMeter, scaledBoxStyle, capText, warnText, decodePolyline, parseRoutesResponse, routesRequestBody, nextStepIndex, fmtDist, buildLoaderUrl, createDebouncer, osrmUrl, summarizeRoute, mapStyles, bearing, meters, CATEGORIES };
   if (typeof document !== "undefined") {
     if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", () => init());
     else init();

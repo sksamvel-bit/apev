@@ -136,7 +136,7 @@ function initClock() {
 const OFM_STYLE_URL = "https://tiles.openfreemap.org/styles/liberty";
 const OFM_STYLE_CACHE_KEY = "tesla_nav_ofm_style_v1";
 const MAP_STYLE_KEYS = ["openfreemap", "google-roads"];
-const APP_VERSION = "3.10.78";
+const APP_VERSION = "3.10.79";
 const MAP_DEFAULT_ZOOM = 16;      // MapLibre zoom (Leaflet-equivalent 17)
 // Performance experiments (all default to the normal behaviour): ?labels=0 hides the base-map labels/icons, ?markers=0 skips the
 // charger DOM markers, ?pitch=N sets the heading-up tilt (0-60). Used to find what makes the car's browser slow.
@@ -1130,7 +1130,7 @@ function updateVehicleMarker(lat, lng, headingDeg, speedKmh, accuracyMeters = nu
     // gets this (not continuousHeading, which is already smoothed per fix and would make turns lag by seconds).
     mapCamera.setFix({ lng, lat, headingDeg: lastKnownValidHeading, speedMs: speedKmh / 3.6 });
   }
-  window.__carFix = { lat, lng, headingDeg: lastKnownValidHeading, speedMs: speedKmh / 3.6 }; // Google mode (gmap.js) glides its arrow from this
+  if (!window.__benchActive) window.__carFix = { lat, lng, headingDeg: lastKnownValidHeading, speedMs: speedKmh / 3.6 }; // Google mode (gmap.js) glides its arrow from this; the rotation test feeds it meanwhile
 
   // Dirty check: only update DOM textContent when speed actually changes
   if (speedKmh !== lastRenderedSpeed) {
@@ -2347,9 +2347,11 @@ function initRemoteSession() {
   // camera the real GPS uses; real fixes are held back meanwhile. Measures: map renders per second, screen frames per second
   // (requestAnimationFrame) and the longest pause between frames. Works standing still, no driving needed.
   let benchBtn = null;
-  async function runBench() {
+  async function runBench(target) {
     if (!window.map || !mapCamera || window.__benchActive) return;
-    if (window.GMapMode && window.GMapMode.isOpen()) window.GMapMode.close();   // measure OUR map
+    // target "google" (v3.10.79): measure the Google map that is open (its 3D / GPU camera); otherwise OUR map
+    const google = target === "google" && window.GMapMode && window.GMapMode.isOpen();
+    if (!google && window.GMapMode && window.GMapMode.isOpen()) window.GMapMode.close();
     window.__benchActive = true;
     const realSetFix = mapCamera.setFix.bind(mapCamera);
     mapCamera.setFix = () => {};   // real GPS fixes wait until the test ends
@@ -2357,13 +2359,14 @@ function initRemoteSession() {
     try { setFollowCarMode(true); mapCamera.setMode("heading-up"); } catch (_) {}
     const start = Object.assign({}, currentPos || { lat: 41.7151, lng: 44.8271 });
     const speedMs = 8, turnDegS = 36, R = speedMs / (turnDegS * Math.PI / 180);   // ~12.7 m radius
-    const r0 = window.__renderCount || 0, t0 = performance.now();
+    const r0 = window.__renderCount || 0, t0 = performance.now(), cam0 = google ? window.GMapMode.camMoves() : 0;
     let frames = 0, maxGap = 0, lastTs = t0, fixTimer = null;
     const feed = () => {
       const t = (performance.now() - t0) / 1000, hdg = (t * turnDegS) % 360;
       const a = (hdg - 90) * Math.PI / 180;   // centre of the circle is to the right of the car
       const dLat = (R * Math.sin(a)) / 111320, dLng = (R * Math.cos(a)) / (111320 * Math.cos(start.lat * Math.PI / 180));
       realSetFix({ lng: start.lng + dLng, lat: start.lat + dLat, headingDeg: hdg, speedMs });
+      window.__carFix = { lng: start.lng + dLng, lat: start.lat + dLat, headingDeg: hdg, speedMs };   // Google mode follows this
     };
     feed();
     fixTimer = setInterval(feed, 1000);   // GPS rate: 1 fix per second, the camera smooths in between
@@ -2378,13 +2381,13 @@ function initRemoteSession() {
     });
     clearInterval(fixTimer);
     const secs = (performance.now() - t0) / 1000;
-    const res = { mapFps: ((window.__renderCount || 0) - r0) / secs, uiFps: frames / secs, maxPauseMs: maxGap,
+    const res = { mapFps: google ? (window.GMapMode.camMoves() - cam0) / secs : ((window.__renderCount || 0) - r0) / secs, uiFps: frames / secs, maxPauseMs: maxGap, map: google ? "google " + (window.GMapMode.isVector() ? "3D" : "classic") + (window.GMapMode.gpuOn() ? " gpu" : "") : "ours",
       look: (window.__mapLight ? "lite" : "full") + " " + (((map.getStyle() || {}).layers || []).length) + "L" + (window.__camMode ? " cam " + window.__camMode : "") };
     window.__benchLast = res;
     mapCamera.setFix = realSetFix;
     try { if (!wasFollowing) setFollowCarMode(false); } catch (_) {}
     window.__benchActive = false;
-    const txt = "map " + res.mapFps.toFixed(1) + "/s · ეკრანი " + res.uiFps.toFixed(0) + " fps · max გაჭედვა " + Math.round(res.maxPauseMs) + " ms";
+    const txt = (google ? "Google " + (window.GMapMode.isVector() ? "3D" : "classic") + ": კამერა " : "ჩვენი: map ") + res.mapFps.toFixed(1) + "/s · ეკრანი " + res.uiFps.toFixed(0) + " fps · max გაჭედვა " + Math.round(res.maxPauseMs) + " ms";
     if (benchBtn) benchBtn.textContent = "▶ ბრუნვის ტესტი (10 წმ) · ბოლო: " + txt;
     showToast("🔄 ბრუნვის ტესტი: " + txt, "info", 8000);
     return res;
@@ -2401,7 +2404,7 @@ function initRemoteSession() {
       benchBtn.type = "button";
       benchBtn.textContent = "▶ ბრუნვის ტესტი (10 წმ)" + (window.__benchLast ? " · ბოლო: map " + window.__benchLast.mapFps.toFixed(1) + "/s" : "");
       benchBtn.style.cssText = "position:fixed;left:8px;bottom:120px;z-index:99999;min-height:44px;padding:8px 14px;border-radius:10px;border:1px solid #7CFC7C;background:rgba(0,0,0,.85);color:#7CFC7C;font:600 14px sans-serif;";
-      benchBtn.addEventListener("click", (e) => { e.stopPropagation(); runBench(); });
+      benchBtn.addEventListener("click", (e) => { e.stopPropagation(); runBench(window.GMapMode && window.GMapMode.isOpen() ? "google" : "ours"); });   // measures the map that is open
       document.body.appendChild(benchBtn);
       timer = setInterval(render, 250);
     } else if (!on && el) {

@@ -79,7 +79,7 @@ ok(G.warnText({ sku: 'mapload', month: 6400, monthCap: 8000 }) === 'Google-áƒ˜áƒ
   m.tick(0); for (let t = 100; t <= 1000; t += 100) { const v = m.tick(t); if (v != null) out = v; }
   ok(out != null && Math.abs(out - 10) < 0.01, 'fps meter: 10 frames in 1 s -> 10 fps');
 }
-ok(/S\.vector \? 100 : 50/.test(src) && /gfps=/.test(src), '3D map moves the camera at 10 fps (classic 20), ?gfps=N overrides');
+ok(/S\.vector \? \(S\.gpuOn \? 16 : 100\) : 50/.test(src) && /gfps=/.test(src), '3D map moves the camera at 10 fps (classic 20; 60 with the GPU camera, v3.10.79), ?gfps=N overrides');
 ok(G.scaledBoxStyle(0) === 'position:absolute;inset:0' && G.scaledBoxStyle(1) === 'position:absolute;inset:0', 'gscale off: the map fills the screen at full resolution');
 ok(/width:75%;height:75%;transform:scale\(1\.3333\)/.test(G.scaledBoxStyle(0.75)), 'gscale 0.75: 75% box stretched x1.333 back to full screen');
 {
@@ -155,7 +155,7 @@ ok(/GOOGLE_MAPS_KEY/.test(srv) && !/PUBLIC_AUTH_PATHS[^;]*gmaps-config/.test(srv
 {
   const appSrc = fs.readFileSync(__dirname + '/../app.js', 'utf8');
   const used = [...new Set([...appSrc.matchAll(/GMapMode\.(\w+)/g)].map((m) => m[1]))].sort();
-  ok(JSON.stringify(used) === JSON.stringify(['close', 'focusPlace', 'isEnabled', 'isOpen', 'openWithDestination', 'openWithQuery']), 'app.js only opens Google mode (text / our destination or charger in; isOpen is a yes/no; close only closes it), never reads Google data back: ' + used.join(', '));
+  ok(JSON.stringify(used) === JSON.stringify(['camMoves', 'close', 'focusPlace', 'gpuOn', 'isEnabled', 'isOpen', 'isVector', 'openWithDestination', 'openWithQuery']), 'app.js only opens Google mode (text / our destination or charger in; isOpen/isVector/gpuOn are yes/no, camMoves our own counter; close only closes it), never reads Google data back: ' + used.join(', '));
   ok(typeof G.openWithQuery === 'function' && typeof G.openWithDestination === 'function' && typeof G.isEnabled === 'function', 'gmap.js exports the two shortcuts and isEnabled');
   const owq = src.slice(src.indexOf('async function openWithQuery'), src.indexOf('async function openWithDestination'));
   const owd = src.slice(src.indexOf('async function openWithDestination'), src.indexOf('// ---------- open / close'));
@@ -185,6 +185,22 @@ ok(/GOOGLE_MAPS_KEY/.test(srv) && !/PUBLIC_AUTH_PATHS[^;]*gmaps-config/.test(srv
   const cm = src.slice(src.indexOf("function createMap"), src.indexOf("function applyTraffic"));
   ok(cm.includes("if (S.maps[key]) {") && !cm.includes("box.textContent = \"\"") && src.includes("const kept = S.maps && S.maps[mapKey(") && src.includes("if (!kept) { try { await permit(\"mapload\")"), "v3.10.59: 3D / night toggles reuse the kept map (at most 3 maps = bounded WebGL contexts, no extra map loads)");
   ok(G.mapKey(false, true) === "raster" && G.mapKey(true, false) === "vector-light" && G.mapKey(true, true) === "vector-dark", "v3.10.59: one map per look (raster night is a style, not a new map)");
+  // v3.10.79: GPU camera on the Google 3D map (?gcam=gpu)
+  {
+    const prev = { t: 0, heading: 0, center: { lat: 41.7, lng: 44.8 } };
+    const view = { zoom: 16, w: 1160, h: 900, hVis: 600 };
+    ok(G.gpuPlan(null, { t: 0, heading: 0, pos: prev.center }, view, {}).draw === true, "v3.10.79: first frame moves Google's camera");
+    const p = G.gpuPlan(prev, { t: 100, heading: 5, pos: { lat: 41.7, lng: 44.8 } }, view, {});
+    ok(!p.draw && p.theta === -5 && p.ox === 580 && p.oy === 600 && Math.abs(p.tx) < 1e-9 && Math.abs(p.ty - 150) < 1e-9, "v3.10.79: 100 ms / 5 deg later the drawn picture is turned back 5 deg around the car (shown 25% below the centre)");
+    const mpp = 156543.03392 * Math.cos(41.7 * Math.PI / 180) / Math.pow(2, 16);
+    const north = G.gpuPlan(prev, { t: 100, heading: 0, pos: { lat: 41.7 + 10 * mpp / 111320, lng: 44.8 } }, view, {});
+    ok(Math.abs(north.ty - 160) < 0.01 && Math.abs(north.tx) < 0.01, "v3.10.79: the car 10 px further north (heading 0) -> the picture moves 10 px down");
+    ok(G.gpuPlan(prev, { t: 260, heading: 1, pos: prev.center }, view, {}).draw && G.gpuPlan(prev, { t: 50, heading: 13, pos: prev.center }, view, {}).draw, "v3.10.79: Google redraws after 250 ms or a 12+ deg turn");
+    ok(src.includes('S.gpuOn = /[?&]gcam=gpu/.test(q)') && src.includes("if (!S.follow) { S.lastCam = null; gpuReset(); return; }") && /S\.open = false;\n\s*gpuReset\(\);/.test(src), "v3.10.79: only with ?gcam=gpu; panning by hand and closing undo the transform");
+    const css = fs.readFileSync(__dirname + "/../style.css", "utf8");
+    ok(/body\.gcam-gpu #gmap-canvas \.gm-style div:has\(> a\[href\*="maps\.google\.com\/maps"\]\) \{ left: calc\(16\.67%/.test(css) && /div:has\(> \.gm-style-cc\)/.test(css), "v3.10.79: Google's logo and credit are brought back into view on the oversized map (Google terms)");
+    ok(src.includes("function gpuLogo(el, theta)") && src.includes('"rotate(" + (-theta).toFixed(2) + "deg)"'), "v3.10.79: the logo is kept upright while the picture turns");
+  }
   // v3.10.77: the Google map is the main map
   ok(G.mainMapIsGoogle("") === true && G.mainMapIsGoogle("?debug=1") === true, "v3.10.77: by default the app opens on the Google map");
   ok(G.mainMapIsGoogle("?map=ours") === false && G.mainMapIsGoogle("?debug=1&map=lite") === false, "v3.10.77: ?map=ours / ?map=lite open our map");

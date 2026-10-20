@@ -2288,3 +2288,10 @@ body.gmap-open #gmap-nav { top: 60px; }
 /* v3.10.78 GPU camera (?cam=gpu): the map container is 1.5x the screen and centred, so the picture the compositor turns
    between real map draws never shows its corners (the follow camera moves the car up by the same factor). */
 body.cam-gpu #map { inset: auto; left: -25%; top: -25%; width: 150%; height: 150%; will-change: transform; }
+
+/* v3.10.79 GPU camera on the Google 3D map (?gcam=gpu): the vector map div is 150% of the screen (left/top -25%), so Google
+   places its logo and data credit outside the visible part: bring them back into view (the logo is moved, never hidden or
+   altered; gmap.js keeps it upright while the picture turns). 16.67% = the hidden margin of the oversized div. */
+body.gcam-gpu #gmap-canvas .gm-style div:has(> a[href*="maps.google.com/maps"]) { left: calc(16.67% + 6px) !important; bottom: calc(16.67% + 6px) !important; }
+body.gcam-gpu #gmap-canvas .gm-style div:has(> .gm-style-cc) { right: calc(16.67% + 4px) !important; bottom: calc(16.67% + 2px) !important; }
+#gmap-gpu-car { position: absolute; left: 50%; top: 75%; width: 34px; height: 34px; margin: -17px 0 0 -17px; z-index: 3; pointer-events: none; filter: drop-shadow(0 2px 4px rgba(0,0,0,.5)); }
