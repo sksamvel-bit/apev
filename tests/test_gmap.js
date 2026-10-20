@@ -182,4 +182,7 @@ ok(/GOOGLE_MAPS_KEY/.test(srv) && !/PUBLIC_AUTH_PATHS[^;]*gmaps-config/.test(srv
   ok(JSON.stringify(G.SIDE_PROXIES.map((p) => p.target)) === JSON.stringify(["btn-chargers-list", "btn-toggle-cameras", "btn-toggle-voice", "btn-remote-phone", "btn-settings"]) && src.includes("b.dataset.cat = cat.id") && !src.includes("b.className = \"gmap-chip\""), "v3.10.56: ⚡ moved to the side panel, with the list, cameras, phone and settings of the main dock");
   const appSrc = fs.readFileSync(__dirname + "/../app.js", "utf8");
   ok(appSrc.includes("window.GMapMode.focusPlace({") && appSrc.includes("GMapMode.isOpen()) { window.GMapMode.openWithDestination") && css.includes("body.gmap-open #chargers-drawer { z-index: 950; }"), "v3.10.56: the charger list works over the Google map (tap = Google card, მარშრუტი = Google route)");
+  const cm = src.slice(src.indexOf("function createMap"), src.indexOf("function applyTraffic"));
+  ok(cm.includes("if (S.maps[key]) {") && !cm.includes("box.textContent = \"\"") && src.includes("const kept = S.maps && S.maps[mapKey(") && src.includes("if (!kept) { try { await permit(\"mapload\")"), "v3.10.59: 3D / night toggles reuse the kept map (at most 3 maps = bounded WebGL contexts, no extra map loads)");
+  ok(G.mapKey(false, true) === "raster" && G.mapKey(true, false) === "vector-light" && G.mapKey(true, true) === "vector-dark", "v3.10.59: one map per look (raster night is a style, not a new map)");
 }

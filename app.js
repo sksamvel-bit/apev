@@ -135,7 +135,7 @@ function initClock() {
 const OFM_STYLE_URL = "https://tiles.openfreemap.org/styles/liberty";
 const OFM_STYLE_CACHE_KEY = "tesla_nav_ofm_style_v1";
 const MAP_STYLE_KEYS = ["openfreemap", "google-roads"];
-const APP_VERSION = "3.10.58";
+const APP_VERSION = "3.10.59";
 const MAP_DEFAULT_ZOOM = 16;      // MapLibre zoom (Leaflet-equivalent 17)
 // Performance experiments (all default to the normal behaviour): ?labels=0 hides the base-map labels/icons, ?markers=0 skips the
 // charger DOM markers, ?pitch=N sets the heading-up tilt (0-60). Used to find what makes the car's browser slow.
@@ -914,6 +914,11 @@ async function fetchWeatherForPos(lat, lng) {
   if (data) {
     document.getElementById("weather-icon").textContent = data.icon;
     document.getElementById("weather-temp").textContent = `${data.temp}°C`;
+    // v3.10.59: rain / snow within 2 hours, road ice at +3 °C or below (once per episode; the toast shows in Google mode too)
+    for (const a of weatherEngine.alertsFor(data)) {
+      showToast((a.kind === "rain" ? "🌧️ " : a.kind === "snow" ? "🌨️ " : "🧊 ") + a.text.replace(/^ყურადღება, /, ""), "info", 6000);
+      if (speechAssistant) speechAssistant.speak(a.text);
+    }
   }
 }
 

@@ -411,20 +411,43 @@
     return o;
   }
 
+  /** One map per look: classic, vector light, vector dark (a vector map's colour scheme is fixed when it is created). */
+  function mapKey(vector, night) { return vector ? (night ? "vector-dark" : "vector-light") : "raster"; }
+
+  /**
+   * Shows the map for the current look. v3.10.59: a map made once is kept and shown again (Antigravity's review: a new
+   * google.maps.Map per 3D / night toggle left the old WebGL context alive and Chromium caps them at ~8-16, and every new
+   * map is a billed map load). So at most 3 maps exist, and toggling back costs nothing.
+   */
   function createMap(view) {
     const { Map, TrafficLayer } = S.g.maps;
     const box = $("gmap-canvas");
-    const el = document.createElement("div");   // a fresh element per map: a Map ID cannot be added to an existing map
-    el.style.cssText = scaledBoxStyle(S.gscale);
-    box.textContent = "";
-    box.appendChild(el);
     S.night = !!window.__night;
-    S.map = new Map(el, mapOptions(S.vector, S.night, view || { center: currentCenter(), zoom: 16 }));
+    const key = mapKey(S.vector, S.night);
+    const v = view || { center: currentCenter(), zoom: 16 };
+    S.maps = S.maps || {};
+    // the overlays live on one map at a time: take them off the one we leave
+    if (S.carMarker) S.carMarker.setMap(null);
+    if (S.traffic) S.traffic.setMap(null);
+    Object.keys(S.maps).forEach((k) => { S.maps[k].el.style.display = k === key ? "" : "none"; });
+    if (S.maps[key]) {
+      S.map = S.maps[key].map;
+      S.maps[key].el.style.display = "";
+      S.map.setCenter(v.center);
+      if (v.zoom) S.map.setZoom(v.zoom);
+      if (S.vector && isFinite(v.heading)) S.map.setHeading(v.heading);
+    } else {
+      const el = document.createElement("div");   // a fresh element per map: a Map ID cannot be added to an existing map
+      el.style.cssText = scaledBoxStyle(S.gscale);
+      box.appendChild(el);
+      S.map = new Map(el, mapOptions(S.vector, S.night, v));
+      S.maps[key] = { map: S.map, el };
+      S.map.addListener("dragstart", () => { S.follow = false; $("gmap-btn-me") && $("gmap-btn-me").classList.remove("active"); });
+    }
     S.carMarker = null; S.carRot = null; S.lastMarker = null; S.lastCam = null;
     S.traffic = new TrafficLayer();
     try { S.trafficOn = localStorage.getItem("gmapTraffic") !== "0"; } catch (_) { S.trafficOn = true; }
     applyTraffic();
-    S.map.addListener("dragstart", () => { S.follow = false; $("gmap-btn-me") && $("gmap-btn-me").classList.remove("active"); });
   }
 
   function applyTraffic() {
@@ -438,7 +461,8 @@
   async function rebuildMap(onDenied) {
     if (!S.map || S.rebuilding) return;
     S.rebuilding = true;
-    try { await permit("mapload"); } catch (_) { S.rebuilding = false; if (onDenied) onDenied(); return; }
+    const kept = S.maps && S.maps[mapKey(S.vector, !!window.__night)];   // showing a kept map again is not a new map load
+    if (!kept) { try { await permit("mapload"); } catch (_) { S.rebuilding = false; if (onDenied) onDenied(); return; } }
     S.rebuilding = false;
     if (!S.map) return;
     const c = S.map.getCenter();
@@ -1114,7 +1138,7 @@
     if (btn) btn.hidden = !S.enabled;
   }
 
-  const api = { init, open, close, isOpen: () => S.open, isEnabled: () => S.enabled, openWithQuery, openWithDestination, focusPlace, SIDE_PROXIES, distToPolylineM, nearestOnPolyline, createOffRouteTracker, createVoiceCues, nearestChargers, createCarGlide, aheadPoint, mapOptions, cameraNeedsUpdate, createFpsMeter, scaledBoxStyle, capText, warnText, decodePolyline, parseRoutesResponse, routesRequestBody, nextStepIndex, fmtDist, buildLoaderUrl, createDebouncer, osrmUrl, summarizeRoute, mapStyles, bearing, meters, CATEGORIES };
+  const api = { init, open, close, isOpen: () => S.open, isEnabled: () => S.enabled, openWithQuery, openWithDestination, focusPlace, SIDE_PROXIES, mapKey, distToPolylineM, nearestOnPolyline, createOffRouteTracker, createVoiceCues, nearestChargers, createCarGlide, aheadPoint, mapOptions, cameraNeedsUpdate, createFpsMeter, scaledBoxStyle, capText, warnText, decodePolyline, parseRoutesResponse, routesRequestBody, nextStepIndex, fmtDist, buildLoaderUrl, createDebouncer, osrmUrl, summarizeRoute, mapStyles, bearing, meters, CATEGORIES };
   if (typeof document !== "undefined") {
     if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", () => init());
     else init();
