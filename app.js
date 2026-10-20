@@ -135,7 +135,7 @@ function initClock() {
 const OFM_STYLE_URL = "https://tiles.openfreemap.org/styles/liberty";
 const OFM_STYLE_CACHE_KEY = "tesla_nav_ofm_style_v1";
 const MAP_STYLE_KEYS = ["openfreemap", "google-roads"];
-const APP_VERSION = "3.10.55";
+const APP_VERSION = "3.10.56";
 const MAP_DEFAULT_ZOOM = 16;      // MapLibre zoom (Leaflet-equivalent 17)
 // Performance experiments (all default to the normal behaviour): ?labels=0 hides the base-map labels/icons, ?markers=0 skips the
 // charger DOM markers, ?pitch=N sets the heading-up tilt (0-60). Used to find what makes the car's browser slow.
@@ -656,6 +656,8 @@ function initSubsystems() {
   try { trafficEngine = new TrafficEngine(map, true); window.trafficEngine = trafficEngine; } catch (e) { console.warn("trafficEngine init notice:", e); }
   try {
     chargersEngine = new ChargersEngine(map, (chargerData) => {
+      // "მარშრუტი" from the list while Google mode is open: the traffic route is built there, not on the hidden map
+      if (window.GMapMode && window.GMapMode.isOpen()) { window.GMapMode.openWithDestination({ lat: chargerData.lat, lng: chargerData.lng, name: chargerData.name || "EV დამტენი", address: chargerData.address || "" }); return; }
       prepareRoutePreview(chargerData, chargerData.name || "EV დამტენი სადგური", chargerData.address || "ელექტრომობილის დამტენი");
     }, false);   // map markers are OFF by default: chargers live in the list drawer (dock button); the bolt button still shows them on the map
     window.chargersEngine = chargersEngine;
@@ -1935,7 +1937,10 @@ function initEventListeners() {
   const btnChargersList = document.getElementById("btn-chargers-list");
   if (btnChargersList && window.ChargerList && chargersEngine) {
     const drawer = new window.ChargerList.ChargerDrawer(chargersEngine, () => currentPos, {
-      onFocus: (st) => { try { setFollowCarMode(false); map.easeTo({ center: [st.lon, st.lat], duration: 400 }); scheduleFollowResume(); } catch (_) {} }
+      onFocus: (st) => {
+        // in Google mode the list sits over the Google map: open the station there (our data on the Google map is fine)
+        if (window.GMapMode && window.GMapMode.isOpen() && window.GMapMode.focusPlace({ name: st.name || "EV დამტენი", address: [st.operator, st.power, st.price].filter(Boolean).join(" · "), lat: st.lat, lng: st.lon })) return;
+        try { setFollowCarMode(false); map.easeTo({ center: [st.lon, st.lat], duration: 400 }); scheduleFollowResume(); } catch (_) {} }
     });
     btnChargersList.addEventListener("click", () => btnChargersList.classList.toggle("active", drawer.toggle()));
     drawer.el && drawer.el.querySelector(".cd-close").addEventListener("click", () => btnChargersList.classList.remove("active"));
@@ -2189,7 +2194,7 @@ function initRemoteSession() {
         const latlng = { lat: parseFloat(payload.lat), lng: parseFloat(payload.lng) };
         if (!isFinite(latlng.lat) || !isFinite(latlng.lng) || Math.abs(latlng.lat) > 90 || Math.abs(latlng.lng) > 180) return;
         // a shared Google Maps link opens in Google mode (Google places stay on the Google map); our map when it is off
-        if (payload.source === "gmaps" && window.GMapMode && window.GMapMode.isEnabled()) {
+        if ((payload.source === "gmaps" || (window.GMapMode && window.GMapMode.isOpen())) && window.GMapMode && window.GMapMode.isEnabled()) {
           const name = String(payload.name || "").slice(0, 120);
           window.GMapMode.openWithDestination({ lat: latlng.lat, lng: latlng.lng, name, address: String(payload.fullName || "").slice(0, 200) })
             .then((ok) => { if (!ok) prepareRoutePreview(latlng, name, name); })

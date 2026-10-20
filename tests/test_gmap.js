@@ -155,7 +155,7 @@ ok(/GOOGLE_MAPS_KEY/.test(srv) && !/PUBLIC_AUTH_PATHS[^;]*gmaps-config/.test(srv
 {
   const appSrc = fs.readFileSync(__dirname + '/../app.js', 'utf8');
   const used = [...new Set([...appSrc.matchAll(/GMapMode\.(\w+)/g)].map((m) => m[1]))].sort();
-  ok(JSON.stringify(used) === JSON.stringify(['isEnabled', 'openWithDestination', 'openWithQuery']), 'app.js only opens Google mode (text / our destination in), never reads Google data back: ' + used.join(', '));
+  ok(JSON.stringify(used) === JSON.stringify(['focusPlace', 'isEnabled', 'isOpen', 'openWithDestination', 'openWithQuery']), 'app.js only opens Google mode (text / our destination or charger in; isOpen is a yes/no), never reads Google data back: ' + used.join(', '));
   ok(typeof G.openWithQuery === 'function' && typeof G.openWithDestination === 'function' && typeof G.isEnabled === 'function', 'gmap.js exports the two shortcuts and isEnabled');
   const owq = src.slice(src.indexOf('async function openWithQuery'), src.indexOf('async function openWithDestination'));
   const owd = src.slice(src.indexOf('async function openWithDestination'), src.indexOf('// ---------- open / close'));
@@ -179,4 +179,7 @@ ok(/GOOGLE_MAPS_KEY/.test(srv) && !/PUBLIC_AUTH_PATHS[^;]*gmaps-config/.test(srv
   ok(css.includes('body.gmap-open .car-hud-stats { z-index: 950; bottom: 72px; }') && !css.includes('body.gmap-open #route-preview-card, body.gmap-open .car-hud-stats'), 'speed + limit badge stay visible in Google mode, above the map (z 950 > 900) and clear of the Google logo');
   ok(css.includes("body.gmap-open .top-bar { z-index: 950; }") && !/body.gmap-open .top-bar,/.test(css) && css.includes("body.gmap-open .top-bar .search-container { display: none; }"), "v3.10.55: weather, battery and clock stay on top in Google mode, our search gives way to the Google one");
   ok(src.includes("dockSearch(true)") && src.includes("dockSearch(false)") && src.includes("bar.insertBefore(top"), "v3.10.55: the Google search moves into the top bar on open and back on close");
+  ok(JSON.stringify(G.SIDE_PROXIES.map((p) => p.target)) === JSON.stringify(["btn-chargers-list", "btn-toggle-cameras", "btn-remote-phone", "btn-settings"]) && src.includes("b.dataset.cat = cat.id") && !src.includes("b.className = \"gmap-chip\""), "v3.10.56: ⚡ moved to the side panel, with the list, cameras, phone and settings of the main dock");
+  const appSrc = fs.readFileSync(__dirname + "/../app.js", "utf8");
+  ok(appSrc.includes("window.GMapMode.focusPlace({") && appSrc.includes("GMapMode.isOpen()) { window.GMapMode.openWithDestination") && css.includes("body.gmap-open #chargers-drawer { z-index: 950; }"), "v3.10.56: the charger list works over the Google map (tap = Google card, მარშრუტი = Google route)");
 }

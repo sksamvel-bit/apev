@@ -25,6 +25,14 @@
     { id: "ev", label: "⚡ დამუხტვა", type: "electric_vehicle_charging_station" } // fuel/food/parking removed at Samvel's request (v3.10.34)
   ];
 
+  /** Main dock buttons repeated on the Google side panel (v3.10.56): our data and our settings, never Google data on our map. */
+  const SIDE_PROXIES = [
+    { icon: "📋", title: "დამტენების სია", target: "btn-chargers-list", activeClass: "active" },
+    { icon: "📷", title: "სიჩქარის კამერები", target: "btn-toggle-cameras", activeClass: "signals-active" },
+    { icon: "📱", title: "ტელეფონით მართვა", target: "btn-remote-phone" },
+    { icon: "⚙️", title: "პარამეტრები", target: "btn-settings" }
+  ];
+
   // ---------- pure helpers (unit-tested) ----------
   function buildLoaderUrl(key, callbackName) {
     return "https://maps.googleapis.com/maps/api/js?key=" + encodeURIComponent(key) +
@@ -915,7 +923,7 @@
     S.catMarkers.forEach((m) => m.setMap(null));
     S.catMarkers = [];
     S.activeCat = null;
-    document.querySelectorAll("#gmap-layer .gmap-chip").forEach((b) => b.classList.remove("active"));
+    document.querySelectorAll("#gmap-layer [data-cat]").forEach((b) => b.classList.remove("active"));
   }
 
   /** ⚡ chip (v3.10.51): our own charger database (570 stations with tariffs, free) instead of Google Nearby Search
@@ -954,6 +962,13 @@
     if (!S.open || !S.map) return false;
     showPlace({ name: dest.name || "დანიშნულების ადგილი", address: dest.address || "", loc: { lat: dest.lat, lng: dest.lng } });
     await routeToPlace();
+    return true;
+  }
+
+  /** A place from our own data (charger list, phone) shown on the Google map with its card; Google mode must be open. */
+  function focusPlace(p) {
+    if (!S.open || !S.map || !p || !isFinite(p.lat) || !isFinite(p.lng)) return false;
+    showPlace({ name: p.name || "ადგილი", address: p.address || "", loc: { lat: +p.lat, lng: +p.lng } });
     return true;
   }
 
@@ -1050,15 +1065,28 @@
       input.addEventListener("keydown", (e) => { if (e.key === "Enter") { deb.cancel(); suggest(input.value); } });
     }
     on("gmap-search-clear", "click", () => { if (input) input.value = ""; clearResults(); closeCard(); });
-    const chips = $("gmap-chips");
-    if (chips) {
-      CATEGORIES.forEach((cat) => {
+    // v3.10.56: the side panel holds what the main dock has: ⚡ chargers (was a chip under the search), then the main dock
+    // buttons that make sense over the Google map (they click the same main button, so the logic and state stay one).
+    const side = document.querySelector(".gmap-side"), closeBtn = $("gmap-btn-close");
+    if (side) {
+      const add = (icon, title, fn) => {
         const b = document.createElement("button");
         b.type = "button";
-        b.className = "gmap-chip";
-        b.textContent = cat.label;
-        b.addEventListener("click", () => { if (S.map) toggleCategory(cat, b); });
-        chips.appendChild(b);
+        b.className = "gmap-btn";
+        b.title = title;
+        b.textContent = icon;
+        b.addEventListener("click", (e) => { e.stopPropagation(); fn(b); });
+        side.insertBefore(b, closeBtn || null);
+        return b;
+      };
+      CATEGORIES.forEach((cat) => { const b = add(cat.label.split(" ")[0], cat.label.split(" ").slice(1).join(" ") || cat.label, () => { if (S.map) toggleCategory(cat, b); }); b.dataset.cat = cat.id; });
+      SIDE_PROXIES.forEach((p) => {
+        const main = $(p.target);
+        if (!main) return;
+        const b = add(p.icon, p.title, () => { main.click(); mirror(); });
+        const mirror = () => b.classList.toggle("active", !!p.activeClass && main.classList.contains(p.activeClass));
+        mirror();
+        if (typeof MutationObserver !== "undefined" && p.activeClass) new MutationObserver(mirror).observe(main, { attributes: true, attributeFilter: ["class"] });
       });
     }
   }
@@ -1081,7 +1109,7 @@
     if (btn) btn.hidden = !S.enabled;
   }
 
-  const api = { init, open, close, isOpen: () => S.open, isEnabled: () => S.enabled, openWithQuery, openWithDestination, distToPolylineM, nearestOnPolyline, createOffRouteTracker, createVoiceCues, nearestChargers, createCarGlide, aheadPoint, mapOptions, cameraNeedsUpdate, createFpsMeter, scaledBoxStyle, capText, warnText, decodePolyline, parseRoutesResponse, routesRequestBody, nextStepIndex, fmtDist, buildLoaderUrl, createDebouncer, osrmUrl, summarizeRoute, mapStyles, bearing, meters, CATEGORIES };
+  const api = { init, open, close, isOpen: () => S.open, isEnabled: () => S.enabled, openWithQuery, openWithDestination, focusPlace, SIDE_PROXIES, distToPolylineM, nearestOnPolyline, createOffRouteTracker, createVoiceCues, nearestChargers, createCarGlide, aheadPoint, mapOptions, cameraNeedsUpdate, createFpsMeter, scaledBoxStyle, capText, warnText, decodePolyline, parseRoutesResponse, routesRequestBody, nextStepIndex, fmtDist, buildLoaderUrl, createDebouncer, osrmUrl, summarizeRoute, mapStyles, bearing, meters, CATEGORIES };
   if (typeof document !== "undefined") {
     if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", () => init());
     else init();

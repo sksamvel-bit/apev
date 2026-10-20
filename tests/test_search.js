@@ -152,7 +152,7 @@ test("server + phone: /api/maps-link resolves only goo.gl redirects, the car ope
   const remote = fs.readFileSync(__dirname + "/../remote.html", "utf8");
   assert.ok(remote.includes("/api/maps-link?url=") && remote.includes("source: 'gmaps'"), "the phone resolves the link and marks it");
   const app = fs.readFileSync(__dirname + "/../app.js", "utf8");
-  assert.ok(app.includes('payload.source === "gmaps" && window.GMapMode && window.GMapMode.isEnabled()'), "the car opens a Google link in Google mode");
+  assert.ok(app.includes('payload.source === "gmaps" || (window.GMapMode && window.GMapMode.isOpen())'), "the car opens a Google link (or anything while Google mode is open) in Google mode");
 });
 
 console.log("\n" + passed + " search tests passed" + (process.exitCode ? " - WITH FAILURES" : ""));
