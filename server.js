@@ -644,6 +644,52 @@ function photonFetch(q, bias, key, cached, resolve) {
   req.on('timeout', () => { req.destroy(); resolve(cached ? cached.data : []); });
 }
 
+// Google Maps share links from the phone (v3.10.53). A short link (maps.app.goo.gl) is resolved by reading only its redirect
+// Location header (no Google page is downloaded, no Google API is called); the coordinates come from the URL itself.
+// A link that holds only a place name falls back to our Nominatim search.
+const mapsLinkCache = new Map();
+function resolveShortMapsLink(link, hops) {
+  return new Promise((resolve) => {
+    let u;
+    try { u = new URL(link); } catch (_) { return resolve(''); }
+    if (SearchUtil.mapsLinkKind(u.href) !== 'short' || hops > 4) return resolve('');
+    const req = https.request({ method: 'GET', hostname: u.hostname, path: u.pathname + u.search, timeout: 5000,
+      headers: { 'User-Agent': 'TeslaNav/3.10 (+https://apev.onrender.com)' } }, (res) => {
+      res.resume();   // only the redirect header is used; the body is never read
+      const loc = res.headers.location;
+      if (res.statusCode < 300 || res.statusCode >= 400 || !loc) return resolve('');
+      const next = new URL(loc, u).href;
+      const kind = SearchUtil.mapsLinkKind(next);
+      if (kind === 'full') return resolve(next);
+      if (kind === 'short') return resolveShortMapsLink(next, hops + 1).then(resolve);
+      resolve('');
+    });
+    req.on('error', () => resolve(''));
+    req.on('timeout', () => { req.destroy(); resolve(''); });
+    req.end();
+  });
+}
+async function resolveMapsLink(text, bias) {
+  const link = SearchUtil.extractUrl(text);
+  const kind = SearchUtil.mapsLinkKind(link);
+  if (!kind) return { error: 'not_maps_link' };
+  const cached = mapsLinkCache.get(link);
+  if (cached && Date.now() - cached.t < SEARCH_CACHE_TTL) return cached.data;
+  const full = kind === 'full' ? link : await resolveShortMapsLink(link, 0);
+  const p = full ? SearchUtil.parseMapsUrl(full) : null;
+  let data;
+  if (p && p.lat != null) data = { name: p.name || 'Google Maps-ის ადგილი', lat: p.lat, lng: p.lng, approx: false };
+  else if (p && p.name) {
+    const r = (await searchNominatimProxy(p.name, bias))[0];
+    data = r ? { name: p.name, lat: parseFloat(r.lat), lng: parseFloat(r.lon), approx: true, address: r.display_name } : { error: 'not_found', name: p.name };
+  } else data = { error: full ? 'no_place' : 'unresolved' };
+  if (!data.error || data.error === 'not_found') {
+    mapsLinkCache.set(link, { t: Date.now(), data });
+    if (mapsLinkCache.size > 200) mapsLinkCache.delete(mapsLinkCache.keys().next().value);
+  }
+  return data;
+}
+
 function searchNominatimProxy(query, bias) {
   return new Promise((resolve) => {
     // the result depends on the bias area, so it is part of the cache key (rounded to ~10 km)
@@ -1105,6 +1151,17 @@ const server = http.createServer((req, res) => {
   }
 
   // API Endpoint: /api/suggest?q=&lat=&lon= - Photon typeahead (behind the PIN gate like /api/search); [] on any problem.
+  // API Endpoint: /api/maps-link?url=&lat=&lon= - a shared Google Maps link -> { name, lat, lng } (behind the PIN gate)
+  if (pathname === '/api/maps-link') {
+    const link = (urlObj.searchParams.get('url') || '').trim().slice(0, 1000);
+    const send = (code, obj) => { res.writeHead(code, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' }); res.end(JSON.stringify(obj)); };
+    if (suggestRateLimited(clientIp(req))) return send(429, { error: 'rate_limited' });
+    const bLat = parseFloat(urlObj.searchParams.get('lat')), bLon = parseFloat(urlObj.searchParams.get('lon'));
+    const bias = (Math.abs(bLat) <= 90 && Math.abs(bLon) <= 180) ? { lat: bLat, lon: bLon } : null;
+    resolveMapsLink(link, bias).then((d) => send(d.error && d.error !== 'not_found' ? 400 : 200, d)).catch(() => send(500, { error: 'failed' }));
+    return;
+  }
+
   if (pathname === '/api/suggest') {
     const q = (urlObj.searchParams.get('q') || '').trim().slice(0, 200);
     const sendRows = (code, rows) => { res.writeHead(code, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' }); res.end(JSON.stringify(rows)); };

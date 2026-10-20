@@ -227,6 +227,23 @@
       font-weight: 700;
       flex-shrink: 0;
     }
+    .paste-link-btn {
+      width: 100%;
+      margin-top: 10px;
+      padding: 10px 12px;
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px dashed rgba(255, 255, 255, 0.18);
+      border-radius: 12px;
+      color: var(--text-main, #fff);
+      font-size: 0.85rem;
+      font-weight: 600;
+    }
+    .paste-hint {
+      font-size: 0.72rem;
+      color: var(--text-muted);
+      margin-top: 6px;
+      text-align: center;
+    }
     .gps-toggle-row {
       display: flex;
       align-items: center;
@@ -362,6 +379,8 @@
       </button>
     </div>
     <div id="phone-results-list" class="results-list"></div>
+    <button id="phone-paste-link" class="paste-link-btn">📋 Google Maps-ის ბმულის ჩასმა</button>
+    <div class="paste-hint">Google Maps → ადგილი → „გაზიარება“ → „ბმულის კოპირება“, მერე აქ დააჭირეთ ან ველში ჩასვით</div>
   </div>
 
   <!-- PHONE GPS STREAMING CARD -->
@@ -478,7 +497,51 @@
         resultsList.innerHTML = '';
         return;
       }
+      if (MAPS_LINK_RE.test(val)) { debounceTimer = setTimeout(() => resolveMapsLink(val), 150); return; }
       debounceTimer = setTimeout(() => executeSearch(val), 350);
+    });
+
+    // A shared Google Maps link (v3.10.53): our server reads the coordinates out of it; the car opens it in Google mode
+    const MAPS_LINK_RE = /https?:\/\/(maps\.app\.goo\.gl|goo\.gl\/maps|(www\.)?google\.[a-z.]+\/maps|maps\.google\.[a-z.]+)/i;
+    const escHtml = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+    function infoRow(text, color) {
+      resultsList.innerHTML = `<div style="padding:10px;text-align:center;color:${color || '#94a3b8'};font-size:0.85rem;">${escHtml(text)}</div>`;
+    }
+    async function resolveMapsLink(text) {
+      infoRow('ბმული იხსნება...');
+      try {
+        const res = await fetch(`/api/maps-link?url=${encodeURIComponent(text)}`);
+        const d = await res.json();
+        if (!d || d.error || !isFinite(d.lat)) {
+          infoRow(d && d.error === 'not_found' ? `ადგილი „${d.name}“ ვერ მოიძებნა, სცადეთ სახელით ძებნა` : 'ამ ბმულიდან ადგილი ვერ ამოვიცანი', '#ef4444');
+          return;
+        }
+        resultsList.innerHTML = '';
+        const el = document.createElement('div');
+        el.className = 'result-item';
+        el.innerHTML = `
+          <div class="result-info">
+            <div class="result-name">🔗 ${escHtml(d.name)}</div>
+            <div class="result-sub">${escHtml(d.approx ? 'სახელით ნაპოვნი (შეამოწმეთ): ' + (d.address || '') : 'Google Maps-ის ბმულიდან · ' + d.lat.toFixed(5) + ', ' + d.lng.toFixed(5))}</div>
+          </div>
+          <button class="btn-send-res">გაგზავნა</button>
+        `;
+        el.addEventListener('click', async () => {
+          const ok = await sendToCar('destination', { name: d.name, fullName: d.address || d.name, lat: d.lat, lng: d.lng, source: 'gmaps' });
+          if (ok) showToast(`🚀 ${d.name} გაგზავნილია Tesla-ში!`);
+        });
+        resultsList.appendChild(el);
+      } catch (_) {
+        infoRow('ბმული ვერ გაიხსნა', '#ef4444');
+      }
+    }
+    document.getElementById('phone-paste-link').addEventListener('click', async () => {
+      let text = '';
+      try { text = await navigator.clipboard.readText(); } catch (_) {}
+      if (!text) { searchInput.focus(); showToast('ჩასვით ბმული საძიებო ველში (ხანგრძლივი შეხება → ჩასმა)'); return; }
+      searchInput.value = text.trim();
+      clearBtn.style.display = 'block';
+      if (MAPS_LINK_RE.test(text)) resolveMapsLink(text); else infoRow('ბუფერში Google Maps-ის ბმული არ არის', '#ef4444');
     });
 
     clearBtn.addEventListener('click', () => {

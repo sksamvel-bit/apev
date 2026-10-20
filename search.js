@@ -103,10 +103,66 @@
     return parts[0];
   }
 
+  // ---- Google Maps share links from the phone (v3.10.53) ----
+  const MAPS_SHORT_HOSTS = ["maps.app.goo.gl", "goo.gl"];
+
+  /** "https://maps.app.goo.gl/x" (needs one redirect) or a full google.*\/maps link, else "". */
+  function mapsLinkKind(text) {
+    let u;
+    try { u = new URL(String(text || "").trim()); } catch (_) { return ""; }
+    if (u.protocol !== "https:" && u.protocol !== "http:") return "";
+    const h = u.hostname.toLowerCase();
+    if (h === "maps.app.goo.gl" || (h === "goo.gl" && u.pathname.startsWith("/maps"))) return "short";
+    if (/^(www\.|maps\.)?google\.[a-z.]{2,6}$/.test(h) && (h.startsWith("maps.") || u.pathname.startsWith("/maps"))) return "full";
+    if (h === "consent.google.com" && u.searchParams.get("continue")) return mapsLinkKind(u.searchParams.get("continue")) ? "full" : "";
+    return "";
+  }
+
+  /** Pulls the first URL out of shared text ("Prime Fit\nhttps://maps.app.goo.gl/abc"). */
+  function extractUrl(text) {
+    const m = String(text || "").match(/https?:\/\/[^\s<>"']+/);
+    return m ? m[0].replace(/[),.]+$/, "") : "";
+  }
+
+  function coordPair(s) {
+    const m = String(s || "").match(/^\s*(-?\d{1,2}(?:\.\d+)?)\s*,\s*(-?\d{1,3}(?:\.\d+)?)\s*$/);
+    if (!m) return null;
+    const lat = +m[1], lng = +m[2];
+    return Math.abs(lat) <= 90 && Math.abs(lng) <= 180 ? { lat, lng } : null;
+  }
+
+  /**
+   * A full Google Maps URL -> { name, lat, lng } (lat/lng null when only a name is in it), or null.
+   * Order of trust: the place pin (!3d..!4d..), then q=/query=/destination=/daddr=/ll= coordinates, then the map centre (@lat,lng).
+   */
+  function parseMapsUrl(text) {
+    let u;
+    try { u = new URL(String(text || "").trim()); } catch (_) { return null; }
+    if (u.hostname === "consent.google.com") return parseMapsUrl(u.searchParams.get("continue"));
+    const href = decodeURIComponent(u.href.replace(/\+/g, " "));
+    let name = "", pos = null;
+    const place = u.pathname.match(/\/maps\/(?:place|search|dir\/[^/]*)\/([^/@]+)/);
+    if (place) name = decodeURIComponent(place[1].replace(/\+/g, " ")).trim();
+    const pin = href.match(/!3d(-?\d+\.\d+)!4d(-?\d+\.\d+)/);
+    if (pin) pos = coordPair(pin[1] + "," + pin[2]);
+    for (const k of ["q", "query", "destination", "daddr", "ll"]) {
+      const v = u.searchParams.get(k);
+      if (!v) continue;
+      const c = coordPair(v);
+      if (c && !pos) pos = c;
+      else if (!c && !name) name = v.replace(/\+/g, " ").trim();
+    }
+    const at = u.pathname.match(/@(-?\d+\.\d+),(-?\d+\.\d+)/);
+    if (!pos && at) pos = coordPair(at[1] + "," + at[2]);
+    if (coordPair(name)) { pos = pos || coordPair(name); name = ""; }
+    if (!pos && !name) return null;
+    return { name: name.slice(0, 120), lat: pos ? pos.lat : null, lng: pos ? pos.lng : null };
+  }
+
   function formatKm(km) {
     if (km == null || !isFinite(km)) return "";
     return km < 1 ? Math.round(km * 10) * 100 + " მ" : (km < 10 ? km.toFixed(1) : String(Math.round(km))) + " კმ";
   }
 
-  return { normalize, matches, rankLocal, addRecent, sortByDistance, formatKm, distKm, photonToResults, mergeResults, resultTitle, MAX_RECENTS };
+  return { normalize, matches, rankLocal, addRecent, sortByDistance, formatKm, distKm, photonToResults, mergeResults, resultTitle, mapsLinkKind, extractUrl, parseMapsUrl, MAPS_SHORT_HOSTS, MAX_RECENTS };
 });

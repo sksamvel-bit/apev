@@ -105,4 +105,54 @@ test("resultTitle: street + house number instead of a bare number; Nominatim rep
   assert.strictEqual(S.mergeResults(twice, []).length, 1);
 });
 
+// ---- Google Maps share links (v3.10.53) ----
+test("mapsLinkKind: only Google Maps links, short ones need a redirect", () => {
+  assert.strictEqual(S.mapsLinkKind("https://maps.app.goo.gl/AbC123xyz"), "short");
+  assert.strictEqual(S.mapsLinkKind("https://goo.gl/maps/AbC123"), "short");
+  assert.strictEqual(S.mapsLinkKind("https://www.google.com/maps/place/X/@41.7,44.8,15z"), "full");
+  assert.strictEqual(S.mapsLinkKind("https://maps.google.com/?q=41.7,44.8"), "full");
+  assert.strictEqual(S.mapsLinkKind("https://www.google.ge/maps/search/pizza"), "full");
+  assert.strictEqual(S.mapsLinkKind("https://goo.gl/other"), "", "a goo.gl link that is not maps");
+  assert.strictEqual(S.mapsLinkKind("https://evil.com/maps/x"), "");
+  assert.strictEqual(S.mapsLinkKind("https://google.com.evil.com/maps"), "");
+  assert.strictEqual(S.mapsLinkKind("ftp://maps.app.goo.gl/x"), "");
+  assert.strictEqual(S.mapsLinkKind("not a link"), "");
+});
+
+test("extractUrl: the link out of shared text", () => {
+  assert.strictEqual(S.extractUrl("Prime Fit\nhttps://maps.app.goo.gl/AbC123."), "https://maps.app.goo.gl/AbC123");
+  assert.strictEqual(S.extractUrl("nothing here"), "");
+});
+
+test("parseMapsUrl: the place pin wins over the map centre, names are read", () => {
+  const p = S.parseMapsUrl("https://www.google.com/maps/place/Prime+Fit/@41.72,44.76,17z/data=!3m1!4b1!4m6!3m5!1s0x0:0x1!8m2!3d41.7225!4d44.7678!16s");
+  assert.strictEqual(p.name, "Prime Fit");
+  assert.strictEqual(p.lat, 41.7225); assert.strictEqual(p.lng, 44.7678);
+  const c = S.parseMapsUrl("https://www.google.com/maps/@41.70,44.80,15z");
+  assert.strictEqual(c.lat, 41.7); assert.strictEqual(c.name, "");
+  const q = S.parseMapsUrl("https://maps.google.com/?q=41.6938,44.8015");
+  assert.deepStrictEqual([q.lat, q.lng], [41.6938, 44.8015]);
+  const n = S.parseMapsUrl("https://maps.google.com/maps?q=%E1%83%97%E1%83%91%E1%83%98%E1%83%9A%E1%83%98%E1%83%A1%E1%83%98+Mall&ftid=0x1:0x2");
+  assert.strictEqual(n.name, "თბილისი Mall"); assert.strictEqual(n.lat, null, "name only: coordinates come from our search");
+  const d = S.parseMapsUrl("https://www.google.com/maps/dir/?api=1&destination=41.65,44.95");
+  assert.strictEqual(d.lat, 41.65);
+  const geo = S.parseMapsUrl("https://www.google.com/maps/place/41%C2%B042'00.0%22N/@41.7,44.8,17z");
+  assert.strictEqual(geo.lat, 41.7);
+  const consent = S.parseMapsUrl("https://consent.google.com/m?continue=" + encodeURIComponent("https://www.google.com/maps/place/X/@41.7,44.8,15z/data=!3d41.71!4d44.81") + "&gl=GE");
+  assert.deepStrictEqual([consent.name, consent.lat, consent.lng], ["X", 41.71, 44.81]);
+  assert.strictEqual(S.parseMapsUrl("https://www.google.com/maps"), null);
+  assert.strictEqual(S.parseMapsUrl("garbage"), null);
+});
+
+test("server + phone: /api/maps-link resolves only goo.gl redirects, the car opens it in Google mode", () => {
+  const fs = require("fs");
+  const srv = fs.readFileSync(__dirname + "/../server.js", "utf8");
+  assert.ok(srv.includes("pathname === '/api/maps-link'") && !/PUBLIC_AUTH_PATHS[^;]*maps-link/.test(srv), "endpoint exists and is not public");
+  assert.ok(srv.includes("method: 'GET', hostname: u.hostname") && srv.includes("res.resume();   // only the redirect header") && srv.includes("SearchUtil.mapsLinkKind(u.href) !== 'short'"), "only the redirect of a short-link host is read, never a Google page");
+  const remote = fs.readFileSync(__dirname + "/../remote.html", "utf8");
+  assert.ok(remote.includes("/api/maps-link?url=") && remote.includes("source: 'gmaps'"), "the phone resolves the link and marks it");
+  const app = fs.readFileSync(__dirname + "/../app.js", "utf8");
+  assert.ok(app.includes('payload.source === "gmaps" && window.GMapMode && window.GMapMode.isEnabled()'), "the car opens a Google link in Google mode");
+});
+
 console.log("\n" + passed + " search tests passed" + (process.exitCode ? " - WITH FAILURES" : ""));
