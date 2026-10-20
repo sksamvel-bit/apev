@@ -7,6 +7,7 @@ const https = require('https');
 const vm = require('vm');
 const crypto = require('crypto');
 const { createRouteQuota, createUpstashRedisAdapter } = require('./route-quota.js');
+const SearchUtil = require('./search.js');
 
 const PORT = process.env.PORT || 3000;
 const PUBLIC_DIR = __dirname;
@@ -593,6 +594,56 @@ function searchRateLimited(ip) {
   return r.count > 30;
 }
 
+// Typeahead suggestions (v3.10.52): Photon (photon.komoot.io, OSM, built for search-as-you-type; "please be fair"), through
+// this proxy so every car shares one 24 h cache and the public server sees at most ~4 calls a second from us.
+const suggestCache = new Map();
+const suggestHits = new Map();
+let lastPhotonRequestTime = 0;
+function suggestRateLimited(ip) {
+  const now = Date.now();
+  if (suggestHits.size > 2000) suggestHits.clear();
+  const r = suggestHits.get(ip);
+  if (!r || now > r.expireAt) { suggestHits.set(ip, { count: 1, expireAt: now + 60000 }); return false; }
+  r.count++;
+  return r.count > 120;
+}
+function photonSuggest(query, bias) {
+  return new Promise((resolve) => {
+    const q = (query || '').trim();
+    if (q.length < 3) return resolve([]);
+    const key = q.toLowerCase() + (bias ? '|' + bias.lat.toFixed(1) + ',' + bias.lon.toFixed(1) : '');
+    const cached = suggestCache.get(key);
+    if (cached && Date.now() - cached.t < SEARCH_CACHE_TTL) return resolve(cached.data);
+    // <= 4 calls a second to the public server: a call that comes too soon waits its turn (never more than ~1 s of queue)
+    const now = Date.now();
+    const waitMs = Math.max(0, lastPhotonRequestTime + 250 - now);
+    if (waitMs > 1000) return resolve(cached ? cached.data : []);
+    lastPhotonRequestTime = now + waitMs;
+    setTimeout(() => photonFetch(q, bias, key, cached, resolve), waitMs);
+  });
+}
+
+function photonFetch(q, bias, key, cached, resolve) {
+  // Georgia and the neighbours the Nominatim search also covers (TR, AM, AZ); the car position only ranks, it does not filter
+  const url = 'https://photon.komoot.io/api/?limit=6&bbox=26,36,51,44&q=' + encodeURIComponent(q) + (bias ? '&lat=' + bias.lat.toFixed(4) + '&lon=' + bias.lon.toFixed(4) : '');
+  const req = https.get(url, { headers: { 'User-Agent': 'TeslaNav/3.10 (+https://apev.onrender.com; automotive navigation client)' }, timeout: 4000 }, (res) => {
+    if (res.statusCode !== 200) { res.resume(); return resolve(cached ? cached.data : []); }
+    let body = '';
+    res.setEncoding('utf8');
+    res.on('data', (c) => { body += c; });
+    res.on('end', () => {
+      try {
+        const data = SearchUtil.photonToResults(JSON.parse(body));
+        suggestCache.set(key, { t: Date.now(), data });
+        if (suggestCache.size > 300) suggestCache.delete(suggestCache.keys().next().value);
+        resolve(data);
+      } catch (_) { resolve(cached ? cached.data : []); }
+    });
+  });
+  req.on('error', () => resolve(cached ? cached.data : []));
+  req.on('timeout', () => { req.destroy(); resolve(cached ? cached.data : []); });
+}
+
 function searchNominatimProxy(query, bias) {
   return new Promise((resolve) => {
     // the result depends on the bias area, so it is part of the cache key (rounded to ~10 km)
@@ -1050,6 +1101,18 @@ const server = http.createServer((req, res) => {
       res.writeHead(500, { 'Content-Type': 'application/json; charset=utf-8' });
       res.end(JSON.stringify([]));
     });
+    return;
+  }
+
+  // API Endpoint: /api/suggest?q=&lat=&lon= - Photon typeahead (behind the PIN gate like /api/search); [] on any problem.
+  if (pathname === '/api/suggest') {
+    const q = (urlObj.searchParams.get('q') || '').trim().slice(0, 200);
+    const sendRows = (code, rows) => { res.writeHead(code, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' }); res.end(JSON.stringify(rows)); };
+    if (q.length < 3) return sendRows(200, []);
+    if (suggestRateLimited(clientIp(req))) return sendRows(429, []);
+    const bLat = parseFloat(urlObj.searchParams.get('lat')), bLon = parseFloat(urlObj.searchParams.get('lon'));
+    const bias = (Math.abs(bLat) <= 90 && Math.abs(bLon) <= 180) ? { lat: bLat, lon: bLon } : null;
+    photonSuggest(q, bias).then((rows) => sendRows(200, rows));
     return;
   }
 

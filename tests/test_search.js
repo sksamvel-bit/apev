@@ -53,4 +53,56 @@ test("formatKm", () => {
   assert.strictEqual(S.formatKm(null), "");
 });
 
+// ---- Photon typeahead (v3.10.52) ----
+const photonSample = { features: [
+  { geometry: { coordinates: [44.7678, 41.7225] }, properties: { name: "პრაიმ ფიტი", street: "ვაჟა-ფშაველას გამზირი", housenumber: "71", district: "საბურთალო", city: "თბილისი", countrycode: "GE" } },
+  { geometry: { coordinates: [44.79, 41.69] }, properties: { street: "შოთა რუსთაველის გამზირი", housenumber: "12", city: "თბილისი", countrycode: "GE" } },
+  { geometry: { coordinates: [43.5, 40.1] }, properties: { name: "Yerevan Mall", city: "Yerevan", country: "Armenia", countrycode: "AM" } },
+  { geometry: { coordinates: [44.8, 41.7] }, properties: {} },
+  { geometry: null, properties: { name: "broken" } }
+] };
+
+test("photonToResults: Photon GeoJSON becomes the rows the list already shows", () => {
+  const r = S.photonToResults(photonSample);
+  assert.strictEqual(r.length, 3, "nameless and geometry-less features are skipped");
+  assert.strictEqual(r[0].display_name, "პრაიმ ფიტი, ვაჟა-ფშაველას გამზირი 71, საბურთალო, თბილისი");
+  assert.strictEqual(r[0].lat, "41.7225"); assert.strictEqual(r[0].lon, "44.7678"); assert.strictEqual(r[0].source, "photon");
+  assert.strictEqual(r[1].display_name, "შოთა რუსთაველის გამზირი 12, თბილისი", "an address without a name leads with street + number");
+  assert.strictEqual(r[2].display_name, "Yerevan Mall, Yerevan, Armenia", "the country is named outside Georgia");
+  assert.deepStrictEqual(S.photonToResults(null), []);
+  const twice = { features: [photonSample.features[1], { geometry: { coordinates: [44.79001, 41.69001] }, properties: photonSample.features[1].properties }] };
+  assert.strictEqual(S.photonToResults(twice).length, 1, "the same address twice (building + address point) is one row");
+});
+
+test("mergeResults: Nominatim first, Photon rows only when they are another place", () => {
+  const nom = [{ display_name: "71, ვაჟა-ფშაველას გამზირი, საბურთალო", lat: "41.72252", lon: "44.76782" }];
+  const pho = S.photonToResults(photonSample);
+  const m = S.mergeResults(nom, pho);
+  assert.strictEqual(m[0], nom[0], "Nominatim keeps the first place");
+  assert.ok(!m.some((r) => r.display_name.startsWith("პრაიმ ფიტი")), "the same building from Photon (within 60 m) is dropped");
+  assert.ok(m.some((r) => r.display_name.startsWith("შოთა რუსთაველის")), "a different place from Photon is kept");
+  assert.strictEqual(S.mergeResults([], pho).length, 3);
+  assert.strictEqual(S.mergeResults([{ display_name: "Yerevan Mall, x", lat: "0", lon: "0" }], pho).filter((r) => r.display_name.startsWith("Yerevan Mall")).length, 1, "same first name = same place");
+});
+
+test("server: /api/suggest is a cached, throttled Photon proxy behind the PIN gate", () => {
+  const fs = require("fs");
+  const srv = fs.readFileSync(__dirname + "/../server.js", "utf8");
+  assert.ok(srv.includes("pathname === '/api/suggest'") && !/PUBLIC_AUTH_PATHS[^;]*suggest/.test(srv), "endpoint exists and is not public");
+  assert.ok(srv.includes("photon.komoot.io") && srv.includes("SearchUtil.photonToResults"), "proxies Photon and returns the list shape");
+  assert.ok(srv.includes("suggestCache") && srv.includes("lastPhotonRequestTime + 250") && srv.includes("suggestRateLimited"), "24 h cache, <= 4 calls/s to Photon, per-client limit");
+  const app = fs.readFileSync(__dirname + "/../app.js", "utf8");
+  assert.ok(app.includes("suggestTimer = setTimeout(() => runSuggest(query), 350)") && app.includes("query.length >= 3"), "the page asks after a 350 ms pause and 3+ letters");
+  assert.ok(app.includes("SearchUtil.mergeResults(nominatim, photon)"), "Enter merges Nominatim with the typed suggestions");
+});
+
+test("resultTitle: street + house number instead of a bare number; Nominatim repeats merged", () => {
+  assert.strictEqual(S.resultTitle({ display_name: "14, მერაბ კოსტავას ქუჩა, ვერა, თბილისი" }), "მერაბ კოსტავას ქუჩა 14");
+  assert.strictEqual(S.resultTitle({ display_name: "12ა, რუსთაველის გამზირი" }), "რუსთაველის გამზირი 12ა");
+  assert.strictEqual(S.resultTitle({ display_name: "სტამბა, 14, მერაბ კოსტავას ქუჩა" }), "სტამბა");
+  assert.strictEqual(S.resultTitle({ display_name: "" }, "q"), "q");
+  const twice = [{ display_name: "14, მერაბ კოსტავას ქუჩა, ვერა", lat: "41.7", lon: "44.8" }, { display_name: "14, მერაბ კოსტავას ქუჩა, ვერა", lat: "41.7", lon: "44.8" }];
+  assert.strictEqual(S.mergeResults(twice, []).length, 1);
+});
+
 console.log("\n" + passed + " search tests passed" + (process.exitCode ? " - WITH FAILURES" : ""));

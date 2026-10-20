@@ -1,9 +1,10 @@
 /**
  * search.js - pure helpers for the destination search box.
  *
- * Policy: the public Nominatim server forbids search-as-you-type, so typing only ever queries LOCAL sources
- * (recent destinations, saved Home/Work, charging stations); the internet geocoder runs only when the driver
- * presses Enter or taps the "search online" row. Results are ranked by distance from the car.
+ * Policy: the public Nominatim server forbids search-as-you-type, so Nominatim runs only when the driver presses Enter or
+ * taps the "search online" row. While typing (v3.10.52) the list shows local sources (recent destinations, Home/Work,
+ * charging stations) plus Photon suggestions (OSM, made for typeahead) through our cached server proxy /api/suggest.
+ * On Enter the Nominatim results come first and the Photon rows that are not the same place are kept below them.
  */
 (function (root, factory) {
   if (typeof module === "object" && module.exports) module.exports = factory();
@@ -64,10 +65,48 @@
       .sort((a, b) => a.km - b.km);
   }
 
+  /** Photon GeoJSON -> the Nominatim-shaped rows the search list already shows ({ display_name, lat, lon, source }). */
+  function photonToResults(json) {
+    const out = [];
+    for (const f of (json && json.features) || []) {
+      const c = f && f.geometry && f.geometry.coordinates, p = (f && f.properties) || {};
+      if (!c || !isFinite(c[0]) || !isFinite(c[1])) continue;
+      const street = p.street ? p.street + (p.housenumber ? " " + p.housenumber : "") : "";
+      const head = p.name || street;
+      if (!head) continue;
+      const parts = [head, p.name ? street : "", p.district || p.locality || "", p.city || p.county || "", p.countrycode && p.countrycode !== "GE" ? p.country : ""];
+      const display = [...new Set(parts.filter(Boolean).map((s) => String(s).trim()))].join(", ");
+      if (out.some((o) => o.display_name === display)) continue;   // the building and its address point: one row
+      out.push({ display_name: display, lat: String(c[1]), lon: String(c[0]), source: "photon" });
+    }
+    return out;
+  }
+
+  /** Nominatim rows first, then the Photon rows that are not the same place (same first name, or within maxM metres). */
+  function mergeResults(primary, extra, maxM) {
+    maxM = maxM || 60;
+    const head = (r) => normalize(String(r.display_name || "").split(",")[0]);
+    const out = [];
+    for (const r of primary || []) if (!out.some((o) => o.display_name === r.display_name)) out.push(r);   // Nominatim repeats a place too
+    for (const r of extra || []) {
+      const dup = out.some((o) => head(o) === head(r) || distKm(+o.lat, +o.lon, +r.lat, +r.lon) * 1000 <= maxM);
+      if (!dup) out.push(r);
+    }
+    return out;
+  }
+
+  /** List title: Nominatim starts addresses with the house number ("14, მერაბ კოსტავას ქუჩა, …"): show "მერაბ კოსტავას ქუჩა 14". */
+  function resultTitle(r, fallback) {
+    const parts = String((r && r.display_name) || "").split(",").map((x) => x.trim()).filter(Boolean);
+    if (!parts.length) return fallback || "";
+    if (/^\d+[a-zA-Zა-ჰ]?(\/\d+)?$/.test(parts[0]) && parts[1]) return parts[1] + " " + parts[0];
+    return parts[0];
+  }
+
   function formatKm(km) {
     if (km == null || !isFinite(km)) return "";
     return km < 1 ? Math.round(km * 10) * 100 + " მ" : (km < 10 ? km.toFixed(1) : String(Math.round(km))) + " კმ";
   }
 
-  return { normalize, matches, rankLocal, addRecent, sortByDistance, formatKm, distKm, MAX_RECENTS };
+  return { normalize, matches, rankLocal, addRecent, sortByDistance, formatKm, distKm, photonToResults, mergeResults, resultTitle, MAX_RECENTS };
 });

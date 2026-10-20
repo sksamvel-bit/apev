@@ -134,7 +134,7 @@ function initClock() {
 const OFM_STYLE_URL = "https://tiles.openfreemap.org/styles/liberty";
 const OFM_STYLE_CACHE_KEY = "tesla_nav_ofm_style_v1";
 const MAP_STYLE_KEYS = ["openfreemap", "google-roads"];
-const APP_VERSION = "3.10.51";
+const APP_VERSION = "3.10.52";
 const MAP_DEFAULT_ZOOM = 16;      // MapLibre zoom (Leaflet-equivalent 17)
 // Performance experiments (all default to the normal behaviour): ?labels=0 hides the base-map labels/icons, ?markers=0 skips the
 // charger DOM markers, ?pitch=N sets the heading-up tilt (0-60). Used to find what makes the car's browser slow.
@@ -1488,7 +1488,7 @@ function initSearch() {
   const searchInput = document.getElementById("search-input");
   const clearBtn = document.getElementById("clear-search-btn");
   const resultsContainer = document.getElementById("search-results");
-  let debounceTimer = null;
+  let debounceTimer = null, suggestTimer = null;
 
   // Show favorites when search box is focused or clicked while empty
   searchInput.addEventListener("focus", () => {
@@ -1513,12 +1513,15 @@ function initSearch() {
       return;
     }
 
-    // typing never touches the network (the public geocoder forbids search-as-you-type): local suggestions only
+    // typing: local suggestions at once, Photon suggestions (our /api/suggest proxy) after a short pause.
+    // Nominatim (the public geocoder forbids search-as-you-type) still runs only on Enter.
     clearTimeout(debounceTimer);
+    clearTimeout(suggestTimer);
     debounceTimer = setTimeout(() => {
       onlineSearchToken++;
       renderSuggestions(query, null);
     }, 120);
+    if (query.length >= 3) suggestTimer = setTimeout(() => runSuggest(query), 350);
   });
 
   searchInput.addEventListener("keydown", (e) => {
@@ -1638,6 +1641,22 @@ function localSearchItems() {
   return items;
 }
 
+// Photon rows for the text being typed; kept so an Enter search can merge them under the Nominatim results
+let lastSuggest = { query: "", results: [] };
+async function runSuggest(query) {
+  const token = onlineSearchToken;   // a newer keystroke or an Enter search changes it: then this answer is dropped
+  try {
+    let url = `/api/suggest?q=${encodeURIComponent(query)}`;
+    if (currentPos && isFinite(currentPos.lat)) url += `&lat=${currentPos.lat.toFixed(3)}&lon=${currentPos.lng.toFixed(3)}`;
+    const res = await fetch(url);
+    if (!res.ok) return;
+    const rows = await res.json();
+    if (token !== onlineSearchToken || !Array.isArray(rows)) return;
+    lastSuggest = { query, results: rows };
+    renderSuggestions(query, { suggest: rows });
+  } catch (_) { /* typing must never show an error: Enter still searches */ }
+}
+
 async function runOnlineSearch(query) {
   const token = ++onlineSearchToken;
   renderSuggestions(query, { loading: true });
@@ -1647,7 +1666,9 @@ async function runOnlineSearch(query) {
     const res = await fetch(url);
     const data = await res.json();
     if (token !== onlineSearchToken) return;   // a newer query / typing replaced this one
-    renderSuggestions(query, { results: window.SearchUtil.sortByDistance(Array.isArray(data) ? data : [], currentPos) });
+    const nominatim = window.SearchUtil.sortByDistance(Array.isArray(data) ? data : [], currentPos);
+    const photon = lastSuggest.query === query ? lastSuggest.results : [];
+    renderSuggestions(query, { results: window.SearchUtil.mergeResults(nominatim, photon) });
   } catch (e) {
     if (token !== onlineSearchToken) return;
     renderSuggestions(query, { error: true });
@@ -1684,7 +1705,7 @@ function searchRow(icon, title, subtitle, km, onPick) {
   return div;
 }
 
-/** online: null (typing) | { loading } | { results } | { error }. */
+/** online: null (typing) | { suggest } (Photon while typing) | { loading } | { results } | { error }. */
 function renderSuggestions(query, online) {
   const container = document.getElementById("search-results");
   const input = document.getElementById("search-input");
@@ -1702,7 +1723,7 @@ function renderSuggestions(query, online) {
 
   if (online && online.results) {
     for (const r of online.results) {
-      const title = String(r.display_name || "").split(",")[0] || query;
+      const title = window.SearchUtil.resultTitle(r, query);
       container.appendChild(searchRow("📍", title, r.display_name, r.km, () => pick(title, r.display_name, parseFloat(r.lat), parseFloat(r.lon))));
     }
     if (!online.results.length) container.appendChild(searchRow("🔍", "ვერაფერი მოიძებნა", "სცადეთ სხვა სიტყვა", null, () => {}));
@@ -1711,6 +1732,12 @@ function renderSuggestions(query, online) {
   } else if (online && online.error) {
     container.appendChild(searchRow("⚠️", "ძებნა ვერ შესრულდა", "შეეხეთ ხელახლა საცდელად", null, () => runOnlineSearch(query)));
   } else if (query.length >= 2) {
+    for (const r of (online && online.suggest ? online.suggest.slice(0, 5) : [])) {
+      const title = window.SearchUtil.resultTitle(r, query);
+      const lat = parseFloat(r.lat), lon = parseFloat(r.lon);
+      const km = currentPos && isFinite(currentPos.lat) ? window.SearchUtil.distKm(currentPos.lat, currentPos.lng, lat, lon) : null;
+      container.appendChild(searchRow("📍", title, r.display_name, km, () => pick(title, r.display_name, lat, lon)));
+    }
     container.appendChild(searchRow("🔎", "ძებნა ინტერნეტში: «" + query + "»", "Enter ან შეხება", null, () => runOnlineSearch(query)));
   }
 
