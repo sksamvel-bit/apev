@@ -29,6 +29,7 @@
   const SIDE_PROXIES = [
     { icon: "📋", title: "დამტენების სია", target: "btn-chargers-list", activeClass: "active" },
     { icon: "📷", title: "სიჩქარის კამერები", target: "btn-toggle-cameras", activeClass: "signals-active" },
+    { icon: "🔊", iconOff: "🔇", title: "ხმოვანი ნავიგაცია", target: "btn-toggle-voice", activeClass: "active" },
     { icon: "📱", title: "ტელეფონით მართვა", target: "btn-remote-phone" },
     { icon: "⚙️", title: "პარამეტრები", target: "btn-settings" }
   ];
@@ -1084,7 +1085,11 @@
         const main = $(p.target);
         if (!main) return;
         const b = add(p.icon, p.title, () => { main.click(); mirror(); });
-        const mirror = () => b.classList.toggle("active", !!p.activeClass && main.classList.contains(p.activeClass));
+        const mirror = () => {
+          const on = !!p.activeClass && main.classList.contains(p.activeClass);
+          b.classList.toggle("active", on);
+          if (p.iconOff) b.textContent = on ? p.icon : p.iconOff;
+        };
         mirror();
         if (typeof MutationObserver !== "undefined" && p.activeClass) new MutationObserver(mirror).observe(main, { attributes: true, attributeFilter: ["class"] });
       });
