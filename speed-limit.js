@@ -26,8 +26,9 @@ class SpeedLimitEngine {
 
     // ---- OpenStreetMap (Overpass) layer ----
     this.osmEnabled = true;
-    // v3.10.68 (audit H2): the old second mirror stopped answering; two working mirrors after the main server
-    this.osmEndpoints = ["https://overpass-api.de/api/interpreter", "https://overpass.private.coffee/api/interpreter", "https://maps.mail.ru/osm/tools/overpass/api/interpreter"];
+    // v3.10.69 (audit H2): our server first (it caches every tile for 7 days and waits for Overpass as long as needed),
+    // then the public servers directly (v3.10.68 mirrors)
+    this.osmEndpoints = ["/api/overpass", "https://overpass-api.de/api/interpreter", "https://overpass.private.coffee/api/interpreter", "https://maps.mail.ru/osm/tools/overpass/api/interpreter"];
     this.osmTileLat = 0.005;   // ~555 m
     this.osmTileLng = 0.007;   // ~520 m at Georgia's latitudes
     this.osmMaxTiles = 40;

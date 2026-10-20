@@ -776,7 +776,10 @@ const SpeedCameras = require('./speed-cameras.js');
 const CAMERAS_FILE = path.join(PUBLIC_DIR, 'cameras-cache.json');
 const CAMERAS_TTL_MS = 24 * 3600 * 1000;
 const CAMERAS_QUERY = '[out:json][timeout:90];node["highway"="speed_camera"](41.0,40.0,43.6,46.8);out;'; // whole of Georgia
-const CAMERAS_ENDPOINTS = ['https://overpass-api.de/api/interpreter', 'https://overpass.private.coffee/api/interpreter', 'https://maps.mail.ru/osm/tools/overpass/api/interpreter'];
+// OVERPASS_ENDPOINTS (comma list) overrides the servers; the tests point it at a local fake
+const CAMERAS_ENDPOINTS = (process.env.OVERPASS_ENDPOINTS || '').split(',').map((x) => x.trim()).filter(Boolean).length
+  ? process.env.OVERPASS_ENDPOINTS.split(',').map((x) => x.trim()).filter(Boolean)
+  : ['https://overpass-api.de/api/interpreter', 'https://overpass.private.coffee/api/interpreter', 'https://maps.mail.ru/osm/tools/overpass/api/interpreter'];
 let camerasCache = { t: 0, cameras: [] };
 let camerasPending = null;
 try {
@@ -790,8 +793,8 @@ function overpassPost(endpoint, query) {
   return new Promise((resolve, reject) => {
     const body = 'data=' + encodeURIComponent(query);
     const u = new URL(endpoint);
-    const req = https.request({
-      method: 'POST', hostname: u.hostname, path: u.pathname, timeout: 100000,   // the public server needs ~45 s for this (measured 2026-10-20)
+    const req = (u.protocol === 'http:' ? http : https).request({
+      method: 'POST', hostname: u.hostname, port: u.port || undefined, path: u.pathname, timeout: 100000,   // the public server needs ~45 s for this (measured 2026-10-20)
       headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'Content-Length': Buffer.byteLength(body), 'User-Agent': 'TeslaNav/3.10 (+https://apev.onrender.com)' }
     }, resp => {
       let data = '';
@@ -850,6 +853,74 @@ function refreshCameras() {
     return camerasCache;
   })().finally(() => { camerasPending = null; });
   return camerasPending;
+}
+
+// ---- Overpass tile cache for the speed limit and traffic light tiles (v3.10.69, audit H2) ----
+// The car used to ask the public Overpass servers itself and gave up after 12-20 s; Overpass often needs longer or answers
+// 429 when busy. Now the car asks /api/overpass?data=<the same query> first: the server waits up to 100 s, keeps every
+// answer for 7 days (served stale up to 30 days when Overpass fails) and shares it between devices. Only the two tile
+// queries of speed-limit.js and traffic-signals.js over a small box in the region are accepted: no open proxy.
+const OVERPASS_TILE_RE = /^\[out:json\]\[timeout:\d{1,3}\];(way\[highway~"\^\(motorway\|trunk\|primary\|secondary\|tertiary\|unclassified\|residential\|living_street\)\(_link\)\?\$"\]|node\[highway=traffic_signals\])\((-?\d{1,3}\.\d{1,7}),(-?\d{1,3}\.\d{1,7}),(-?\d{1,3}\.\d{1,7}),(-?\d{1,3}\.\d{1,7})\);out (tags geom|500);$/;
+const OVERPASS_FRESH_MS = 7 * 24 * 3600 * 1000, OVERPASS_STALE_MS = 30 * 24 * 3600 * 1000, OVERPASS_CACHE_BYTES = 60 * 1024 * 1024;
+
+/** The cache key of an allowed tile query (the [timeout:N] part removed), or null for anything else. */
+function overpassTileKey(q) {
+  const m = OVERPASS_TILE_RE.exec(String(q || ''));
+  if (!m) return null;
+  const s = +m[2], w = +m[3], n = +m[4], e = +m[5];
+  if (!(n > s && e > w && n - s <= 0.02 && e - w <= 0.03 && s >= 36 && n <= 46 && w >= 26 && e <= 51)) return null;
+  return String(q).replace(/^\[out:json\]\[timeout:\d+\];/, '');
+}
+
+const overpassCache = new Map();   // key -> { t, body }
+let overpassCacheBytes = 0;
+const overpassInflight = new Map();
+let overpassActive = 0;
+const overpassWaiting = [];
+function overpassSlot() {
+  if (overpassActive < 2) { overpassActive++; return Promise.resolve(); }
+  return new Promise((r) => overpassWaiting.push(r));
+}
+function overpassRelease() {
+  const next = overpassWaiting.shift();
+  if (next) next(); else overpassActive--;
+}
+function overpassRemember(key, body) {
+  const old = overpassCache.get(key);
+  if (old) { overpassCacheBytes -= old.body.length; overpassCache.delete(key); }
+  overpassCache.set(key, { t: Date.now(), body });
+  overpassCacheBytes += body.length;
+  while (overpassCacheBytes > OVERPASS_CACHE_BYTES && overpassCache.size) {
+    const [k, v] = overpassCache.entries().next().value;
+    overpassCache.delete(k); overpassCacheBytes -= v.body.length;
+  }
+}
+
+/** The Overpass JSON text for an allowed tile query: cache, else Overpass (2 at a time, mirrors in turn). */
+function overpassTile(q, key) {
+  const hit = overpassCache.get(key);
+  if (hit && Date.now() - hit.t < OVERPASS_FRESH_MS) return Promise.resolve(hit.body);
+  if (overpassInflight.has(key)) return overpassInflight.get(key);
+  const p = (async () => {
+    await overpassSlot();
+    try {
+      let lastErr = null;
+      const query = '[out:json][timeout:60];' + key;
+      for (const ep of CAMERAS_ENDPOINTS) {
+        try {
+          const json = await overpassPost(ep, query);
+          if (!json || !Array.isArray(json.elements)) throw new Error('bad answer');
+          const body = JSON.stringify({ elements: json.elements });
+          overpassRemember(key, body);
+          return body;
+        } catch (e) { lastErr = e; }
+      }
+      if (hit && Date.now() - hit.t < OVERPASS_STALE_MS) return hit.body;   // an old tile beats no tile
+      throw lastErr || new Error('Overpass failed');
+    } finally { overpassRelease(); }
+  })().finally(() => overpassInflight.delete(key));
+  overpassInflight.set(key, p);
+  return p;
 }
 
 async function getSpeedCameras() {
@@ -1471,6 +1542,22 @@ const server = http.createServer((req, res) => {
   }
 
   // API Endpoint: /api/suggest?q=&lat=&lon= - Photon typeahead (behind the PIN gate like /api/search); [] on any problem.
+  // API Endpoint: /api/overpass?data=<tile query> (v3.10.69) - cached speed-limit / traffic-light tiles, behind the PIN gate
+  if (pathname === '/api/overpass') {
+    const q = urlObj.searchParams.get('data') || '';
+    const key = overpassTileKey(q);
+    if (!key) { res.writeHead(400, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ error: 'query not allowed' })); return; }
+    overpassTile(q, key).then((body) => {
+      res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'private, max-age=86400' });
+      res.end(body);
+    }, (e) => {
+      if (res.headersSent || res.destroyed) return;
+      res.writeHead(502, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: 'overpass unavailable', detail: String(e && e.message).slice(0, 80) }));
+    });
+    return;
+  }
+
   // API Endpoint: /api/cameras (fixed speed cameras, OSM data cached 24 h; behind the PIN gate)
   if (pathname === '/api/cameras') {
     getSpeedCameras().then(c => {
@@ -1701,6 +1788,7 @@ if (typeof module !== 'undefined' && module.exports) {
   module.exports = {
     GEOCHARGE_TARIFF_MEDIANS,
     applyTariffs,
+    overpassTileKey,
     haversineMeters,
     deduplicateStations,
     isDuplicateStation,

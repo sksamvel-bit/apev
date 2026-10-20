@@ -29,8 +29,9 @@ class TrafficSignalsEngine {
     this._geoKey = "";
     this.popup = null;
 
-    // v3.10.68 (audit H2): the old second mirror stopped answering; two working mirrors after the main server
-    this.endpoints = ["https://overpass-api.de/api/interpreter", "https://overpass.private.coffee/api/interpreter", "https://maps.mail.ru/osm/tools/overpass/api/interpreter"];
+    // v3.10.69 (audit H2): our server first (it caches every tile for 7 days and waits for Overpass as long as needed),
+    // then the public servers directly (v3.10.68 mirrors)
+    this.endpoints = ["/api/overpass", "https://overpass-api.de/api/interpreter", "https://overpass.private.coffee/api/interpreter", "https://maps.mail.ru/osm/tools/overpass/api/interpreter"];
     this.tileLat = 0.01;    // ~1.1 km
     this.tileLng = 0.014;   // ~1.0 km at Georgia's latitudes
     this.maxTiles = 60;
