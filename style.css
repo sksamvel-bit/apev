@@ -2149,7 +2149,7 @@ input {
    (the GPS dot pulses forever, MapLibre's canvas and DOM markers). visibility keeps MapLibre's size for resume(). */
 body.gmap-open #map-viewport { visibility: hidden; }
 body.gmap-open #nav-hud, body.gmap-open #route-preview-card,
-body.gmap-open #map-style-menu { display: none; }
+/* v3.10.80: the map menu stays available over the Google map (it switches between the three maps) */
 body.gmap-open #chargers-drawer { z-index: 950; }   /* v3.10.56: the list works over the Google map too */
 /* v3.10.51: speed + speed-limit badge (our OSM data, same engines as the main map) stay visible above the Google map,
    lifted clear of the Google logo in the bottom-left corner (Google's terms: the logo must not be covered) */
@@ -2295,3 +2295,6 @@ body.cam-gpu #map { inset: auto; left: -25%; top: -25%; width: 150%; height: 150
 body.gcam-gpu #gmap-canvas .gm-style div:has(> a[href*="maps.google.com/maps"]) { left: calc(16.67% + 6px) !important; bottom: calc(16.67% + 6px) !important; }
 body.gcam-gpu #gmap-canvas .gm-style div:has(> .gm-style-cc) { right: calc(16.67% + 4px) !important; bottom: calc(16.67% + 2px) !important; }
 #gmap-gpu-car { position: absolute; left: 50%; top: 75%; width: 34px; height: 34px; margin: -17px 0 0 -17px; z-index: 3; pointer-events: none; filter: drop-shadow(0 2px 4px rgba(0,0,0,.5)); }
+
+/* v3.10.80 map picker: an unavailable Google map (no key) is shown dimmed */
+.map-style-opt.disabled { opacity: 0.45; }

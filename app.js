@@ -136,7 +136,7 @@ function initClock() {
 const OFM_STYLE_URL = "https://tiles.openfreemap.org/styles/liberty";
 const OFM_STYLE_CACHE_KEY = "tesla_nav_ofm_style_v1";
 const MAP_STYLE_KEYS = ["openfreemap", "google-roads"];
-const APP_VERSION = "3.10.79";
+const APP_VERSION = "3.10.80";
 const MAP_DEFAULT_ZOOM = 16;      // MapLibre zoom (Leaflet-equivalent 17)
 // Performance experiments (all default to the normal behaviour): ?labels=0 hides the base-map labels/icons, ?markers=0 skips the
 // charger DOM markers, ?pitch=N sets the heading-up tilt (0-60). Used to find what makes the car's browser slow.
@@ -1978,9 +1978,20 @@ function initEventListeners() {
   const mapStyleMenu = document.getElementById("map-style-menu");
   const mapStyleCloseBtn = document.getElementById("map-style-close-btn");
   if (btnMapStyle && mapStyleMenu) {
+    // v3.10.80: the map menu offers the three maps (Google 3D = main, Google classic, ours); it also opens from the Google
+    // side panel (window.openMapPicker). The ticked one is the map on the screen now.
+    const openMapPicker = () => {
+      const shown = window.GMapMode ? window.GMapMode.shownMap() : "ours", gOk = !!(window.GMapMode && window.GMapMode.isEnabled());
+      document.querySelectorAll(".map-style-opt").forEach((o) => {
+        o.classList.toggle("active", o.dataset.map === shown);
+        o.classList.toggle("disabled", o.dataset.map !== "ours" && !gOk);
+      });
+      mapStyleMenu.classList.add("open");
+    };
+    window.openMapPicker = openMapPicker;
     btnMapStyle.addEventListener("click", (e) => {
       e.stopPropagation();
-      mapStyleMenu.classList.toggle("open");
+      if (mapStyleMenu.classList.contains("open")) mapStyleMenu.classList.remove("open"); else openMapPicker();
     });
 
     if (mapStyleCloseBtn) {
@@ -1990,14 +2001,16 @@ function initEventListeners() {
       });
     }
 
+    const MAP_NAMES = { google3d: "🧭 Google 3D", google: "🚦 Google კლასიკური", ours: "🗺️ ჩვენი რუკა" };
     document.querySelectorAll(".map-style-opt").forEach(opt => {
       opt.addEventListener("click", (e) => {
         e.stopPropagation();
-        const style = opt.dataset.style;
-        setMapStyle(style);
         mapStyleMenu.classList.remove("open");
-        const styleName = style === "google-roads" ? "🗺️ Google Maps (საგანგებო)" : "⚡ 3D ვექტორული რუკა";
-        showToast(styleName + " ჩაირთო ✅", "success", 2500);
+        const kind = opt.dataset.map;
+        if (kind !== "ours" && !(window.GMapMode && window.GMapMode.isEnabled())) { showToast("Google რუკა მიუწვდომელია (გასაღები არ არის)", "error", 3000); return; }
+        if (window.GMapMode) window.GMapMode.selectMap(kind);
+        else try { localStorage.setItem("tesla_nav_main_map", kind); } catch (_) {}
+        showToast(MAP_NAMES[kind] + " ✅ (გახსნისასაც ეს გაიხსნება)", "success", 2500);
       });
     });
 
@@ -2105,7 +2118,7 @@ function initEventListeners() {
 
     // v3.10.77: which map opens with the app (gmap.js reads it on the next start)
     const mm = document.getElementById("input-main-map");
-    if (mm) { try { localStorage.setItem("tesla_nav_main_map", mm.value === "ours" ? "ours" : "google"); } catch (_) {} }
+    if (mm) { try { localStorage.setItem("tesla_nav_main_map", ["google3d", "google", "ours"].includes(mm.value) ? mm.value : "google3d"); } catch (_) {} }
     localStorage.setItem("saved_home", document.getElementById("input-home-addr").value.trim());
     localStorage.setItem("saved_work", document.getElementById("input-work-addr").value.trim());
     modal.classList.remove("open");
@@ -2114,7 +2127,7 @@ function initEventListeners() {
   });
 
   // Populate settings inputs
-  { const mm = document.getElementById("input-main-map"); if (mm) { let v = "google"; try { v = localStorage.getItem("tesla_nav_main_map") === "ours" ? "ours" : "google"; } catch (_) {} mm.value = v; } }
+  { const mm = document.getElementById("input-main-map"); if (mm) { let v = "google3d"; try { const s = localStorage.getItem("tesla_nav_main_map"); if (["google3d", "google", "ours"].includes(s)) v = s; } catch (_) {} mm.value = v; } }
   document.getElementById("input-home-addr").value = localStorage.getItem("saved_home") || "";
   document.getElementById("input-work-addr").value = localStorage.getItem("saved_work") || "";
   if (selectTeslaModel) selectTeslaModel.value = batteryEngine.modelKey;

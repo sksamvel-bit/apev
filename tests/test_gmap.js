@@ -155,7 +155,7 @@ ok(/GOOGLE_MAPS_KEY/.test(srv) && !/PUBLIC_AUTH_PATHS[^;]*gmaps-config/.test(srv
 {
   const appSrc = fs.readFileSync(__dirname + '/../app.js', 'utf8');
   const used = [...new Set([...appSrc.matchAll(/GMapMode\.(\w+)/g)].map((m) => m[1]))].sort();
-  ok(JSON.stringify(used) === JSON.stringify(['camMoves', 'close', 'focusPlace', 'gpuOn', 'isEnabled', 'isOpen', 'isVector', 'openWithDestination', 'openWithQuery']), 'app.js only opens Google mode (text / our destination or charger in; isOpen/isVector/gpuOn are yes/no, camMoves our own counter; close only closes it), never reads Google data back: ' + used.join(', '));
+  ok(JSON.stringify(used) === JSON.stringify(['camMoves', 'close', 'focusPlace', 'gpuOn', 'isEnabled', 'isOpen', 'isVector', 'openWithDestination', 'openWithQuery', 'selectMap', 'shownMap']), 'app.js only opens Google mode (text / our destination or charger in; isOpen/isVector/gpuOn are yes/no, camMoves our own counter; close only closes it; selectMap/shownMap switch maps), never reads Google data back: ' + used.join(', '));
   ok(typeof G.openWithQuery === 'function' && typeof G.openWithDestination === 'function' && typeof G.isEnabled === 'function', 'gmap.js exports the two shortcuts and isEnabled');
   const owq = src.slice(src.indexOf('async function openWithQuery'), src.indexOf('async function openWithDestination'));
   const owd = src.slice(src.indexOf('async function openWithDestination'), src.indexOf('// ---------- open / close'));
@@ -201,6 +201,12 @@ ok(/GOOGLE_MAPS_KEY/.test(srv) && !/PUBLIC_AUTH_PATHS[^;]*gmaps-config/.test(srv
     ok(/body\.gcam-gpu #gmap-canvas \.gm-style div:has\(> a\[href\*="maps\.google\.com\/maps"\]\) \{ left: calc\(16\.67%/.test(css) && /div:has\(> \.gm-style-cc\)/.test(css), "v3.10.79: Google's logo and credit are brought back into view on the oversized map (Google terms)");
     ok(src.includes("function gpuLogo(el, theta)") && src.includes('"rotate(" + (-theta).toFixed(2) + "deg)"'), "v3.10.79: the logo is kept upright while the picture turns");
   }
+  // v3.10.80: three maps in one picker, Google 3D is the main map
+  ok(G.currentMainMap() === "google3d" && JSON.stringify(G.MAP_KINDS) === JSON.stringify(["google3d", "google", "ours"]), "v3.10.80: with nothing chosen the app opens Google 3D");
+  ok(typeof G.selectMap === "function" && G.selectMap("nonsense") === false, "v3.10.80: selectMap accepts only the three maps");
+  ok(src.includes('S.vector = currentMainMap() !== "google";'), "v3.10.80: the start opens 3D unless classic was chosen");
+  { const h3 = fs.readFileSync(__dirname + "/../index.html", "utf8"); ok(["google3d", "google", "ours"].every((k) => h3.includes('data-map="' + k + '"')) && h3.includes('<option value="google3d">'), "v3.10.80: the map menu and the settings list the three maps"); }
+  ok(src.includes('on("gmap-btn-vector", "click", (e) => { if (e) e.stopPropagation(); if (window.openMapPicker) window.openMapPicker(); });'), "v3.10.80: the Google side panel button opens the same map picker");
   // v3.10.77: the Google map is the main map
   ok(G.mainMapIsGoogle("") === true && G.mainMapIsGoogle("?debug=1") === true, "v3.10.77: by default the app opens on the Google map");
   ok(G.mainMapIsGoogle("?map=ours") === false && G.mainMapIsGoogle("?debug=1&map=lite") === false, "v3.10.77: ?map=ours / ?map=lite open our map");

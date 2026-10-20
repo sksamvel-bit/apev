@@ -1128,15 +1128,43 @@
   function mainMapIsGoogle(search) {
     const q = String(search || "");
     if (/[?&]map=(ours|lite)\b/.test(q)) return false;
-    try { return localStorage.getItem(MAIN_MAP_KEY) !== "ours"; } catch (_) { return true; }
+    return currentMainMap() !== "ours";
   }
   function autoOpen() {
-    // wait until our map exists (open() pauses it) so the two never render at once; give up quietly after ~15 s
+    // v3.10.80: Google 3D unless "google" (classic) was chosen; wait until our map exists (open() pauses it) so the two never
+    // render at once; give up quietly after ~15 s
+    S.vector = currentMainMap() !== "google";
     let tries = 0;
     const t = setInterval(() => {
       if (S.open || ++tries > 30) { clearInterval(t); return; }
       if (window.__setMainMapPaused && window.map) { clearInterval(t); open(); }
     }, 500);
+  }
+
+  // ---- v3.10.80 one map picker (Samvel): "google3d" (default, main), "google" (classic), "ours" (OSM). The choice is shown at
+  // once and opens with the app next time. Used by the map menu of our dock and of the Google side panel, and the settings. ----
+  const MAP_KINDS = ["google3d", "google", "ours"];
+  function currentMainMap() {
+    let v = null;
+    try { v = localStorage.getItem(MAIN_MAP_KEY); } catch (_) {}
+    return MAP_KINDS.includes(v) ? v : "google3d";
+  }
+  /** The map on the screen right now. */
+  function shownMap() { return S.open ? (S.vector ? "google3d" : "google") : "ours"; }
+  function selectMap(kind) {
+    if (!MAP_KINDS.includes(kind)) return false;
+    try { localStorage.setItem(MAIN_MAP_KEY, kind); } catch (_) {}
+    if (kind === "ours") { close(); return true; }
+    if (!S.enabled) { say("Google რუკა მიუწვდომელია (გასაღები არ არის): ჩვენს რუკაზე ხართ"); return false; }
+    const want = kind === "google3d";
+    try { localStorage.setItem("gmapVector", want ? "1" : "0"); } catch (_) {}
+    if (!S.open) { S.vector = want; open(); return true; }
+    if (S.vector !== want) {
+      S.vector = want;
+      rebuildMap(() => { S.vector = !want; try { localStorage.setItem("gmapVector", S.vector ? "1" : "0"); } catch (_) {} updatePanelButtons(); });
+      updatePanelButtons();
+    }
+    return true;
   }
 
   function close() {
@@ -1176,13 +1204,8 @@
       applyTraffic();
     });
     on("gmap-btn-night", "click", () => { if (window.toggleNightMode) window.toggleNightMode(); syncNight(); });
-    on("gmap-btn-vector", "click", () => {
-      const keep = (v) => { try { localStorage.setItem("gmapVector", v ? "1" : "0"); } catch (_) {} };
-      S.vector = !S.vector;
-      keep(S.vector);
-      rebuildMap(() => { S.vector = !S.vector; keep(S.vector); updatePanelButtons(); });
-      say(S.vector ? "ვექტორული რუკა (სატესტო): მანქანის მიმართულებით ბრუნავს" + (S.mapId ? "" : ", DEMO_MAP_ID") : "კლასიკური რუკა (ჩრდილოეთი ზემოთ)");
-    });
+    // v3.10.80: this button opens the map picker (Google 3D / Google classic / ours) instead of toggling 3D
+    on("gmap-btn-vector", "click", (e) => { if (e) e.stopPropagation(); if (window.openMapPicker) window.openMapPicker(); });
     on("gmap-card-close", "click", closeCard);
     on("gmap-card-go", "click", routeToPlace);
     on("gmap-card-start", "click", startNavigation);
@@ -1248,7 +1271,7 @@
     if (S.enabled && mainMapIsGoogle(q)) autoOpen();
   }
 
-  const api = { init, open, close, isOpen: () => S.open, isEnabled: () => S.enabled, camMoves: () => S.camCount, isVector: () => !!S.vector, gpuOn: () => !!S.gpuOn, mainMapIsGoogle, MAIN_MAP_KEY, gpuPlan, openWithQuery, openWithDestination, focusPlace, SIDE_PROXIES, mapKey, distToPolylineM, nearestOnPolyline, createOffRouteTracker, createVoiceCues, nearestChargers, createCarGlide, aheadPoint, mapOptions, cameraNeedsUpdate, createFpsMeter, scaledBoxStyle, capText, warnText, decodePolyline, parseRoutesResponse, routesRequestBody, nextStepIndex, fmtDist, buildLoaderUrl, createDebouncer, osrmUrl, summarizeRoute, mapStyles, bearing, meters, CATEGORIES };
+  const api = { init, open, close, isOpen: () => S.open, isEnabled: () => S.enabled, camMoves: () => S.camCount, isVector: () => !!S.vector, gpuOn: () => !!S.gpuOn, mainMapIsGoogle, MAIN_MAP_KEY, selectMap, shownMap, currentMainMap, MAP_KINDS, gpuPlan, openWithQuery, openWithDestination, focusPlace, SIDE_PROXIES, mapKey, distToPolylineM, nearestOnPolyline, createOffRouteTracker, createVoiceCues, nearestChargers, createCarGlide, aheadPoint, mapOptions, cameraNeedsUpdate, createFpsMeter, scaledBoxStyle, capText, warnText, decodePolyline, parseRoutesResponse, routesRequestBody, nextStepIndex, fmtDist, buildLoaderUrl, createDebouncer, osrmUrl, summarizeRoute, mapStyles, bearing, meters, CATEGORIES };
   if (typeof document !== "undefined") {
     if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", () => init());
     else init();
