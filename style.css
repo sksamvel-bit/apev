@@ -1079,13 +1079,6 @@ button svg * {
   box-shadow: 0 0 10px rgba(0, 210, 255, 0.25);
 }
 
-.dock-btn.traffic-active {
-  border-color: rgba(245, 158, 11, 0.6);
-  color: #fbbf24;
-  background: rgba(245, 158, 11, 0.22);
-  box-shadow: 0 0 10px rgba(245, 158, 11, 0.25);
-}
-
 .dock-btn.signals-active {
   border-color: rgba(16, 185, 129, 0.6);
   color: #34d399;
@@ -1423,30 +1416,11 @@ button svg * {
   line-height: 1.35;
 }
 
-.unpaved-toggle-row {
-  display: flex;
-  flex-direction: row;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  padding: 8px 12px;
-  background: rgba(255, 255, 255, 0.03);
-  border: 1px solid rgba(255, 255, 255, 0.06);
-  border-radius: var(--radius-md);
-  margin-top: 2px;
-}
-
 .setting-checkbox {
   width: 22px;
   height: 22px;
   cursor: pointer;
   accent-color: var(--accent-cyan);
-}
-
-.coming-soon-badge {
-  font-size: 0.74rem;
-  color: #fbbf24;
-  font-weight: 500;
 }
 
 @media (max-width: 720px) {
@@ -2085,8 +2059,7 @@ input {
 .settings-modal-window .specs-grid { gap: 3px 10px; }
 .settings-modal-window .spec-val { font-size: 0.82rem; }
 .settings-modal-window .spec-tip-badge { padding: 4px 8px; font-size: 0.72rem; }
-.settings-modal-window .unpaved-toggle-row { padding: 6px 10px; gap: 8px; }
-.settings-modal-window .modal-footer { padding: 6px 14px; }
+.settings-modal-window .settings-modal-window .modal-footer { padding: 6px 14px; }
 .settings-modal-window .btn-primary,
 .settings-modal-window .btn-secondary { padding: 8px 14px; font-size: 0.9rem; min-height: 40px; }
 /* Only on very short windows (not the car screen) fall back to scrolling */

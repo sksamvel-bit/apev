@@ -1345,64 +1345,8 @@ const server = http.createServer((req, res) => {
     return;
   }
 
-  // API Endpoint: /api/route - Google Routes API (traffic-aware) through the server, with a hard daily/monthly call cap.
-  // Why server-side: the console cannot cap Routes API spend, and the key stays off the browser. GET ?from=lat,lng&to=lat,lng&depart=minutes.
-  // Behind the PIN gate. Answers 429 {error:'cap'} when the cap is used up (the page then falls back to OSRM), 503 when no key is set.
-  if (pathname === '/api/route') {
-    const rkey = (process.env.GOOGLE_ROUTES_KEY || '').trim();
-    res.setHeader('Cache-Control', 'no-store');
-    const sendJson = (code, obj) => { res.writeHead(code, { 'Content-Type': 'application/json; charset=utf-8' }); res.end(JSON.stringify(obj)); };
-    if (!rkey) return sendJson(503, { error: 'no-key' });
-    const pt = (v) => { const m = /^(-?\d{1,3}(?:\.\d+)?),(-?\d{1,3}(?:\.\d+)?)$/.exec(String(v || '')); if (!m) return null; const lat = +m[1], lng = +m[2]; return Math.abs(lat) <= 90 && Math.abs(lng) <= 180 ? { latitude: lat, longitude: lng } : null; };
-    const q = new URL(req.url, 'http://x').searchParams;
-    const from = pt(q.get('from')), to = pt(q.get('to'));
-    const depart = Math.min(Math.max(parseInt(q.get('depart') || '0', 10) || 0, 0), 24 * 60);
-    if (!from || !to) return sendJson(400, { error: 'bad-coordinates' });
-    const gate = ROUTE_QUOTA.tryConsume();
-    if (!gate.ok) return sendJson(429, { error: 'cap', reason: gate.reason });
-    const body = {
-      origin: { location: { latLng: from } }, destination: { location: { latLng: to } },
-      travelMode: 'DRIVE', routingPreference: 'TRAFFIC_AWARE', computeAlternativeRoutes: true, languageCode: 'ka', units: 'METRIC'
-    };
-    if (depart > 0) body.departureTime = new Date(Date.now() + depart * 60000 + 30000).toISOString();
-    // ?try=noalt,en,unaware,nosteps (diagnostics, each still counts against the cap): strip parts of the request one by one
-    // to find which one makes Google answer 503 "Deadline expired" for Georgia.
-    const tries = new Set(String(q.get('try') || '').split(',').filter((t) => ['noalt', 'en', 'unaware', 'nosteps'].includes(t)));
-    if (tries.has('noalt')) body.computeAlternativeRoutes = false;
-    if (tries.has('en')) body.languageCode = 'en';
-    if (tries.has('unaware')) body.routingPreference = 'TRAFFIC_UNAWARE';
-    const fieldMask = 'routes.duration,routes.staticDuration,routes.distanceMeters,routes.polyline.encodedPolyline,routes.routeLabels' +
-      (tries.has('nosteps') ? '' : ',routes.legs.steps.navigationInstruction,routes.legs.steps.distanceMeters,routes.legs.steps.startLocation');
-    const payload = JSON.stringify(body);
-    const greq = https.request({
-      hostname: 'routes.googleapis.com', path: '/directions/v2:computeRoutes', method: 'POST', timeout: 10000,
-      // IPv4 only: the same request and key work from a desktop (200 in ~0.1 s) but answer 503 "Deadline expired" from Render;
-      // Render's Alpine container may reach Google over IPv6, the one network difference we can control from here
-      family: 4,
-      headers: {
-        'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(payload), 'X-Goog-Api-Key': rkey,
-        'X-Goog-FieldMask': fieldMask
-      }
-    }, (gres) => {
-      const chunks = []; let size = 0;
-      gres.on('data', (c) => { size += c.length; if (size < 2 * 1024 * 1024) chunks.push(c); });
-      gres.on('end', () => {
-        if (gres.statusCode !== 200) {
-          // pass Google's own reason on (e.g. PERMISSION_DENIED + "Routes API has not been used in project..."); it never contains the key
-          let reason = '', message = '';
-          try { const e = JSON.parse(Buffer.concat(chunks).toString('utf8')).error || {}; reason = String(e.status || ''); message = String(e.message || '').slice(0, 300); } catch (_) {}
-          console.warn('[route] Google answered HTTP ' + gres.statusCode + (reason ? ' ' + reason : '') + (message ? ': ' + message : ''));
-          return sendJson(502, { error: 'upstream', status: gres.statusCode, reason, message, tried: [...tries] });
-        }
-        res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
-        res.end(Buffer.concat(chunks));
-      });
-    });
-    greq.on('timeout', () => greq.destroy(new Error('timeout')));
-    greq.on('error', (e) => { console.warn('[route] upstream error: ' + (e && e.message)); if (!res.headersSent) sendJson(502, { error: 'upstream' }); });
-    greq.end(payload);
-    return;
-  }
+  // (v3.10.70, audit L1: the server-side Google Routes proxy /api/route was removed; since v3.10.42 the page calls Routes
+  // itself after a permit from /api/route-permit, and GOOGLE_ROUTES_KEY is no longer used.)
 
   // API Endpoint: /api/google-permit?sku=routes|mapload|autocomplete|details|nearby - one paid Google call from the page = one permit.
   // (/api/route-permit = sku routes, kept for older pages.) The page calls Google itself (Routes answers 503 "Deadline expired" from

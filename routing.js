@@ -25,7 +25,6 @@ class RoutingEngine {
     // Callbacks for UI updates
     this.onManeuverUpdate = null;
     this.onSummaryUpdate = null;
-    this.avoidUnpaved = false;
     this.onArrival = null;
     this.onPositionUpdate = null;
 
@@ -101,10 +100,6 @@ class RoutingEngine {
         ];
       }
     });
-  }
-
-  setAvoidUnpaved(avoid) {
-    this.avoidUnpaved = !!avoid;
   }
 
   setStepIndex(idx) {

@@ -135,7 +135,7 @@ function initClock() {
 const OFM_STYLE_URL = "https://tiles.openfreemap.org/styles/liberty";
 const OFM_STYLE_CACHE_KEY = "tesla_nav_ofm_style_v1";
 const MAP_STYLE_KEYS = ["openfreemap", "google-roads"];
-const APP_VERSION = "3.10.69";
+const APP_VERSION = "3.10.70";
 const MAP_DEFAULT_ZOOM = 16;      // MapLibre zoom (Leaflet-equivalent 17)
 // Performance experiments (all default to the normal behaviour): ?labels=0 hides the base-map labels/icons, ?markers=0 skips the
 // charger DOM markers, ?pitch=N sets the heading-up tilt (0-60). Used to find what makes the car's browser slow.
@@ -1896,17 +1896,6 @@ function initEventListeners() {
   });
   document.getElementById("btn-zoom-out").addEventListener("click", () => {
     if (map) map.zoomOut({ duration: 220 });
-  });
-
-  const btnTraffic = document.getElementById("btn-toggle-traffic");
-  btnTraffic.addEventListener("click", () => {
-    const enabled = trafficEngine.toggle();
-    btnTraffic.classList.toggle("traffic-active", enabled);
-    if (enabled && !trafficEngine.hasKey()) {
-      showToast("🚦 საცობები ჩანს Google რეჟიმში (Google რუკის ღილაკი)", "info", 4000);
-    } else {
-      showToast(enabled ? "🚦 საცობების ფენა ჩართულია" : "🚦 საცობების ფენა გამორთულია", "info", 1800);
-    }
   });
 
   const btnCameras = document.getElementById("btn-toggle-cameras");

@@ -26,8 +26,8 @@ try { fs.unlinkSync(f); } catch (_) {}
 ok(createRouteQuota({ file: '/nonexistent-dir/x.json', dayCap: 1, now: () => now }).tryConsume().ok, 'unwritable file does not break the guard');
 
 const srv = fs.readFileSync(__dirname + '/../server.js', 'utf8');
-ok(/pathname === '\/api\/route'/.test(srv) && /GOOGLE_ROUTES_KEY/.test(srv), 'server has /api/route using GOOGLE_ROUTES_KEY');
-ok(!/PUBLIC_AUTH_PATHS[^;]*api\/route/.test(srv), '/api/route is behind the PIN gate');
+ok(!/pathname === '\/api\/route'\)/.test(srv) && !/process\.env\.GOOGLE_ROUTES_KEY/.test(srv), 'the unused server-side /api/route proxy and GOOGLE_ROUTES_KEY are gone (v3.10.70)');
+ok(!/PUBLIC_AUTH_PATHS[^;]*api\/route/.test(srv), '/api/route-permit is behind the PIN gate');
 ok(!/console\.(log|warn|error)\([^)]*ROUTES_KEY/.test(srv), 'routes key is never logged');
 ok(!/'route-quota\.js'/.test(srv.match(/STATIC_WHITELIST = new Set\(\[([\s\S]*?)\]\)/)[1]), 'route-quota.js is not served to browsers');
 const cli = fs.readFileSync(__dirname + '/../gmap.js', 'utf8');

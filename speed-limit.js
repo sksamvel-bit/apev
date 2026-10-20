@@ -158,9 +158,6 @@ class SpeedLimitEngine {
     ];
   }
 
-  // Backward compatibility stub (TomTom dead level removed per audit)
-  setTomTomKey(key) {}
-
   /**
    * Main periodic update called from updateVehicleMarker()
    */

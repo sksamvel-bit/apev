@@ -1,6 +1,6 @@
 # tesla-nav: პროექტის დოკუმენტაცია
 
-> **ვერსია:** v3.10.69 · **განახლდა:** 2026-10-20 · **მისამართი:** https://apev.onrender.com · **რეპო:** github.com/sksamvel-bit/apev (საჯარო)
+> **ვერსია:** v3.10.70 · **განახლდა:** 2026-10-20 · **მისამართი:** https://apev.onrender.com · **რეპო:** github.com/sksamvel-bit/apev (საჯარო)
 >
 > ეს არის პროექტის **მიმდინარე** აღწერა: რა არის, როგორ მუშაობს და საიდან მოდის მონაცემები. ყოველი ვერსიის ცვლილება ცალკე იწერება [TEAM_NOTES.md](TEAM_NOTES.md)-ის „ცვლილებების ჟურნალში“. ეს ფაილი ახლდება მაშინ, როცა იცვლება აქ აღწერილი რამე (ახალი ფუნქცია, წყარო, ლიმიტი, წესი). საუბრების სრული ისტორია ინახება `../history/`-ში (git-ში არ შედის).
 
@@ -101,7 +101,7 @@ Google რეჟიმი იმავე ეკრანზე იხსნე�
 | `/api/chargers/live`, `/api/chargers/sync` | დამტენების სია / იძულებითი განახლება (`ADMIN_TOKEN`) |
 | `/api/cameras` | სიჩქარის კამერები |
 | `/api/overpass?data=` | Overpass-ის ქეში ლიმიტის და შუქნიშნის ფილებისთვის. მხოლოდ ეს ორი მოთხოვნა, პატარა ზონა, რეგიონში |
-| `/api/gmaps-config`, `/api/google-permit`, `/api/route-permit`, `/api/google-usage`, `/api/route` | Google რეჟიმი და ლიმიტები |
+| `/api/gmaps-config`, `/api/google-permit`, `/api/route-permit`, `/api/google-usage` | Google რეჟიმი და ლიმიტები |
 | `/api/session/listen\|send\|status` | ტელეფონი ↔ მანქანა (SSE). ტიპები მხოლოდ `destination` და `gps` |
 | `/api/info`, `/api/telemetry/error`, `/healthz` | სერვისული |
 
@@ -137,7 +137,7 @@ npm run smoke           # ნამდვილი სერვერის შ�
 - **Render-ის „ძილი“:** უფასო სერვერი 15 წუთის უმოქმედობის შემდეგ იძინებს და ~30–60 წმ-ში იღვიძებს. Service Worker 3 წამის შემდეგ ქეშიდან ხსნის გვერდს (v3.10.65), ახალი ვერსია კი ფონზე ჩაიტვირთება. PIN-ის გვერდი ქეშში არ ინახება. სურვილისამებრ: UptimeRobot-ის (უფასო) „პინგი“ `/healthz`-ზე 5 წთ-ში ერთხელ, და სერვერი საერთოდ არ დაიძინებს.
 - **გამოქვეყნება:** `git push` → `main` → Render ავტომატურად აშენებს Docker-ით. CI (GitHub Actions) უშვებს სინტაქსს, `npm test`, `check`, `smoke`.
 - **ვერსიის აწევა ერთად ოთხ ადგილზე:** `package.json`, ყველა `?v=` `index.html`-ში, `APP_VERSION` `app.js`-ში, `CACHE_NAME` და precache `sw.js`-ში. მანქანაში გვერდი ↻-ით უნდა გადაიტვირთოს. ვერსია დიაგნოსტიკის ზოლში ჩანს.
-- **Env ცვლადები** (მხოლოდ Render-ში; რეპოში საიდუმლო არასოდეს): `ACCESS_PIN`, `AUTH_SECRET`, `ADMIN_TOKEN`, `GOOGLE_MAPS_KEY`, `GOOGLE_MAP_ID`, `GOOGLE_ROUTES_KEY`, `ROUTES_DAILY_CAP`, `ROUTES_MONTHLY_CAP`, `UPSTASH_REDIS_REST_URL`, `UPSTASH_REDIS_REST_TOKEN`, `UPSTASH_REDIS_KEY`, `QUOTA_FILE_PATH`/`DATA_DIR`, `PORT`, `HOST`.
+- **Env ცვლადები** (მხოლოდ Render-ში; რეპოში საიდუმლო არასოდეს): `ACCESS_PIN`, `AUTH_SECRET`, `ADMIN_TOKEN`, `GOOGLE_MAPS_KEY`, `GOOGLE_MAP_ID`, `ROUTES_DAILY_CAP`, `ROUTES_MONTHLY_CAP`, `UPSTASH_REDIS_REST_URL`, `UPSTASH_REDIS_REST_TOKEN`, `UPSTASH_REDIS_KEY`, `QUOTA_FILE_PATH`/`DATA_DIR`, `PORT`, `HOST`.
 
 ## 8. მუშაობის წესები
 
@@ -157,6 +157,7 @@ npm run smoke           # ნამდვილი სერვერის შ�
 | 2026-10-15 – 19 | v3.10.3–34: MCU2-ის ოპტიმიზაცია, mono სტილი, Lite რეჟიმი, YouTube-ის მოხსნა, Google რეჟიმის დასაწყისი |
 | 2026-10-19 | Claude შემოუერთდა: კოდის რევიუ, „ორი რეჟიმის“ საბოლოო გეგმა (5 ნაბიჯი) |
 | 2026-10-19 – 20 | v3.10.35–52: Google რეჟიმის გამართვა, ხარჯის ლიმიტები (Upstash), ღილაკები, ჩვენი ფუნქციები Google-ზე, Photon ძებნა |
+| 2026-10-20 | v3.10.70: წაიშალა გამოუყენებელი /api/route, დამალული 🚦 ღილაკი და მკვდარი კოდი |
 | 2026-10-20 | v3.10.69: Overpass-ის სერვერული ქეში (ლიმიტი, შუქნიშნები) |
 | 2026-10-20 | v3.10.68: Overpass-ის მუშა სარკეები; კამერები Upstash-ში |
 | 2026-10-20 | v3.10.67: არასწორი PIN-ების ნაკადი მფლობელს ვეღარ ბლოკავს; შესვლა თავისით გრძელდება |
