@@ -2235,3 +2235,18 @@ body.gmap-open #gmap-nav { top: 60px; }
 .gmap-side .gmap-btn:active { transform: scale(0.92); background: rgba(255, 255, 255, 0.18); }
 .gmap-side .gmap-btn.active { border-color: rgba(0, 210, 255, 0.6); background: rgba(0, 136, 255, 0.22); color: var(--accent-cyan); }
 .gmap-side .gmap-btn.gmap-close { margin-top: 6px; background: rgba(225, 29, 72, 0.22); border-color: rgba(225, 29, 72, 0.6); }
+
+/* v3.10.60: devices panel in the settings window (owner only) */
+.devices-panel { margin-top: 10px; padding: 10px 12px; border: 1px solid rgba(255, 255, 255, 0.12); border-radius: 12px; background: rgba(255, 255, 255, 0.03); }
+.devices-panel[hidden] { display: none; }
+.devices-title { margin: 0 0 6px; font-size: 0.95rem; }
+.devices-sub { margin: 10px 0 4px; font-size: 0.8rem; color: var(--text-secondary); font-weight: 700; }
+.devices-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 8px 10px; border-radius: 10px; background: rgba(255, 255, 255, 0.04); margin-bottom: 4px; }
+.devices-row.current { border: 1px solid rgba(0, 210, 255, 0.5); }
+.devices-info { min-width: 0; }
+.devices-name { font-size: 0.9rem; font-weight: 600; }
+.devices-meta { font-size: 0.75rem; color: var(--text-secondary); }
+.devices-note { font-size: 0.75rem; color: var(--text-secondary); margin-top: 8px; }
+.devices-btn { flex-shrink: 0; min-height: 40px; padding: 6px 12px; border-radius: 10px; border: 1px solid rgba(225, 29, 72, 0.6); background: rgba(225, 29, 72, 0.15); color: #fecaca; font-weight: 700; cursor: pointer; }
+.devices-btn.armed { background: #e11d48; color: #fff; }
+.devices-all { width: 100%; margin-top: 10px; }

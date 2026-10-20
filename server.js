@@ -21,7 +21,7 @@ const STATIC_WHITELIST = new Set([
   'index.html','remote.html','style.css','qrcode.min.js',
   'maplibre-gl.js','maplibre-gl.css','map-gl.js',
   'app.js','routing.js','traffic.js','traffic-signals.js','chargers.js','charger-list.js','search.js','tesla-style.js',
-  'battery.js','weather.js','speech.js','turn-audio.js','speed-limit.js','speed-cameras.js',
+  'battery.js','weather.js','devices-panel.js','speech.js','turn-audio.js','speed-limit.js','speed-cameras.js',
   'sim-drive.js','gmap.js',
   'manifest.json','icon.svg','icon-192.png','icon-512.png','sw.js'
 ]);
@@ -34,25 +34,20 @@ const RAW_PINS = (process.env.ACCESS_PIN || '').split(',').map(s => s.trim()).fi
 const MASTER_PIN = RAW_PINS[0] || '';
 const AUTH_SECRET = process.env.AUTH_SECRET || crypto.randomBytes(32).toString('hex');
 
-// Persistent storage for single-device bindings: pin-bindings.json
-const BINDINGS_FILE = path.join(PUBLIC_DIR, 'pin-bindings.json');
-let pinBindings = {}; // pin -> { deviceToken, boundAt, ip, userAgent }
-
-try {
-  if (fs.existsSync(BINDINGS_FILE)) {
-    pinBindings = JSON.parse(fs.readFileSync(BINDINGS_FILE, 'utf8')) || {};
-  }
-} catch (e) {
-  console.warn('[Auth] Pin bindings load notice:', e.message);
-}
-
-function saveBindings() {
-  try {
-    fs.writeFileSync(BINDINGS_FILE, JSON.stringify(pinBindings, null, 2), 'utf8');
-  } catch (e) {
-    console.error('[Auth] Failed to save pin bindings:', e.message);
-  }
-}
+// Signed-in devices (v3.10.60, auth-store.js): master devices and guest PIN bindings in Upstash (key <UPSTASH_REDIS_KEY>_auth),
+// so a deploy no longer signs guests out or frees their PINs. Without Upstash: pin-bindings.json (DATA_DIR or app folder).
+const AuthStore = require('./auth-store.js');
+const AUTH = AuthStore.createAuthStore({
+  adapter: (process.env.UPSTASH_REDIS_REST_URL && process.env.UPSTASH_REDIS_REST_TOKEN)
+    ? createUpstashRedisAdapter({ url: process.env.UPSTASH_REDIS_REST_URL, token: process.env.UPSTASH_REDIS_REST_TOKEN, key: (process.env.UPSTASH_REDIS_KEY || 'routes_usage_quota') + '_auth' })
+    : null,
+  file: path.join(process.env.DATA_DIR || PUBLIC_DIR, 'pin-bindings.json')
+});
+AUTH.ready.then(() => {
+  if (RAW_PINS.length) console.log('[auth] store=' + AUTH.storeName + (AUTH.degraded ? ' DEGRADED (signed cookies accepted, nothing written)' : '') +
+    ' masters=' + Object.keys(AUTH.state.masters).length + ' guests bound=' + Object.keys(AUTH.state.guests).length);
+});
+const MAX_MASTER_DEVICES = 30;
 
 // The cookie never contains the PIN itself, only a short one-way id derived from it.
 function pinId(pin) {
@@ -135,23 +130,44 @@ function parseCookies(cookieHeader) {
   return cookies;
 }
 
+/**
+ * The signed-in device behind this request: { kind: 'master'|'guest', pin, deviceToken, rec?, legacy? } or null.
+ * Master: a device token from the store, or the pre-v3.10.60 shared "master" token until the owner signs those out.
+ * Guest: only the one device the PIN is bound to. Degraded store (unreadable at start): a validly signed cookie is enough.
+ */
+function currentDevice(req) {
+  const cookies = parseCookies(req.headers.cookie);
+  if (!cookies.tesla_auth) return null;
+  const v = verifyToken(cookies.tesla_auth);
+  if (!v || !RAW_PINS.includes(v.pin)) return null;
+  const st = AUTH.state;
+  if (v.pin === MASTER_PIN) {
+    if (v.deviceToken === 'master') return (!st.legacyOff || AUTH.degraded) ? { kind: 'master', legacy: true, ...v } : null;
+    const rec = st.masters[v.deviceToken];
+    if (rec) { AUTH.touch(rec); return { kind: 'master', ...v, rec }; }
+    return AUTH.degraded ? { kind: 'master', ...v } : null;
+  }
+  const g = st.guests[pinId(v.pin)];
+  if (g && g.deviceToken === v.deviceToken) { AUTH.touch(g); return { kind: 'guest', ...v, rec: g }; }
+  return (!g && AUTH.degraded) ? { kind: 'guest', ...v } : null;
+}
+
 function isAuthenticated(req) {
   if (RAW_PINS.length === 0) return true; // Open mode when ACCESS_PIN is not configured
-  const cookies = parseCookies(req.headers.cookie);
-  if (!cookies.tesla_auth) return false;
-  const verified = verifyToken(cookies.tesla_auth);
-  if (!verified) return false;
+  return !!currentDevice(req);
+}
 
-  const { pin, deviceToken } = verified;
-  if (!RAW_PINS.includes(pin)) return false;
-
-  // Master PIN is allowed on any device
-  if (pin === MASTER_PIN) return true;
-
-  // Guest PIN must strictly match the bound device token!
-  const binding = pinBindings[pin];
-  if (!binding) return false;
-  return binding.deviceToken === deviceToken;
+/** A new master device record + its signed cookie value. */
+function newMasterDevice(req) {
+  const st = AUTH.state;
+  const deviceToken = 'm' + crypto.randomBytes(24).toString('hex');
+  st.masters[deviceToken] = { createdAt: Date.now(), lastSeen: Date.now(), ua: (req.headers['user-agent'] || '').slice(0, 160), ip: clientIp(req) };
+  const tokens = Object.keys(st.masters);
+  if (tokens.length > MAX_MASTER_DEVICES) {   // forget the longest-unused ones
+    tokens.sort((a, b) => (st.masters[a].lastSeen || 0) - (st.masters[b].lastSeen || 0)).slice(0, tokens.length - MAX_MASTER_DEVICES).forEach((t) => { delete st.masters[t]; });
+  }
+  AUTH.save();
+  return { deviceToken, token: signToken(MASTER_PIN, deviceToken) };
 }
 
 function attemptPinAuth(inputPin, req) {
@@ -169,27 +185,27 @@ function attemptPinAuth(inputPin, req) {
     return { success: false, error: 'არასწორი PIN კოდი' };
   }
 
-  // 1. MASTER PIN (Owner): unlimited devices
+  // 1. MASTER PIN (Owner): unlimited devices, each with its own token (the owner can sign one out in the devices panel)
   if (matchedPin === MASTER_PIN) {
-    const token = signToken(matchedPin, 'master');
-    return { success: true, token, isMaster: true };
+    return { success: true, token: newMasterDevice(req).token, isMaster: true };
   }
 
   // 2. GUEST PIN (Single-Device Lock)
-  const binding = pinBindings[matchedPin];
+  const binding = AUTH.state.guests[pinId(matchedPin)];
   const cookies = parseCookies(req.headers.cookie);
   const currentVerified = verifyToken(cookies.tesla_auth);
 
   if (!binding) {
     // First activation: bind to this device!
     const deviceToken = crypto.randomBytes(24).toString('hex');
-    pinBindings[matchedPin] = {
+    AUTH.state.guests[pinId(matchedPin)] = {
       deviceToken,
       boundAt: Date.now(),
+      lastSeen: Date.now(),
       ip: clientIp(req),
-      userAgent: (req.headers['user-agent'] || '').slice(0, 120)
+      ua: (req.headers['user-agent'] || '').slice(0, 160)
     };
-    saveBindings();
+    AUTH.save();
     console.log(`[Auth] Single-device lock engaged for Guest PIN id ${pinId(matchedPin)}`);
     const token = signToken(matchedPin, deviceToken);
     return { success: true, token, isMaster: false };
@@ -615,6 +631,11 @@ if (require.main === module) {
     getLiveGeorgiaChargers(true).catch(e => console.warn('[EV Auto-Sync] Error:', e.message));
   }, CHARGERS_CACHE_TTL);
 
+  // a deploy stops the old server with SIGTERM: write the last lastSeen times first
+  process.on('SIGTERM', () => { AUTH.flush().finally(() => process.exit(0)); setTimeout(() => process.exit(0), 3000).unref(); });
+  // signed-in devices: if Upstash could not be read at start, keep trying (until then signed cookies are accepted)
+  setInterval(() => { if (AUTH.degraded) AUTH.retry().then((ok) => { if (ok) console.log('[auth] store readable again'); }); }, 60000);
+
   // GeoCharge tariff medians: soon after start, then once a day
   setTimeout(() => { refreshTariffs().catch(() => {}); }, 10000);
   setInterval(() => { refreshTariffs().catch(() => {}); }, TARIFFS_REFRESH_MS);
@@ -928,6 +949,8 @@ const PIN_LOGIN_HTML = `<!DOCTYPE html>
 </html>`;
 
 const server = http.createServer((req, res) => {
+  // the signed-in devices are read once at start (Upstash): requests that arrive before that wait for it (max ~4 s)
+  if (!AUTH.isReady()) { AUTH.ready.then(() => server.emit('request', req, res)); return; }
   let urlObj, pathname;
   try {
     urlObj = new URL(req.url, `http://${req.headers.host || 'localhost'}`);
@@ -1059,6 +1082,68 @@ const server = http.createServer((req, res) => {
       res.end(JSON.stringify({ error: 'Unauthorized' }));
       return;
     }
+  }
+
+  // API Endpoint: /api/admin/* - the owner's devices panel (v3.10.60). MASTER PIN devices only; a guest gets 403 for every call.
+  // GET devices -> the list (no PINs, no tokens: short ids only); POST revoke {id} / revoke-others -> the new list.
+  if (pathname.startsWith('/api/admin/')) {
+    const send = (code, obj, extra) => { res.writeHead(code, Object.assign({ 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' }, extra || {})); res.end(JSON.stringify(obj)); };
+    const me = RAW_PINS.length ? currentDevice(req) : null;
+    if (!me || me.kind !== 'master') return send(403, { error: 'master-only' });
+    const st = AUTH.state;
+    const view = (cur) => {
+      const masters = Object.keys(st.masters).map((t) => {
+        const r = st.masters[t];
+        return { id: AuthStore.shortId(t), label: AuthStore.deviceLabel(r.ua), ip: AuthStore.maskIp(r.ip), createdAt: r.createdAt || 0, lastSeen: r.lastSeen || 0, current: t === cur.deviceToken };
+      }).sort((a, b) => b.lastSeen - a.lastSeen);
+      if (!st.legacyOff) masters.push({ id: 'legacy', label: 'ძველი შესვლები (v3.10.60-მდე, ყველა ერთად)', ip: '', createdAt: 0, lastSeen: 0, current: !!cur.legacy });
+      const guests = RAW_PINS.slice(1).map((p, i) => {
+        const g = st.guests[pinId(p)];
+        return { id: 'guest-' + (i + 1), n: i + 1, bound: !!g, label: g ? AuthStore.deviceLabel(g.ua) : '', ip: g ? AuthStore.maskIp(g.ip) : '', boundAt: g ? g.boundAt || 0 : 0, lastSeen: g ? g.lastSeen || 0 : 0 };
+      });
+      return { masters, guests, store: AUTH.storeName, degraded: AUTH.degraded };
+    };
+    if (pathname === '/api/admin/devices' && req.method === 'GET') return send(200, view(me));
+    if (req.method !== 'POST') return send(405, { error: 'method' });
+    try { if (req.headers.origin && new URL(req.headers.origin).host !== req.headers.host) return send(403, { error: 'origin' }); } catch (_) { return send(403, { error: 'origin' }); }
+    if (AUTH.degraded) return send(503, { error: 'store-unavailable' });
+    let body = '';
+    req.setEncoding('utf8');
+    req.on('data', (c) => { body += c; if (body.length > 512) req.destroy(); });
+    req.on('end', () => {
+      let p = {};
+      try { p = JSON.parse(body || '{}'); } catch (_) { return send(400, { error: 'json' }); }
+      // signing out the old shared cookies would sign this device out too if it still uses one: give it its own token first
+      let cur = me, cookie = null;
+      const upgradeMe = () => {
+        if (!cur.legacy) return;
+        const d = newMasterDevice(req);
+        const isHttps = req.headers['x-forwarded-proto'] === 'https';
+        cookie = `tesla_auth=${d.token}; Path=/; HttpOnly; SameSite=Lax; Max-Age=2592000${isHttps ? '; Secure' : ''}`;
+        cur = { kind: 'master', pin: MASTER_PIN, deviceToken: d.deviceToken };
+      };
+      if (pathname === '/api/admin/revoke') {
+        const id = String(p.id || '');
+        if (id === 'legacy') { upgradeMe(); st.legacyOff = true; }
+        else if (/^guest-\d+$/.test(id)) {
+          const pin = RAW_PINS[parseInt(id.slice(6), 10)];
+          if (!pin || pin === MASTER_PIN) return send(404, { error: 'unknown' });
+          delete st.guests[pinId(pin)];
+        } else {
+          const t = Object.keys(st.masters).find((k) => AuthStore.shortId(k) === id);
+          if (!t) return send(404, { error: 'unknown' });
+          if (t === cur.deviceToken) return send(409, { error: 'current-device' });
+          delete st.masters[t];
+        }
+      } else if (pathname === '/api/admin/revoke-others') {
+        upgradeMe();
+        Object.keys(st.masters).forEach((t) => { if (t !== cur.deviceToken) delete st.masters[t]; });
+        st.legacyOff = true;
+        st.guests = {};
+      } else return send(404, { error: 'unknown' });
+      AUTH.flush().then(() => send(200, view(cur), cookie ? { 'Set-Cookie': cookie } : null));
+    });
+    return;
   }
 
   // API Endpoint: /api/route - Google Routes API (traffic-aware) through the server, with a hard daily/monthly call cap.
