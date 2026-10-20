@@ -150,3 +150,18 @@ ok(!/innerHTML\s*=/.test(src), 'no innerHTML (Places text rendered with textCont
 const srv = fs.readFileSync(__dirname + '/../server.js', 'utf8');
 ok(/'gmap\.js'/.test(srv), 'gmap.js is in the server whitelist');
 ok(/GOOGLE_MAPS_KEY/.test(srv) && !/PUBLIC_AUTH_PATHS[^;]*gmaps-config/.test(srv), '/api/gmaps-config reads env and is not a public path');
+
+// ---- main map -> Google mode shortcuts (v3.10.50): one direction only (Google results never come back to MapLibre) ----
+{
+  const appSrc = fs.readFileSync(__dirname + '/../app.js', 'utf8');
+  const used = [...new Set([...appSrc.matchAll(/GMapMode\.(\w+)/g)].map((m) => m[1]))].sort();
+  ok(JSON.stringify(used) === JSON.stringify(['isEnabled', 'openWithDestination', 'openWithQuery']), 'app.js only opens Google mode (text / our destination in), never reads Google data back: ' + used.join(', '));
+  ok(typeof G.openWithQuery === 'function' && typeof G.openWithDestination === 'function' && typeof G.isEnabled === 'function', 'gmap.js exports the two shortcuts and isEnabled');
+  const owq = src.slice(src.indexOf('async function openWithQuery'), src.indexOf('async function openWithDestination'));
+  const owd = src.slice(src.indexOf('async function openWithDestination'), src.indexOf('// ---------- open / close'));
+  ok(/await open\(\)/.test(owq) && /suggest\(q\)/.test(owq), 'search shortcut opens Google mode and runs the normal (permit-counted) autocomplete');
+  ok(/await open\(\)/.test(owd) && /showPlace\(/.test(owd) && /routeToPlace\(\)/.test(owd), 'route shortcut shows our destination and computes the routes in Google mode');
+  ok(/GMapMode\.isEnabled\(\)[\s\S]{0,200}Google-ში ძებნა/.test(appSrc), 'the "Google-ში ძებნა" row appears only when Google mode is enabled');
+  const html = fs.readFileSync(__dirname + '/../index.html', 'utf8');
+  ok(/id="btn-preview-google"[^>]*hidden/.test(html), 'the route card button starts hidden (shown only when Google mode is enabled)');
+}

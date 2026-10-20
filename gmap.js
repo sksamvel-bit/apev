@@ -900,6 +900,28 @@
     }
   }
 
+  // ---------- shortcuts from the main map (v3.10.50; data only flows main map -> Google mode, never back) ----------
+  /** Opens Google mode with the driver's text already searched (Places autocomplete, counted like typed text). */
+  async function openWithQuery(text) {
+    const q = String(text || "").trim();
+    await open();
+    if (!S.open || !S.map) return false;
+    const input = $("gmap-search-input");
+    if (input) input.value = q;
+    if (q.length >= 3) await suggest(q);
+    return true;
+  }
+
+  /** Takes our own (OSM) destination into Google mode and computes the traffic-aware routes there. */
+  async function openWithDestination(dest) {
+    if (!dest || !isFinite(dest.lat) || !isFinite(dest.lng)) return false;
+    await open();
+    if (!S.open || !S.map) return false;
+    showPlace({ name: dest.name || "დანიშნულების ადგილი", address: dest.address || "", loc: { lat: dest.lat, lng: dest.lng } });
+    await routeToPlace();
+    return true;
+  }
+
   // ---------- open / close ----------
   async function open() {
     if (!S.enabled || S.open) return;
@@ -1010,7 +1032,7 @@
     if (btn) btn.hidden = !S.enabled;
   }
 
-  const api = { init, open, close, isOpen: () => S.open, distToPolylineM, nearestOnPolyline, createOffRouteTracker, createVoiceCues, createCarGlide, aheadPoint, mapOptions, cameraNeedsUpdate, createFpsMeter, scaledBoxStyle, capText, warnText, decodePolyline, parseRoutesResponse, routesRequestBody, nextStepIndex, fmtDist, buildLoaderUrl, createDebouncer, osrmUrl, summarizeRoute, mapStyles, bearing, meters, CATEGORIES };
+  const api = { init, open, close, isOpen: () => S.open, isEnabled: () => S.enabled, openWithQuery, openWithDestination, distToPolylineM, nearestOnPolyline, createOffRouteTracker, createVoiceCues, createCarGlide, aheadPoint, mapOptions, cameraNeedsUpdate, createFpsMeter, scaledBoxStyle, capText, warnText, decodePolyline, parseRoutesResponse, routesRequestBody, nextStepIndex, fmtDist, buildLoaderUrl, createDebouncer, osrmUrl, summarizeRoute, mapStyles, bearing, meters, CATEGORIES };
   if (typeof document !== "undefined") {
     if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", () => init());
     else init();

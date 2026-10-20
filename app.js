@@ -134,7 +134,7 @@ function initClock() {
 const OFM_STYLE_URL = "https://tiles.openfreemap.org/styles/liberty";
 const OFM_STYLE_CACHE_KEY = "tesla_nav_ofm_style_v1";
 const MAP_STYLE_KEYS = ["openfreemap", "google-roads"];
-const APP_VERSION = "3.10.49";
+const APP_VERSION = "3.10.50";
 const MAP_DEFAULT_ZOOM = 16;      // MapLibre zoom (Leaflet-equivalent 17)
 // Performance experiments (all default to the normal behaviour): ?labels=0 hides the base-map labels/icons, ?markers=0 skips the
 // charger DOM markers, ?pitch=N sets the heading-up tilt (0-60). Used to find what makes the car's browser slow.
@@ -1341,6 +1341,8 @@ async function prepareRoutePreview(destLatLng, destTitle = "დანიშნ�
 
 /** Fills the route preview card (time, distance, ETA, battery) for the given route. Called again when an alternative is tapped. */
 function fillPreviewCard(route, destTitle, destAddress) {
+  const gBtn = document.getElementById("btn-preview-google");
+  if (gBtn) gBtn.hidden = !(window.GMapMode && window.GMapMode.isEnabled());
   const titleEl = document.getElementById("preview-dest-title");
   const addrEl = document.getElementById("preview-dest-address");
   const timeEl = document.getElementById("preview-time");
@@ -1712,6 +1714,14 @@ function renderSuggestions(query, online) {
     container.appendChild(searchRow("🔎", "ძებნა ინტერნეტში: «" + query + "»", "Enter ან შეხება", null, () => runOnlineSearch(query)));
   }
 
+  // Shortcut to Google mode (v3.10.50): the same text searched with Google Places there. Google results stay on the Google map.
+  if (query.length >= 3 && window.GMapMode && window.GMapMode.isEnabled()) {
+    container.appendChild(searchRow("🌐", "Google-ში ძებნა: «" + query + "»", "Google რეჟიმი იხსნება ამ ტექსტით", null, () => {
+      container.classList.remove("show");
+      window.GMapMode.openWithQuery(query);
+    }));
+  }
+
   // nearby charging stations matching the text (a city name matches dozens, so only the 3 nearest)
   local.filter((it) => it.kind !== "recent").slice(0, 3).forEach(addLocal);
 
@@ -1932,6 +1942,16 @@ function initEventListeners() {
   const btnStartGo = document.getElementById("btn-start-go");
   if (btnStartGo) {
     btnStartGo.addEventListener("click", confirmStartNavigation);
+  }
+
+  // Same destination, traffic-aware route in Google mode (our OSM destination goes to Google, never the other way)
+  const btnPreviewGoogle = document.getElementById("btn-preview-google");
+  if (btnPreviewGoogle) {
+    btnPreviewGoogle.addEventListener("click", () => {
+      const d = pendingDestination;
+      if (!d || !window.GMapMode) return;
+      window.GMapMode.openWithDestination({ lat: d.latlng.lat, lng: d.latlng.lng, name: d.title, address: d.address });
+    });
   }
 
   const btnPreviewCancel = document.getElementById("btn-preview-cancel");
