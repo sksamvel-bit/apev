@@ -161,4 +161,37 @@ test("deduplicates identical prompts within minIntervalMs", () => {
   assert.strictEqual(spokenUtterances.length, 1, "Immediate duplicate speech should be ignored");
 });
 
+test("speak delegates to TurnAudioEngine when present (Option A Tesla offline audio)", () => {
+  const { spokenUtterances } = setupMocks();
+  let playedPrompt = "";
+  const mockTurnAudio = {
+    play: (text) => {
+      playedPrompt = text;
+      return true; // handled by audio pack
+    },
+    setMuted: () => {}
+  };
+
+  const assistant = new SpeechAssistant({ turnAudio: mockTurnAudio });
+  assistant.speak("500 მეტრში, მოუხვიეთ მარჯვნივ");
+
+  assert.strictEqual(playedPrompt, "500 მეტრში, მოუხვიეთ მარჯვნივ", "TurnAudioEngine should play prompt");
+  assert.strictEqual(spokenUtterances.length, 0, "TTS should be bypassed when audio clip handles it");
+});
+
+test("toggleMute propagates mute state to TurnAudioEngine", () => {
+  setupMocks();
+  let engineMuted = null;
+  const mockTurnAudio = {
+    play: () => false,
+    setMuted: (val) => { engineMuted = val; }
+  };
+
+  const assistant = new SpeechAssistant({ turnAudio: mockTurnAudio });
+  assistant.toggleMute();
+  assert.strictEqual(engineMuted, true);
+  assistant.toggleMute();
+  assert.strictEqual(engineMuted, false);
+});
+
 console.log("\n" + passed + " speech tests passed");

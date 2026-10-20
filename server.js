@@ -20,7 +20,7 @@ const STATIC_WHITELIST = new Set([
   'index.html','remote.html','style.css','qrcode.min.js',
   'maplibre-gl.js','maplibre-gl.css','map-gl.js',
   'app.js','routing.js','traffic.js','traffic-signals.js','chargers.js','charger-list.js','search.js','tesla-style.js',
-  'battery.js','weather.js','speech.js','speed-limit.js',
+  'battery.js','weather.js','speech.js','turn-audio.js','speed-limit.js',
   'sim-drive.js','gmap.js',
   'manifest.json','icon.svg','icon-192.png','icon-512.png','sw.js'
 ]);

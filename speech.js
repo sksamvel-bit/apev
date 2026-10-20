@@ -6,13 +6,16 @@
  */
 
 class SpeechAssistant {
-  constructor() {
+  constructor(options = {}) {
     this.synth = (typeof window !== "undefined" && window.speechSynthesis) ? window.speechSynthesis : null;
     this.audioCtx = null;
-    this.turnAudio = null;
-    if (typeof window !== "undefined" && window.TurnAudioEngine && window.TurnAudioEngine.TurnAudioEngine) {
+    this.turnAudio = (options && options.turnAudio) || null;
+    if (!this.turnAudio && typeof window !== "undefined" && window.TurnAudioEngine) {
       try {
-        this.turnAudio = new window.TurnAudioEngine.TurnAudioEngine();
+        const TAE = window.TurnAudioEngine.TurnAudioEngine || window.TurnAudioEngine;
+        if (typeof TAE === "function") {
+          this.turnAudio = new TAE();
+        }
       } catch (_) {}
     }
     this.voices = [];
