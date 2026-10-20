@@ -135,6 +135,20 @@ async function up() { for (let i = 0; i < 50; i++) { await wait(200); if ((await
   ok(await up(), 'server restarts again');
   ok(await isIn(G1) && !!(await login('newerGuest2', TESLA)), 'after the restart the panel PINs still work');
 
+  // ---- v3.10.64 (audit H1/M3): the phone page searches / reads a Google Maps link with its car's session code, no PIN ----
+  const CODE = 'AUDIT64CODE1234ABCD';
+  const link = encodeURIComponent('https://maps.google.com/?q=41.7,44.8');
+  ok((await req('GET', '/api/search?q=a')).status === 401, 'search without PIN or session code: 401 (no longer an open proxy)');
+  ok((await req('GET', '/api/maps-link?url=' + link + '&code=' + CODE)).status === 401, 'maps link with a code no car listens on: 401');
+  const sse = http.get({ host: '127.0.0.1', port: PORT, path: '/api/session/listen?code=' + CODE, headers: { Cookie: 'tesla_auth=' + L2 } });
+  sse.on('error', () => {});
+  await wait(300);
+  const ml = await req('GET', '/api/maps-link?url=' + link + '&code=' + CODE);
+  ok(ml.status === 200 && ml.json && ml.json.lat === 41.7, 'maps link with the connected car\'s code works without a PIN');
+  ok((await req('GET', '/api/search?q=a&code=' + CODE)).status === 200, 'search with the connected car\'s code works without a PIN');
+  ok((await req('GET', '/api/chargers/live?code=' + CODE)).status === 401, 'the code opens only search and maps link, nothing else');
+  sse.destroy();
+
   srv.kill();
   try { fs.rmSync(DATA, { recursive: true, force: true }); } catch (_) {}
   process.exitCode = fails ? 1 : 0;

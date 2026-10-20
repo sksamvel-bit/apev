@@ -510,7 +510,8 @@
     async function resolveMapsLink(text) {
       infoRow('ბმული იხსნება...');
       try {
-        const res = await fetch(`/api/maps-link?url=${encodeURIComponent(text)}`);
+        const res = await fetch(`/api/maps-link?url=${encodeURIComponent(text)}&code=${encodeURIComponent(sessionCode)}`);
+        if (res.status === 401) { infoRow('მანქანა არ არის დაკავშირებული: გახსენით აპი მანქანაში და დაასკანერეთ QR თავიდან', '#ef4444'); return; }
         const d = await res.json();
         if (!d || d.error || !isFinite(d.lat)) {
           infoRow(d && d.error === 'not_found' ? `ადგილი „${d.name}“ ვერ მოიძებნა, სცადეთ სახელით ძებნა` : 'ამ ბმულიდან ადგილი ვერ ამოვიცანი', '#ef4444');
@@ -553,8 +554,12 @@
     async function executeSearch(query) {
       resultsList.innerHTML = '<div style="padding:10px;text-align:center;color:#94a3b8;font-size:0.85rem;">იძებნება...</div>';
       try {
-        const url = `/api/search?q=${encodeURIComponent(query)}`;
+        const url = `/api/search?q=${encodeURIComponent(query)}&code=${encodeURIComponent(sessionCode)}`;
         const res = await fetch(url);
+        if (res.status === 401) {
+          resultsList.innerHTML = '<div style="padding:10px;text-align:center;color:#ef4444;font-size:0.85rem;">მანქანა არ არის დაკავშირებული: გახსენით აპი მანქანაში და დაასკანერეთ QR თავიდან</div>';
+          return;
+        }
         const data = await res.json();
         resultsList.innerHTML = '';
         if (!data || data.length === 0) {

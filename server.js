@@ -274,13 +274,22 @@ function isRateLimitedTelemetry(ip) {
 const PUBLIC_AUTH_PATHS = new Set([
   '/healthz', '/api/info', '/remote.html', '/manifest.json',
   '/icon.svg', '/icon-192.png', '/icon-512.png', '/sw.js',
-  '/api/auth/pin', '/api/telemetry/error', '/api/search'
+  '/api/auth/pin', '/api/telemetry/error'
 ]);
 
 function isPublicAuthPath(p) {
   if (PUBLIC_AUTH_PATHS.has(p)) return true;
   if (p.startsWith('/api/session/')) return true;
   return false;
+}
+
+// v3.10.64 (audit H1/M3): the phone page (remote.html, opened by QR without a PIN) may search and read a Google Maps link
+// while ITS car is connected: the request carries the session code, and that code must have a listening car screen.
+// Without a PIN or an active code these answer 401, so the search proxy is no longer open to anyone.
+const SESSION_GATED_PATHS = new Set(['/api/search', '/api/maps-link']);
+function hasActiveSession(urlObj) {
+  const code = String(urlObj.searchParams.get('code') || '').toUpperCase().trim();
+  return CODE_RE.test(code) && sessions.has(code) && sessions.get(code).size > 0;
 }
 
 // Routes API spending guard (Google cannot cap it in the console): ROUTES_DAILY_CAP (default 100) / ROUTES_MONTHLY_CAP (default 4000).
@@ -1107,7 +1116,7 @@ const server = http.createServer((req, res) => {
   }
 
   // Auth Gatekeeper: if ACCESS_PIN is set and route is protected and user is not authenticated
-  if (RAW_PINS.length > 0 && !isPublicAuthPath(pathname) && !isAuthenticated(req)) {
+  if (RAW_PINS.length > 0 && !isPublicAuthPath(pathname) && !(SESSION_GATED_PATHS.has(pathname) && hasActiveSession(urlObj)) && !isAuthenticated(req)) {
     if (pathname === '/' || pathname === '/index.html') {
       res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
       res.end(PIN_LOGIN_HTML);
