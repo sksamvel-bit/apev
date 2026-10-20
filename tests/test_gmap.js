@@ -165,3 +165,16 @@ ok(/GOOGLE_MAPS_KEY/.test(srv) && !/PUBLIC_AUTH_PATHS[^;]*gmaps-config/.test(srv
   const html = fs.readFileSync(__dirname + '/../index.html', 'utf8');
   ok(/id="btn-preview-google"[^>]*hidden/.test(html), 'the route card button starts hidden (shown only when Google mode is enabled)');
 }
+
+// ---- our features on the Google map (v3.10.51): chargers, speed + limit badge, traffic lights ----
+{
+  const list = [{ lat: 41.70, lon: 44.80, name: 'far' }, { lat: 41.7151, lon: 44.8272, name: 'near' }, { lat: 41.72, lon: 44.83, name: 'mid' }, { lat: NaN, lon: 1 }];
+  const got = G.nearestChargers(list, { lat: 41.7151, lng: 44.8271 }, 2, 8000).map((s) => s.name);
+  ok(JSON.stringify(got) === '["near","mid"]', 'nearest chargers: sorted by distance, limited to n, bad records skipped: ' + got.join(','));
+  ok(G.nearestChargers(list, { lat: 41.7151, lng: 44.8271 }, 5, 100).length === 1, 'nearest chargers: radius limit');
+  const tc = src.slice(src.indexOf('function toggleCategory'), src.indexOf('// ---------- shortcuts'));
+  ok(tc.includes('chargersEngine') && !tc.includes('searchNearby') && !tc.includes('permit('), '⚡ chip uses our charger data (free), not Google Places');
+  ok(src.includes('findUpcomingSignal(pos, headingDeg, routeLatLngs())') && src.includes('fetchSignalsAlongRoute(ll)'), 'traffic lights ahead on the Google route come from our signals engine (prefetched along the route)');
+  const css = fs.readFileSync(__dirname + '/../style.css', 'utf8');
+  ok(css.includes('body.gmap-open .car-hud-stats { z-index: 950; bottom: 72px; }') && !css.includes('body.gmap-open #route-preview-card, body.gmap-open .car-hud-stats'), 'speed + limit badge stay visible in Google mode, above the map (z 950 > 900) and clear of the Google logo');
+}

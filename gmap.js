@@ -285,6 +285,18 @@
     };
   }
 
+  /** The n nearest chargers within maxM metres of center, nearest first (our charger records use lat/lon). */
+  function nearestChargers(list, center, n, maxM) {
+    const out = [];
+    for (const st of list || []) {
+      if (!st || !isFinite(st.lat) || !isFinite(st.lon)) continue;
+      const d = meters(center, { lat: st.lat, lng: st.lon });
+      if (d <= maxM) out.push({ st, d });
+    }
+    out.sort((a, b) => a.d - b.d);
+    return out.slice(0, n).map((x) => x.st);
+  }
+
   function fmtDist(m) { return m >= 1000 ? (m / 1000).toFixed(m >= 10000 ? 0 : 1) + " კმ" : Math.round(m / 10) * 10 + " მ"; }
 
   // ---------- the mode ----------
@@ -553,7 +565,37 @@
         if (S.offRouteTracker.update(nr.d)) reroute();
       }
       updateNavBanner();
+      updateSignal(pos, fix.headingDeg);
     }
+  }
+
+  /** Route line as [lat, lng] pairs, the shape traffic-signals.js expects (cached per route). */
+  function routeLatLngs() {
+    const rt = S.routes[S.routeIdx];
+    if (!rt || !rt.coords) return null;
+    if (!rt.latLngs) rt.latLngs = rt.coords.map((c) => [c.lat, c.lng]);
+    return rt.latLngs;
+  }
+
+  /** Traffic light ahead on the Google route (our Overpass data, same rule as the main map: on the route, within 350 m). */
+  function updateSignal(pos, headingDeg) {
+    const nav = $("gmap-nav");
+    if (!nav) return;
+    let el = $("gmap-nav-signal");
+    if (!el) { el = document.createElement("div"); el.id = "gmap-nav-signal"; el.className = "gmap-nav-signal"; nav.appendChild(el); }
+    let sig = null;
+    const eng = window.trafficSignalsEngine;
+    if (S.navigating && eng && typeof eng.findUpcomingSignal === "function") {
+      try { sig = eng.findUpcomingSignal(pos, headingDeg, routeLatLngs()); } catch (_) { sig = null; }
+    }
+    el.textContent = sig ? "🚦 შუქნიშანი " + sig.distanceMeters + " მეტრში" : "";
+    el.classList.toggle("show", !!sig);
+  }
+
+  /** Loads the traffic-light tiles along the whole route once, so the alerts are ready before the car gets there. */
+  function prefetchSignals() {
+    const eng = window.trafficSignalsEngine, ll = routeLatLngs();
+    if (eng && typeof eng.fetchSignalsAlongRoute === "function" && ll) { try { eng.fetchSignalsAlongRoute(ll); } catch (_) {} }
   }
 
   // ---------- search (Places API New) ----------
@@ -777,6 +819,7 @@
     S.navigating = true; S.follow = true; S.stepIdx = 0; S.segIdx = 0;
     S.offRouteTracker = createOffRouteTracker({ thresholdM: OFF_ROUTE_M, ticks: 4, cooldownMs: 20000, maxReroutes: 12 });
     S.voice = createVoiceCues();
+    prefetchSignals();
     window.__gmapNavigating = true;   // routing.js stays quiet: one voice at a time
     const first = S.routes[S.routeIdx] && S.routes[S.routeIdx].steps[0];
     speak("მარშრუტი დაწყებულია." + (first && first.text ? " " + first.text : ""));
@@ -823,6 +866,7 @@
       renderRouteOptions();
       updateNavBanner();
       if (S.voice) S.voice.reset();
+      prefetchSignals();
       speak("მარშრუტი გადაითვალა");
       setStatus(note || "მარშრუტი გადაითვალა");
       setTimeout(() => setStatus(""), 3000);
@@ -872,32 +916,21 @@
     document.querySelectorAll("#gmap-layer .gmap-chip").forEach((b) => b.classList.remove("active"));
   }
 
-  async function toggleCategory(cat, chipEl) {
+  /** ⚡ chip (v3.10.51): our own charger database (570 stations with tariffs, free) instead of Google Nearby Search
+   *  (Pro, 5,000 free a month). Our data on the Google map is allowed. */
+  function toggleCategory(cat, chipEl) {
     if (S.activeCat === cat.id) { clearCategory(); return; }
     clearCategory();
     S.activeCat = cat.id;
     chipEl.classList.add("active");
-    try {
-      await permit("nearby");
-      if (S.activeCat !== cat.id) return;
-      const c = S.map.getCenter();
-      const { places } = await S.g.places.Place.searchNearby({
-        fields: ["displayName", "formattedAddress", "location"], includedPrimaryTypes: [cat.type], maxResultCount: 15,
-        locationRestriction: { center: { lat: c.lat(), lng: c.lng() }, radius: 3000 }, language: "ka", region: "ge"
-      });
-      if (S.activeCat !== cat.id) return;
-      (places || []).forEach((pl) => {
-        const m = new S.g.core.Marker({ position: pl.location, map: S.map, title: pl.displayName || "", zIndex: 500 });
-        m.addListener("click", () => showPlace({ name: pl.displayName || "", address: pl.formattedAddress || "", loc: pl.location }));
-        S.catMarkers.push(m);
-      });
-      if (!places || !places.length) say("ახლოს ვერაფერი მოიძებნა");
-    } catch (e) {
-      if (isCap(e)) { clearCategory(); return; }
-      setStatus("კატეგორიის ძიება ვერ მუშაობს: ჩართულია თუ არა Places API (New)?");
-      console.warn("[GMap] nearby:", e && e.message);
-      clearCategory();
-    }
+    const c = S.map.getCenter();
+    const list = nearestChargers((window.chargersEngine && window.chargersEngine.chargers) || [], { lat: c.lat(), lng: c.lng() }, 30, 8000);
+    list.forEach((st) => {
+      const m = new S.g.core.Marker({ position: { lat: st.lat, lng: st.lon }, map: S.map, title: st.name || "EV დამტენი", label: { text: "⚡", fontSize: "16px" }, zIndex: 500 });
+      m.addListener("click", () => showPlace({ name: st.name || "EV დამტენი", address: [st.operator, st.power, st.price].filter(Boolean).join(" · "), loc: { lat: st.lat, lng: st.lon } }));
+      S.catMarkers.push(m);
+    });
+    if (!list.length) say("8 კმ-ის რადიუსში დამტენი ვერ მოიძებნა");
   }
 
   // ---------- shortcuts from the main map (v3.10.50; data only flows main map -> Google mode, never back) ----------
@@ -1032,7 +1065,7 @@
     if (btn) btn.hidden = !S.enabled;
   }
 
-  const api = { init, open, close, isOpen: () => S.open, isEnabled: () => S.enabled, openWithQuery, openWithDestination, distToPolylineM, nearestOnPolyline, createOffRouteTracker, createVoiceCues, createCarGlide, aheadPoint, mapOptions, cameraNeedsUpdate, createFpsMeter, scaledBoxStyle, capText, warnText, decodePolyline, parseRoutesResponse, routesRequestBody, nextStepIndex, fmtDist, buildLoaderUrl, createDebouncer, osrmUrl, summarizeRoute, mapStyles, bearing, meters, CATEGORIES };
+  const api = { init, open, close, isOpen: () => S.open, isEnabled: () => S.enabled, openWithQuery, openWithDestination, distToPolylineM, nearestOnPolyline, createOffRouteTracker, createVoiceCues, nearestChargers, createCarGlide, aheadPoint, mapOptions, cameraNeedsUpdate, createFpsMeter, scaledBoxStyle, capText, warnText, decodePolyline, parseRoutesResponse, routesRequestBody, nextStepIndex, fmtDist, buildLoaderUrl, createDebouncer, osrmUrl, summarizeRoute, mapStyles, bearing, meters, CATEGORIES };
   if (typeof document !== "undefined") {
     if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", () => init());
     else init();

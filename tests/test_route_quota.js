@@ -49,7 +49,8 @@ ok(!/PUBLIC_AUTH_PATHS[^;]*google-(permit|usage)/.test(srv), '/api/google-permit
   const f = cli.slice(cli.indexOf('async function fetchGoogleRoutes'), cli.indexOf('function fallbackNote'));
   ok(f.indexOf('permit("routes")') > -1 && f.indexOf('permit("routes")') < f.indexOf('routes.googleapis.com'), 'browser asks the server for a permit before every Routes call (cap stays server-side)');
   const pre = (call, sku) => { const i = cli.indexOf(call); return i > -1 && cli.lastIndexOf('permit("' + sku + '")', i) > cli.lastIndexOf('async function', i); };
-  ok(pre('fetchAutocompleteSuggestions(', 'autocomplete') && pre('fetchFields(', 'details') && pre('searchNearby(', 'nearby'), 'search, place details and nearby search each ask for a permit first');
+  ok(pre('fetchAutocompleteSuggestions(', 'autocomplete') && pre('fetchFields(', 'details'), 'search and place details each ask for a permit first');
+  ok(!cli.includes('searchNearby('), 'the ⚡ chip no longer calls Google Nearby Search (Pro): it shows our own charger database');
   const calls = [...cli.matchAll(/createMap\(/g)].map((m) => m.index).filter((i) => cli.slice(i - 9, i) !== 'function ');
   ok(calls.length === 2 && calls.every((i) => cli.lastIndexOf('permit("mapload")', i) > i - 400), 'every new Google map (open, 3D/night rebuild) asks for a map-load permit');
   ok(/fetchFields\(\{ fields: \["formattedAddress", "location"\] \}\)/.test(cli), 'place details ask only Essentials fields (no displayName = 10,000 free instead of 5,000)');

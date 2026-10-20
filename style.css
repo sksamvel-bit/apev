@@ -2175,8 +2175,13 @@ input {
 /* Google mode covers the whole screen: switch the main UI off underneath, so the browser does not keep compositing it
    (the GPS dot pulses forever, MapLibre's canvas and DOM markers). visibility keeps MapLibre's size for resume(). */
 body.gmap-open #map-viewport { visibility: hidden; }
-body.gmap-open .top-bar, body.gmap-open #nav-hud, body.gmap-open #route-preview-card, body.gmap-open .car-hud-stats,
+body.gmap-open .top-bar, body.gmap-open #nav-hud, body.gmap-open #route-preview-card,
 body.gmap-open #chargers-drawer, body.gmap-open #map-style-menu { display: none; }
+/* v3.10.51: speed + speed-limit badge (our OSM data, same engines as the main map) stay visible above the Google map,
+   lifted clear of the Google logo in the bottom-left corner (Google's terms: the logo must not be covered) */
+body.gmap-open .car-hud-stats { z-index: 950; bottom: 72px; }
+.gmap-nav-signal { display: none; margin-top: 8px; padding: 6px 10px; border-radius: 10px; background: rgba(0,0,0,0.25); color: #fde68a; font-size: 1.05rem; font-weight: 700; }
+.gmap-nav-signal.show { display: block; }
 body.gmap-open .dock-controls { display: none; } /* the Google layer has its own close button */
 #btn-google-mode[hidden] { display: none; }
 
