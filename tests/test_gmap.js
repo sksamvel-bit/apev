@@ -155,7 +155,7 @@ ok(/GOOGLE_MAPS_KEY/.test(srv) && !/PUBLIC_AUTH_PATHS[^;]*gmaps-config/.test(srv
 {
   const appSrc = fs.readFileSync(__dirname + '/../app.js', 'utf8');
   const used = [...new Set([...appSrc.matchAll(/GMapMode\.(\w+)/g)].map((m) => m[1]))].sort();
-  ok(JSON.stringify(used) === JSON.stringify(['focusPlace', 'isEnabled', 'isOpen', 'openWithDestination', 'openWithQuery']), 'app.js only opens Google mode (text / our destination or charger in; isOpen is a yes/no), never reads Google data back: ' + used.join(', '));
+  ok(JSON.stringify(used) === JSON.stringify(['close', 'focusPlace', 'isEnabled', 'isOpen', 'openWithDestination', 'openWithQuery']), 'app.js only opens Google mode (text / our destination or charger in; isOpen is a yes/no; close only closes it), never reads Google data back: ' + used.join(', '));
   ok(typeof G.openWithQuery === 'function' && typeof G.openWithDestination === 'function' && typeof G.isEnabled === 'function', 'gmap.js exports the two shortcuts and isEnabled');
   const owq = src.slice(src.indexOf('async function openWithQuery'), src.indexOf('async function openWithDestination'));
   const owd = src.slice(src.indexOf('async function openWithDestination'), src.indexOf('// ---------- open / close'));

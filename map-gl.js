@@ -129,6 +129,7 @@
       this.raf = opts.raf || ((fn) => requestAnimationFrame(fn));
       this.caf = opts.caf || ((id) => cancelAnimationFrame(id));
       this.onFrame = opts.onFrame || null;
+      this.gpu = opts.gpu || null;   // v3.10.78 GPU camera, see gpuStep()
 
       this.mode = "heading-up";    // heading-up | north-up | manual
       this.following = true;
@@ -167,6 +168,7 @@
 
     setFollowing(on) {
       this.following = !!on;
+      if (!this.following) this.gpuReset();   // the driver moves the map by hand: a transformed map would break touch math
       this._applied = null;
       if (this.following) this.wake();
     }
@@ -246,8 +248,44 @@
       if (this._rafId != null) { this.caf(this._rafId); this._rafId = null; }
     }
 
+    /**
+     * v3.10.78 "GPU camera" (opts.gpu = { el, renderEveryMs, maxAngle }), Samvel's goal: rotate as smoothly as Tesla's map.
+     * The map itself is redrawn only every renderEveryMs or when the heading drifted more than maxAngle degrees (labels are
+     * placed again then, upright). In between, the last drawn image is turned and moved with a CSS transform on `el` (the map
+     * container, which is larger than the screen): the browser's compositor does that on the GPU almost for free, so the
+     * picture moves at full frame rate while MapLibre draws a few times a second. Flat map only (pitch 0); returns false
+     * when the frame must go through jumpTo as before.
+     */
+    gpuStep(ts, cam) {
+      const g = this.gpu;
+      if (!g || !g.el || (cam.pitch != null && Math.abs(cam.pitch) > 0.5) || this.map.getPitch() > 0.5) { this.gpuReset(); return false; }
+      const r = this._gpuR;
+      const bearing = cam.bearing != null ? cam.bearing : this.map.getBearing();
+      const due = !r || ts - r.t >= (g.renderEveryMs || 250) || Math.abs(shortestDelta(bearing, r.bearing)) > (g.maxAngle || 15) ||
+        Math.abs((cam.padding ? cam.padding.top : 0) - r.padTop) > 2;
+      if (due) {
+        this.map.jumpTo(cam, { followCamera: true });
+        this._gpuR = { t: ts, bearing, center: cam.center.slice(), padTop: cam.padding ? cam.padding.top : 0 };
+        this.gpuRenders = (this.gpuRenders || 0) + 1;
+        g.el.style.transform = "";
+        return true;
+      }
+      // where the car is in the image drawn last time, and how far the heading turned since
+      const a = this.map.project(r.center), p = this.map.project(cam.center);
+      const theta = shortestDelta(r.bearing, bearing);   // degrees the drawn image must turn (clockwise positive)
+      g.el.style.transformOrigin = a.x.toFixed(1) + "px " + a.y.toFixed(1) + "px";
+      g.el.style.transform = "rotate(" + theta.toFixed(2) + "deg) translate(" + (a.x - p.x).toFixed(1) + "px," + (a.y - p.y).toFixed(1) + "px)";
+      return true;
+    }
+
+    /** Back to an untransformed map (the driver pans, the map is tilted, Google mode, pause). */
+    gpuReset() {
+      if (this.gpu && this.gpu.el && this.gpu.el.style.transform) this.gpu.el.style.transform = "";
+      this._gpuR = null;
+    }
+
     /** Stops all camera frames until resume(); fixes keep arriving (setFix) so resume() starts from the latest one. */
-    pause() { this.paused = true; this.stop(); }
+    pause() { this.paused = true; this.stop(); this.gpuReset(); }
 
     resume() {
       if (!this.paused) return;
@@ -319,7 +357,7 @@
         if (tb != null) cam.bearing = this.bearing;
         if (tp != null) cam.pitch = this.pitch;
         const p0 = perfNow();
-        this.map.jumpTo(cam, { followCamera: true });
+        if (!this.gpuStep(ts, cam)) this.map.jumpTo(cam, { followCamera: true });
         this.jumpMs += (perfNow() - p0 - this.jumpMs) * 0.2;
       } else {
         // the driver is looking around: mirror the map so that resuming eases from where it is now

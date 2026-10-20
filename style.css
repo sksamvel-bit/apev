@@ -2284,3 +2284,7 @@ body.gmap-open #gmap-nav { top: 60px; }
   .devices-row { padding: 2px 6px; }
   .devices-btn { min-height: 32px; }
 }
+
+/* v3.10.78 GPU camera (?cam=gpu): the map container is 1.5x the screen and centred, so the picture the compositor turns
+   between real map draws never shows its corners (the follow camera moves the car up by the same factor). */
+body.cam-gpu #map { inset: auto; left: -25%; top: -25%; width: 150%; height: 150%; will-change: transform; }

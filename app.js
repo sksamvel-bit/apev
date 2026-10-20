@@ -136,7 +136,7 @@ function initClock() {
 const OFM_STYLE_URL = "https://tiles.openfreemap.org/styles/liberty";
 const OFM_STYLE_CACHE_KEY = "tesla_nav_ofm_style_v1";
 const MAP_STYLE_KEYS = ["openfreemap", "google-roads"];
-const APP_VERSION = "3.10.77";
+const APP_VERSION = "3.10.78";
 const MAP_DEFAULT_ZOOM = 16;      // MapLibre zoom (Leaflet-equivalent 17)
 // Performance experiments (all default to the normal behaviour): ?labels=0 hides the base-map labels/icons, ?markers=0 skips the
 // charger DOM markers, ?pitch=N sets the heading-up tilt (0-60). Used to find what makes the car's browser slow.
@@ -156,6 +156,14 @@ window.__perf = PERF;
 const MAP_LIGHT = (function () { try { return new URLSearchParams(location.search).get("map") === "lite"; } catch (_) { return false; } })();
 const CAM_FPS = (function () { try { const n = parseFloat(new URLSearchParams(location.search).get("camfps")); return n >= 5 && n <= 60 ? n : null; } catch (_) { return null; } })();
 window.__mapLight = MAP_LIGHT;
+// v3.10.78 ?cam=gpu: the "GPU camera" (MapGL.FollowCamera.gpuStep): MapLibre draws a few times a second, the compositor turns and
+// moves the picture in between. ?gpums=N = ms between real draws (default 250). The map container is made larger than the
+// screen (body.cam-gpu) so the turned picture never shows its corners.
+const CAM_GPU = (function () { try { return new URLSearchParams(location.search).get("cam") === "gpu"; } catch (_) { return false; } })();
+const GPU_MS = (function () { try { const n = parseFloat(new URLSearchParams(location.search).get("gpums")); return n >= 50 && n <= 2000 ? n : 250; } catch (_) { return 250; } })();
+const GPU_OVERSCAN = 1.5;   // 773x601 screen, 12 deg turn around the car: a corner moves ~115 px, the margin is 150-190 px
+window.__camMode = CAM_GPU ? "gpu " + GPU_MS + "ms" : null;
+if (CAM_GPU) document.body.classList.add("cam-gpu");
 // ?style=mono is a flat map by default (pitch 0); ?pitch=N still overrides
 // Look: since v3.10.25 the grey "mono" flat map is the default; ?style=classic = the old coloured map, ?style=tesla = the Tesla palette.
 const LOOK_PARAM = (function () {
@@ -463,7 +471,9 @@ function initMap() {
 
   createVehiclePuck();
 
-  mapCamera = new window.MapGL.FollowCamera(map, Object.assign({ headingPitch: MAP_HEADING_PITCH, onFrame: onCameraFrame }, CAM_FPS ? { minFrameMs: 1000 / CAM_FPS } : {}));
+  mapCamera = new window.MapGL.FollowCamera(map, Object.assign({ headingPitch: MAP_HEADING_PITCH, onFrame: onCameraFrame },
+    CAM_GPU ? { gpu: { el: document.getElementById("map"), renderEveryMs: GPU_MS, maxAngle: 12 }, minFrameMs: 16, padTopFraction: 0.30 / GPU_OVERSCAN } : {},
+    CAM_FPS ? { minFrameMs: 1000 / CAM_FPS } : {}));
   mapCamera.setMode(currentMapOrientation);
   mapCamera.setFix({ lng: currentPos.lng, lat: currentPos.lat, headingDeg: lastKnownValidHeading || currentHeading || 0, speedMs: 0 });
   window.mapCamera = mapCamera;
@@ -542,7 +552,9 @@ function onCameraFrame(f) {
   if (!cachedCarIconEl) return;
   const heading = f.headingDeg != null && isFinite(f.headingDeg) ? f.headingDeg : continuousHeading;
   let rot;
-  if (currentMapOrientation === "heading-up") rot = window.MapGL.shortestDelta(heading, f.bearing);   // road ahead is UP
+  // GPU camera: the icon is drawn in the last rendered picture, which the compositor then turns to the live bearing
+  const drawnBearing = CAM_GPU && mapCamera && mapCamera._gpuR ? mapCamera._gpuR.bearing : f.bearing;
+  if (currentMapOrientation === "heading-up") rot = window.MapGL.shortestDelta(heading, drawnBearing);   // road ahead is UP
   else if (currentMapOrientation === "north-up") rot = window.MapGL.normDeg(heading);
   else rot = window.MapGL.shortestDelta(heading, map.getBearing());
   cachedCarIconEl.style.transform = `rotate(${rot.toFixed(1)}deg)`;
@@ -2316,7 +2328,7 @@ function initRemoteSession() {
       "last fix: acc " + f(last && last.acc, 0) + "m  spd " + f(last && last.spd) + "  hdg " + f(last && last.hdg, 0),
       "gap " + f(dt) + "s  jump " + f(dist) + "m  => " + (dt && dist != null ? f(dist / dt * 3.6, 0) : "-") + " km/h",
       "follow " + isFollowCar + "  mode " + currentMapOrientation + "  fps " + f(fps, 0) + "  render " + f(rfps, 0) + "/s",
-      "cost: jumpTo " + f(cam && cam.jumpMs, 1) + "ms  onFrame " + f(cam && cam.cbMs, 1) + "ms",
+      "cost: jumpTo " + f(cam && cam.jumpMs, 1) + "ms  onFrame " + f(cam && cam.cbMs, 1) + "ms" + (CAM_GPU ? "  GPU cam: draws " + ((cam && cam.gpuRenders) || 0) : ""),
       "flags: dpr " + f(map.getPixelRatio && map.getPixelRatio(), 2) + "  pitch " + (PERF.pitch != null ? PERF.pitch : "45*") + "  labels " + (PERF.labels ? "on" : "OFF") + "  markers " + (PERF.markers ? "on" : "OFF") + "  look " + (window.__teslaLook ? (window.__lookMode === "mono" ? "MONO" : "TESLA") : "classic") + "  map " + (MAP_LIGHT ? "LIGHT" : "full") + " " + ((map.getStyle() || {}).layers || []).length + "L" + (CAM_FPS ? "  camfps " + CAM_FPS : ""),
       "bearing " + f(map.getBearing(), 0) + "  pitch " + f(map.getPitch(), 0) + "  zoom " + f(map.getZoom(), 1) + "  pad " + padTop,
       "arrow offset from expected: dx " + f(dx, 0) + "  dy " + f(dy, 0) + " px",
@@ -2330,15 +2342,71 @@ function initRemoteSession() {
     fx.slice(-5).forEach(q => lines.push(((now - q.t) / 1000).toFixed(1).padStart(5) + "s  " + q.lat.toFixed(5) + "," + q.lng.toFixed(5) + "  a" + f(q.acc, 0) + " s" + f(q.spd) + " h" + f(q.hdg, 0)));
     el.textContent = lines.join("\n");
   }
+  // ---- v3.10.78 rotation benchmark (Samvel's goal: the map must rotate as smoothly as Tesla's own map) ----
+  // 10 s of a synthetic drive around a circle (29 km/h, 36 deg/s = one full turn, like a roundabout) through the SAME follow
+  // camera the real GPS uses; real fixes are held back meanwhile. Measures: map renders per second, screen frames per second
+  // (requestAnimationFrame) and the longest pause between frames. Works standing still, no driving needed.
+  let benchBtn = null;
+  async function runBench() {
+    if (!window.map || !mapCamera || window.__benchActive) return;
+    if (window.GMapMode && window.GMapMode.isOpen()) window.GMapMode.close();   // measure OUR map
+    window.__benchActive = true;
+    const realSetFix = mapCamera.setFix.bind(mapCamera);
+    mapCamera.setFix = () => {};   // real GPS fixes wait until the test ends
+    const wasFollowing = isFollowCar;
+    try { setFollowCarMode(true); mapCamera.setMode("heading-up"); } catch (_) {}
+    const start = Object.assign({}, currentPos || { lat: 41.7151, lng: 44.8271 });
+    const speedMs = 8, turnDegS = 36, R = speedMs / (turnDegS * Math.PI / 180);   // ~12.7 m radius
+    const r0 = window.__renderCount || 0, t0 = performance.now();
+    let frames = 0, maxGap = 0, lastTs = t0, fixTimer = null;
+    const feed = () => {
+      const t = (performance.now() - t0) / 1000, hdg = (t * turnDegS) % 360;
+      const a = (hdg - 90) * Math.PI / 180;   // centre of the circle is to the right of the car
+      const dLat = (R * Math.sin(a)) / 111320, dLng = (R * Math.cos(a)) / (111320 * Math.cos(start.lat * Math.PI / 180));
+      realSetFix({ lng: start.lng + dLng, lat: start.lat + dLat, headingDeg: hdg, speedMs });
+    };
+    feed();
+    fixTimer = setInterval(feed, 1000);   // GPS rate: 1 fix per second, the camera smooths in between
+    if (benchBtn) benchBtn.textContent = "⏳ იზომება 10 წმ…";
+    await new Promise((resolve) => {
+      const loop = (ts) => {
+        frames++; maxGap = Math.max(maxGap, ts - lastTs); lastTs = ts;
+        if (ts - t0 < 10000) requestAnimationFrame(loop); else resolve();
+      };
+      requestAnimationFrame(loop);
+      setTimeout(resolve, 10500);   // a hidden tab gets no frames at all: still end the test (it then reports ~0 fps)
+    });
+    clearInterval(fixTimer);
+    const secs = (performance.now() - t0) / 1000;
+    const res = { mapFps: ((window.__renderCount || 0) - r0) / secs, uiFps: frames / secs, maxPauseMs: maxGap,
+      look: (window.__mapLight ? "lite" : "full") + " " + (((map.getStyle() || {}).layers || []).length) + "L" + (window.__camMode ? " cam " + window.__camMode : "") };
+    window.__benchLast = res;
+    mapCamera.setFix = realSetFix;
+    try { if (!wasFollowing) setFollowCarMode(false); } catch (_) {}
+    window.__benchActive = false;
+    const txt = "map " + res.mapFps.toFixed(1) + "/s · ეკრანი " + res.uiFps.toFixed(0) + " fps · max გაჭედვა " + Math.round(res.maxPauseMs) + " ms";
+    if (benchBtn) benchBtn.textContent = "▶ ბრუნვის ტესტი (10 წმ) · ბოლო: " + txt;
+    showToast("🔄 ბრუნვის ტესტი: " + txt, "info", 8000);
+    return res;
+  }
+  window.runRotationBench = runBench;
+
   function toggle(force) {
     const on = force != null ? force : !el;
     if (on && !el) {
       el = document.createElement("pre");
       el.style.cssText = "position:fixed;left:8px;top:80px;z-index:99999;margin:0;padding:8px 10px;background:rgba(0,0,0,.78);color:#7CFC7C;font:13px/1.35 monospace;border-radius:8px;pointer-events:none;white-space:pre";
       document.body.appendChild(el);
+      benchBtn = document.createElement("button");
+      benchBtn.type = "button";
+      benchBtn.textContent = "▶ ბრუნვის ტესტი (10 წმ)" + (window.__benchLast ? " · ბოლო: map " + window.__benchLast.mapFps.toFixed(1) + "/s" : "");
+      benchBtn.style.cssText = "position:fixed;left:8px;bottom:120px;z-index:99999;min-height:44px;padding:8px 14px;border-radius:10px;border:1px solid #7CFC7C;background:rgba(0,0,0,.85);color:#7CFC7C;font:600 14px sans-serif;";
+      benchBtn.addEventListener("click", (e) => { e.stopPropagation(); runBench(); });
+      document.body.appendChild(benchBtn);
       timer = setInterval(render, 250);
     } else if (!on && el) {
       clearInterval(timer); el.remove(); el = null;
+      if (benchBtn) { benchBtn.remove(); benchBtn = null; }
     }
   }
   window.toggleDebugHud = toggle;

@@ -280,6 +280,33 @@ test("pause() stops all frames (Google mode covers the map) and resume() continu
   near(last[0], 44.80, 1e-6, "jumps to the fix that arrived while paused");
 });
 
+test("GPU camera (?cam=gpu, v3.10.78): few real draws, the compositor turns and moves the picture in between", () => {
+  const jumps = [];
+  const el = { style: { transform: "", transformOrigin: "" } };
+  // a flat map: 1 px = 1e-5 deg, centre of the container at (500, 400)
+  const fake = { c: [44.8, 41.7], b: 0, getPitch: () => 0, getBearing() { return this.b; },
+    jumpTo(cam) { jumps.push(cam); this.c = cam.center; if (cam.bearing != null) this.b = cam.bearing; },
+    project(ll) { return { x: 500 + (ll[0] - this.c[0]) / 1e-5, y: 400 - (ll[1] - this.c[1]) / 1e-5 }; } };
+  const cam = new FollowCamera(fake, { gpu: { el, renderEveryMs: 250, maxAngle: 12 }, raf: () => 1, caf() {}, now: () => 0 });
+  const camAt = (lng, bearing) => ({ center: [lng, 41.7], bearing, padding: { top: 100 } });
+  assert.strictEqual(cam.gpuStep(0, camAt(44.8, 0)), true); assert.strictEqual(jumps.length, 1, "first frame: a real draw");
+  cam.gpuStep(100, camAt(44.80005, 5));
+  assert.strictEqual(jumps.length, 1, "100 ms later and 5 deg turned: no draw");
+  assert.ok(/rotate\(-5\.00deg\) translate\(-5\.0px,0\.0px\)/.test(el.style.transform), "the picture is turned back 5 deg and moved 5 px: " + el.style.transform);
+  assert.strictEqual(el.style.transformOrigin, "500.0px 400.0px", "turned around the car");
+  cam.gpuStep(150, camAt(44.80005, 20));
+  assert.strictEqual(jumps.length, 2, "turned more than 12 deg: drawn again (labels upright)");
+  assert.strictEqual(el.style.transform, "", "a fresh draw needs no transform");
+  cam.gpuStep(420, camAt(44.8001, 21));
+  assert.strictEqual(jumps.length, 3, "250 ms since the last draw: drawn again");
+  fake.getPitch = () => 30;
+  assert.strictEqual(cam.gpuStep(430, camAt(44.8001, 21)), false, "a tilted map is not handled (CSS cannot turn a 3D view)");
+  fake.getPitch = () => 0;
+  cam.gpuStep(440, camAt(44.80012, 22)); cam.setFollowing(false);
+  assert.strictEqual(el.style.transform, "", "the driver takes the map: transform cleared");
+  assert.strictEqual(new FollowCamera(fake, {}).gpuStep(0, camAt(44.8, 0)), false, "without ?cam=gpu nothing changes");
+});
+
 test("lightStyle (?map=lite, v3.10.76): keeps what a driver needs, drops the heavy layers", () => {
   const ids = ["background", "natural_earth", "park", "park_outline", "landuse_residential", "landcover_wood", "water", "waterway_river",
     "road_minor_casing", "road_minor", "road_trunk_primary_casing", "road_trunk_primary", "road_motorway", "bridge_street", "tunnel_minor",
