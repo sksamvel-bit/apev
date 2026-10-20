@@ -74,5 +74,10 @@ ok(app.includes('checkSpeedCameras({ lat, lng }, speed)') && app.includes('new S
 ok(/class="car-hud-stats"[\s\S]{0,600}id="camera-badge"/.test(html) && html.includes('id="btn-toggle-cameras"'), 'badge sits in the speedometer HUD (shown in Google mode too), dock has a toggle');
 ok(srv.includes("pathname === '/api/cameras'") && srv.includes("'speed-cameras.js'") && !/PUBLIC_AUTH_PATHS[^;]*cameras/.test(srv), '/api/cameras exists behind the PIN gate, the file is whitelisted');
 
+// v3.10.68 (audit H2/M4): working Overpass mirrors, longer waits, cameras kept in Upstash, a stale list served at once
+const sl = fs.readFileSync(__dirname + '/../speed-limit.js', 'utf8'), ts = fs.readFileSync(__dirname + '/../traffic-signals.js', 'utf8');
+ok(![srv, sl, ts].some((x) => /kumi.systems/.test(x)), 'the dead overpass.kumi.systems mirror is gone everywhere');
+ok([sl, ts].every((x) => x.includes('overpass.private.coffee') && x.includes('ctrl.abort(), 20000')), 'speed limit + signals: two mirrors, 20 s wait');
+ok(srv.includes('_cameras') && srv.includes('CAMERAS_STORE.save(camerasCache)') && srv.includes('if (has) { refreshCameras(); return camerasCache; }'), 'cameras: kept in Upstash, a stale list answers at once');
 process.exitCode = fails ? 1 : 0;
 console.log(fails ? fails + ' speed camera tests FAILED' : 'speed camera tests passed');

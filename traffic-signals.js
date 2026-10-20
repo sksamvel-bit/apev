@@ -29,7 +29,8 @@ class TrafficSignalsEngine {
     this._geoKey = "";
     this.popup = null;
 
-    this.endpoints = ["https://overpass-api.de/api/interpreter", "https://overpass.kumi.systems/api/interpreter"];
+    // v3.10.68 (audit H2): the old second mirror stopped answering; two working mirrors after the main server
+    this.endpoints = ["https://overpass-api.de/api/interpreter", "https://overpass.private.coffee/api/interpreter", "https://maps.mail.ru/osm/tools/overpass/api/interpreter"];
     this.tileLat = 0.01;    // ~1.1 km
     this.tileLng = 0.014;   // ~1.0 km at Georgia's latitudes
     this.maxTiles = 60;
@@ -104,12 +105,12 @@ class TrafficSignalsEngine {
 
   async fetchTile(i, j) {
     const b = this.tileBounds(i, j);
-    const q = "[out:json][timeout:10];node[highway=traffic_signals](" +
+    const q = "[out:json][timeout:20];node[highway=traffic_signals](" +
       b.s.toFixed(5) + "," + b.w.toFixed(5) + "," + b.n.toFixed(5) + "," + b.e.toFixed(5) + ");out 500;";
     let lastErr = null;
     for (const ep of this.endpoints) {
       const ctrl = typeof AbortController !== "undefined" ? new AbortController() : null;
-      const timer = ctrl ? setTimeout(() => ctrl.abort(), 12000) : null;
+      const timer = ctrl ? setTimeout(() => ctrl.abort(), 20000) : null;
       try {
         const res = await this.fetchFn(ep + "?data=" + encodeURIComponent(q), ctrl ? { signal: ctrl.signal } : undefined);
         if (!res.ok) throw new Error("Overpass HTTP " + res.status);

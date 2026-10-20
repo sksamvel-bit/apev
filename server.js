@@ -776,7 +776,7 @@ const SpeedCameras = require('./speed-cameras.js');
 const CAMERAS_FILE = path.join(PUBLIC_DIR, 'cameras-cache.json');
 const CAMERAS_TTL_MS = 24 * 3600 * 1000;
 const CAMERAS_QUERY = '[out:json][timeout:90];node["highway"="speed_camera"](41.0,40.0,43.6,46.8);out;'; // whole of Georgia
-const CAMERAS_ENDPOINTS = ['https://overpass-api.de/api/interpreter', 'https://overpass.kumi.systems/api/interpreter'];
+const CAMERAS_ENDPOINTS = ['https://overpass-api.de/api/interpreter', 'https://overpass.private.coffee/api/interpreter', 'https://maps.mail.ru/osm/tools/overpass/api/interpreter'];
 let camerasCache = { t: 0, cameras: [] };
 let camerasPending = null;
 try {
@@ -809,8 +809,27 @@ function overpassPost(endpoint, query) {
   });
 }
 
-async function getSpeedCameras() {
-  if (camerasCache.cameras.length && Date.now() - camerasCache.t < CAMERAS_TTL_MS) return camerasCache;
+// v3.10.68 (audit M4): Render's disk is wiped on every deploy, and the Overpass query takes ~45 s or fails when Overpass is
+// busy, so the list is also kept in Upstash (<UPSTASH_REDIS_KEY>_cameras) and read from there after a restart. A stale list
+// is served at once and refreshed in the background; only with no list at all does a request wait for Overpass.
+const CAMERAS_STORE = (process.env.UPSTASH_REDIS_REST_URL && process.env.UPSTASH_REDIS_REST_TOKEN)
+  ? createUpstashRedisAdapter({ url: process.env.UPSTASH_REDIS_REST_URL, token: process.env.UPSTASH_REDIS_REST_TOKEN, key: (process.env.UPSTASH_REDIS_KEY || 'routes_usage_quota') + '_cameras', timeoutMs: 6000 })
+  : null;
+let camerasStoreRead = null;
+let camerasNextTry = 0;
+function readCamerasStore() {
+  if (!camerasStoreRead) {
+    camerasStoreRead = (CAMERAS_STORE ? CAMERAS_STORE.load() : Promise.resolve(null)).then((v) => {
+      if (v && Array.isArray(v.cameras) && v.cameras.length && (Number(v.t) || 0) > camerasCache.t) {
+        camerasCache = { t: Number(v.t) || 0, cameras: v.cameras };
+        console.log(`[cameras] ${v.cameras.length} speed cameras restored from Upstash`);
+      }
+    }, (e) => console.warn('[cameras] Upstash read failed:', e.message));
+  }
+  return camerasStoreRead;
+}
+
+function refreshCameras() {
   if (camerasPending) return camerasPending;
   camerasPending = (async () => {
     let lastErr = null;
@@ -820,16 +839,26 @@ async function getSpeedCameras() {
         if (cams.length) {
           camerasCache = { t: Date.now(), cameras: cams };
           try { fs.writeFileSync(CAMERAS_FILE, JSON.stringify(camerasCache)); } catch (_) {}
+          if (CAMERAS_STORE) CAMERAS_STORE.save(camerasCache).catch(() => {});
           console.log(`[cameras] ${cams.length} speed cameras loaded from ${new URL(ep).hostname}`);
           return camerasCache;
         }
       } catch (e) { lastErr = e; }
     }
     console.warn('[cameras] Overpass unavailable, serving the previous list:', lastErr && lastErr.message);
-    camerasCache.t = Date.now() - CAMERAS_TTL_MS + 15 * 60 * 1000; // try again in 15 minutes
+    camerasNextTry = Date.now() + 5 * 60 * 1000;   // try again in 5 minutes
     return camerasCache;
   })().finally(() => { camerasPending = null; });
   return camerasPending;
+}
+
+async function getSpeedCameras() {
+  await readCamerasStore();
+  const has = camerasCache.cameras.length > 0;
+  if (has && Date.now() - camerasCache.t < CAMERAS_TTL_MS) return camerasCache;
+  if (Date.now() < camerasNextTry) return camerasCache;
+  if (has) { refreshCameras(); return camerasCache; }   // stale: answer now, refresh behind
+  return refreshCameras();
 }
 
 // Google Maps share links from the phone (v3.10.53). A short link (maps.app.goo.gl) is resolved by reading only its redirect
