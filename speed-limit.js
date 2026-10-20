@@ -317,6 +317,24 @@ class SpeedLimitEngine {
       currentSpeedKmh > (this.currentLimit + 5);
 
     this.badgeEl.classList.toggle("speeding", isOverspeeding);
+    this.overspeedChime(isOverspeeding);
+  }
+
+  /**
+   * v3.10.72 (audit M5): one short alert chime when the driver goes over a CONFIRMED limit (+5 km/h), not a continuous alarm.
+   * It sounds again only after the car was back under the limit for 10 s. Follows the voice mute button (speech.js).
+   */
+  overspeedChime(isOverspeeding, now = Date.now()) {
+    if (!isOverspeeding) {
+      if (this._overSince != null) { this._underSince = this._underSince || now; if (now - this._underSince >= 10000) { this._overSince = null; this._underSince = null; } }
+      return false;
+    }
+    this._underSince = null;
+    if (this._overSince != null) return false;
+    this._overSince = now;
+    const sa = typeof window !== "undefined" ? window.speechAssistant : null;
+    if (sa && typeof sa.playChime === "function") { try { sa.playChime("alert"); } catch (_) {} }
+    return true;
   }
 
   // ===================== OpenStreetMap (Overpass) layer =====================

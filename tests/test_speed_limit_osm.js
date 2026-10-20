@@ -124,4 +124,20 @@ const okRes = (data) => ({ ok: true, json: async () => data });
 
   // 11. initial state shows nothing guessed
   ok(new SLE().currentLimit === null && new SLE().currentConfidence === 'unknown', 'before the first fix the badge is unknown (no default 60)');
+
+  // 12. v3.10.72 (audit M5): one alert chime when going over a confirmed limit, again only after 10 s back under it
+  const chimes = [];
+  window.speechAssistant = { playChime: (t) => chimes.push(t) };
+  const oc = new SLE();
+  ok(oc.overspeedChime(true, 0) === true && chimes.join() === 'alert', 'going over the limit: one alert chime');
+  ok(oc.overspeedChime(true, 2000) === false && chimes.length === 1, 'still over: no second chime');
+  oc.overspeedChime(false, 3000); oc.overspeedChime(false, 8000);
+  ok(oc.overspeedChime(true, 9000) === false && chimes.length === 1, 'under the limit for only 6 s, then over again: silent');
+  oc.overspeedChime(false, 10000); oc.overspeedChime(false, 21000);
+  ok(oc.overspeedChime(true, 22000) === true && chimes.length === 2, 'after 11 s under the limit the next overspeed chimes again');
+  const src = fs.readFileSync(__dirname + '/../speed-limit.js', 'utf8');
+  ok(/this\.overspeedChime\(isOverspeeding\)/.test(src) && /alarmAllowed = this\.currentConfidence === "confirmed"/.test(src), 'the chime follows the badge: confirmed limits only');
+  const srv = fs.readFileSync(__dirname + '/../server.js', 'utf8');
+  ok(/Content-Security-Policy', "object-src 'none'; base-uri 'self'; frame-ancestors 'self'/.test(srv), 'a safe CSP header is sent (v3.10.72, audit L5)');
+  delete window.speechAssistant;
 })();

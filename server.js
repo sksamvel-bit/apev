@@ -1128,6 +1128,9 @@ const server = http.createServer((req, res) => {
   res.setHeader('X-Content-Type-Options', 'nosniff');
   res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
   res.setHeader('X-Frame-Options', 'SAMEORIGIN');
+  // v3.10.72 (audit L5): a CSP that cannot break the app (no script/style limits: Google Maps, MapLibre workers and inline
+  // code stay as they are) but blocks plugins, <base> hijacking and framing by other sites
+  res.setHeader('Content-Security-Policy', "object-src 'none'; base-uri 'self'; frame-ancestors 'self'; form-action 'self'");
   res.setHeader('Permissions-Policy', 'geolocation=(self), camera=(), microphone=(), payment=()');
   if (req.headers['x-forwarded-proto'] === 'https') res.setHeader('Strict-Transport-Security', 'max-age=15552000');
 

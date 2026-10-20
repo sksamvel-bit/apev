@@ -93,6 +93,7 @@ if ('serviceWorker' in navigator) {
       reg.update().catch(() => {});
     }).catch((err) => {
       console.warn('[SW] Registration failed:', err);
+      window.__swError = String((err && err.message) || err).slice(0, 60);   // shown in the debug HUD (v3.10.72)
     });
   });
   // When a new Service Worker takes control, reload cleanly so Tesla browser runs the fresh code immediately
@@ -135,7 +136,7 @@ function initClock() {
 const OFM_STYLE_URL = "https://tiles.openfreemap.org/styles/liberty";
 const OFM_STYLE_CACHE_KEY = "tesla_nav_ofm_style_v1";
 const MAP_STYLE_KEYS = ["openfreemap", "google-roads"];
-const APP_VERSION = "3.10.71";
+const APP_VERSION = "3.10.72";
 const MAP_DEFAULT_ZOOM = 16;      // MapLibre zoom (Leaflet-equivalent 17)
 // Performance experiments (all default to the normal behaviour): ?labels=0 hides the base-map labels/icons, ?markers=0 skips the
 // charger DOM markers, ?pitch=N sets the heading-up tilt (0-60). Used to find what makes the car's browser slow.
@@ -2310,6 +2311,9 @@ function initRemoteSession() {
       "flags: dpr " + f(map.getPixelRatio && map.getPixelRatio(), 2) + "  pitch " + (PERF.pitch != null ? PERF.pitch : "45*") + "  labels " + (PERF.labels ? "on" : "OFF") + "  markers " + (PERF.markers ? "on" : "OFF") + "  look " + (window.__teslaLook ? (window.__lookMode === "mono" ? "MONO" : "TESLA") : "classic"),
       "bearing " + f(map.getBearing(), 0) + "  pitch " + f(map.getPitch(), 0) + "  zoom " + f(map.getZoom(), 1) + "  pad " + padTop,
       "arrow offset from expected: dx " + f(dx, 0) + "  dy " + f(dy, 0) + " px",
+      // v3.10.72 (audit L9): service worker state, the real screen size of the car browser (settings window sizing) and its name
+      "sw " + (!("serviceWorker" in navigator) ? "unsupported" : navigator.serviceWorker.controller ? "active" : (window.__swError ? "FAILED " + window.__swError : "not yet")) +
+        "  screen " + window.innerWidth + "x" + window.innerHeight + " @" + f(window.devicePixelRatio, 2) + "  ua " + (/Tesla\//.test(navigator.userAgent) ? "Tesla" : (navigator.userAgent.match(/(Chrome|Firefox|Safari)\/[\d.]+/) || ["?"])[0]),
       "heading used " + f(lastKnownValidHeading, 0) + "  speed " + currentSpeedKmh + " km/h",
       hnLine(),
       voiceLine()
