@@ -327,3 +327,14 @@ test("lightStyle (?map=lite, v3.10.76): keeps what a driver needs, drops the hea
 });
 
 console.log("\n" + passed + " tests passed" + (process.exitCode ? " - WITH FAILURES" : ""));
+test("debug HUD stays cheap and the bench records long tasks (v3.10.82)", () => {
+  const src = require("fs").readFileSync(require("path").join(__dirname, "..", "app.js"), "utf8");
+  const s = src.indexOf("(function setupDebugHud() {");
+  const hud = src.slice(s, src.indexOf("\n})();", s));
+  assert.ok(s > 0 && hud.length > 1000, "HUD found");
+  assert.ok(!/getStyle\(\)/.test(hud), "HUD never copies the whole style");
+  assert.ok(/__benchActive/.test(hud), "HUD pauses during the bench");
+  assert.ok(/PerformanceObserver/.test(src) && /type: "longtask"/.test(src), "long tasks are observed");
+  assert.ok(/res\.longPct/.test(hud) && /res\.gpsMsPerS/.test(hud), "bench stores long-task % and GPS cost");
+});
+

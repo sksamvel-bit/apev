@@ -136,7 +136,7 @@ function initClock() {
 const OFM_STYLE_URL = "https://tiles.openfreemap.org/styles/liberty";
 const OFM_STYLE_CACHE_KEY = "tesla_nav_ofm_style_v1";
 const MAP_STYLE_KEYS = ["openfreemap", "google-roads"];
-const APP_VERSION = "3.10.81";
+const APP_VERSION = "3.10.82";
 const MAP_DEFAULT_ZOOM = 16;      // MapLibre zoom (Leaflet-equivalent 17)
 // Performance experiments (all default to the normal behaviour): ?labels=0 hides the base-map labels/icons, ?markers=0 skips the
 // charger DOM markers, ?pitch=N sets the heading-up tilt (0-60). Used to find what makes the car's browser slow.
@@ -151,6 +151,14 @@ const PERF = (function () {
            lite: lq === "1" || (lq == null && stored === "1"), liteAuto: lq == null };
 })();
 window.__perf = PERF;
+// v3.10.82 profiling for the rotation test: time spent handling GPS fixes (the car sends ~10 a second) and the browser's
+// long tasks (>50 ms of busy main thread). Both are only summed up; the test reads and resets them.
+window.__prof = { gpsMs: 0, gpsN: 0, longN: 0, longMs: 0, longMax: 0 };
+try {
+  new PerformanceObserver((list) => {
+    for (const e of list.getEntries()) { const p = window.__prof; p.longN++; p.longMs += e.duration; if (e.duration > p.longMax) p.longMax = e.duration; }
+  }).observe({ type: "longtask", buffered: false });
+} catch (_) {}
 // v3.10.76 speed experiments for the car (URL only, nothing remembered): ?map=lite = the light base map (~34 of ~111 layers,
 // MapGL.lightStyle), ?camfps=N = follow-camera frames per second (default 30), ?dpr=N = pixel ratio (default min(device, 1.25)).
 const MAP_LIGHT = (function () { try { return new URLSearchParams(location.search).get("map") === "lite"; } catch (_) { return false; } })();
@@ -862,6 +870,10 @@ function initGeolocation() {
 
   const gpsBadge = document.getElementById("gps-status-dot");
 
+  if (!navigator.geolocation.__timed) navigator.geolocation.__timed = true, navigator.geolocation.watchPosition = ((orig) => function (ok, err, opts) {
+    // v3.10.82: every GPS fix handler is timed (window.__prof.gpsMs) to see how much of the busy time it is
+    return orig.call(navigator.geolocation, function (pos) { const t0 = performance.now(); try { return ok(pos); } finally { window.__prof.gpsMs += performance.now() - t0; window.__prof.gpsN++; } }, err, opts);
+  })(navigator.geolocation.watchPosition);
   navigator.geolocation.watchPosition(
     (position) => {
       gpsBadge.classList.remove("simulated");
@@ -2302,7 +2314,7 @@ function initRemoteSession() {
       if (!map.getLayer("housenumber")) return "housenumbers: layer MISSING (style has no housenumber source)";
       const vis = map.getLayoutProperty("housenumber", "visibility") !== "none";
       const now = Date.now();
-      if (!hnLine.t || now - hnLine.t > 1000) {
+      if (!window.__benchActive && (!hnLine.t || now - hnLine.t > 5000)) {   // queryRenderedFeatures is heavy on the car: rarely
         hnLine.t = now;
         hnLine.n = map.getZoom() >= 15 && vis ? map.queryRenderedFeatures({ layers: ["housenumber"] }).length : null;
       }
@@ -2319,7 +2331,7 @@ function initRemoteSession() {
     } catch (_) { return "voices: n/a"; }
   }
   function render() {
-    if (!el || !window.map || !window.carMarker) return;
+    if (!el || !window.map || !window.carMarker || window.__benchActive) return;   // the HUD itself must not load the test
     const d = window.__dbg || { fixes: [] }, fx = d.fixes, now = Date.now();
     const last = fx[fx.length - 1], prev = fx[fx.length - 2];
     let dt = null, dist = null;
@@ -2342,7 +2354,7 @@ function initRemoteSession() {
       "gap " + f(dt) + "s  jump " + f(dist) + "m  => " + (dt && dist != null ? f(dist / dt * 3.6, 0) : "-") + " km/h",
       "follow " + isFollowCar + "  mode " + currentMapOrientation + "  fps " + f(fps, 0) + "  render " + f(rfps, 0) + "/s",
       "cost: jumpTo " + f(cam && cam.jumpMs, 1) + "ms  onFrame " + f(cam && cam.cbMs, 1) + "ms" + (CAM_GPU ? "  GPU cam: draws " + ((cam && cam.gpuRenders) || 0) : ""),
-      "flags: dpr " + f(map.getPixelRatio && map.getPixelRatio(), 2) + "  pitch " + (PERF.pitch != null ? PERF.pitch : "45*") + "  labels " + (PERF.labels ? "on" : "OFF") + "  markers " + (PERF.markers ? "on" : "OFF") + "  look " + (window.__teslaLook ? (window.__lookMode === "mono" ? "MONO" : "TESLA") : "classic") + "  map " + (MAP_LIGHT ? "LIGHT" : "full") + " " + ((map.getStyle() || {}).layers || []).length + "L" + (CAM_FPS ? "  camfps " + CAM_FPS : ""),
+      "flags: dpr " + f(map.getPixelRatio && map.getPixelRatio(), 2) + "  pitch " + (PERF.pitch != null ? PERF.pitch : "45*") + "  labels " + (PERF.labels ? "on" : "OFF") + "  markers " + (PERF.markers ? "on" : "OFF") + "  look " + (window.__teslaLook ? (window.__lookMode === "mono" ? "MONO" : "TESLA") : "classic") + "  map " + (MAP_LIGHT ? "LIGHT" : "full") + " " + (map.getLayersOrder ? map.getLayersOrder().length : 0) + "L" + (CAM_FPS ? "  camfps " + CAM_FPS : ""),
       "bearing " + f(map.getBearing(), 0) + "  pitch " + f(map.getPitch(), 0) + "  zoom " + f(map.getZoom(), 1) + "  pad " + padTop,
       "arrow offset from expected: dx " + f(dx, 0) + "  dy " + f(dy, 0) + " px",
       // v3.10.72 (audit L9): service worker state, the real screen size of the car browser (settings window sizing) and its name
@@ -2373,6 +2385,7 @@ function initRemoteSession() {
     const start = Object.assign({}, currentPos || { lat: 41.7151, lng: 44.8271 });
     const speedMs = 8, turnDegS = 36, R = speedMs / (turnDegS * Math.PI / 180);   // ~12.7 m radius
     const r0 = window.__renderCount || 0, t0 = performance.now(), cam0 = google ? window.GMapMode.camMoves() : 0;
+    const P = window.__prof; P.gpsMs = 0; P.gpsN = 0; P.longN = 0; P.longMs = 0; P.longMax = 0;
     let frames = 0, maxGap = 0, lastTs = t0, fixTimer = null;
     const feed = () => {
       const t = (performance.now() - t0) / 1000, hdg = (t * turnDegS) % 360;
@@ -2395,14 +2408,16 @@ function initRemoteSession() {
     clearInterval(fixTimer);
     const secs = (performance.now() - t0) / 1000;
     const res = { mapFps: google ? (window.GMapMode.camMoves() - cam0) / secs : ((window.__renderCount || 0) - r0) / secs, uiFps: frames / secs, maxPauseMs: maxGap, map: google ? "google " + (window.GMapMode.isVector() ? "3D" : "classic") + (window.GMapMode.gpuOn() ? " gpu" : "") : "ours",
-      look: (window.__mapLight ? "lite" : "full") + " " + (((map.getStyle() || {}).layers || []).length) + "L" + (window.__camMode ? " cam " + window.__camMode : "") };
+      look: (window.__mapLight ? "lite" : "full") + " " + (map.getLayersOrder ? map.getLayersOrder().length : 0) + "L" + (window.__camMode ? " cam " + window.__camMode : "") };
+    res.longN = P.longN; res.longMs = P.longMs; res.longPct = P.longMs / (secs * 10); res.longMax = P.longMax; res.gpsMsPerS = P.gpsMs / secs; res.gpsPerS = P.gpsN / secs;
     window.__benchLast = res;
     mapCamera.setFix = realSetFix;
     try { if (!wasFollowing) setFollowCarMode(false); } catch (_) {}
     window.__benchActive = false;
+    const prof = " · გრძელი დავალება " + P.longN + " (" + Math.round(P.longMs / secs / 10) + "% დრო, max " + Math.round(P.longMax) + " ms) · GPS " + (P.gpsMs / secs).toFixed(0) + " ms/წმ";
     const txt = (google ? "Google " + (window.GMapMode.isVector() ? "3D" : "classic") + ": კამერა " : "ჩვენი: map ") + res.mapFps.toFixed(1) + "/s · ეკრანი " + res.uiFps.toFixed(0) + " fps · max გაჭედვა " + Math.round(res.maxPauseMs) + " ms";
     if (benchBtn) benchBtn.textContent = "▶ ბრუნვის ტესტი (10 წმ) · ბოლო: " + txt;
-    showToast("🔄 ბრუნვის ტესტი: " + txt, "info", 8000);
+    showToast("🔄 ბრუნვის ტესტი: " + txt + prof, "info", 10000);
     return res;
   }
   window.runRotationBench = runBench;
@@ -2466,10 +2481,14 @@ function initRemoteSession() {
     const t0 = Date.now();
     while (Date.now() - t0 < 20000) {
       await new Promise((r) => setTimeout(r, 1000));
-      const ready = step.google ? (window.GMapMode && window.GMapMode.isOpen() && window.GMapMode.isVector()) : (window.map && window.map.isStyleLoaded && window.map.isStyleLoaded());
+      let ready = step.google ? (window.GMapMode && window.GMapMode.isOpen() && window.GMapMode.isVector()) : (window.map && window.map.isStyleLoaded && window.map.isStyleLoaded() && window.map.areTilesLoaded());
+      if (ready && !step.google && Date.now() - t0 > 6000) { try { ready = window.map.queryRenderedFeatures().length > 20; } catch (_) {} }   // streets really drawn (v3.10.82)
       if (ready && Date.now() - t0 > 6000) break;
     }
+    let feats = null;
+    if (!step.google) { try { feats = window.map.queryRenderedFeatures().length; } catch (_) {} }
     const res = await runBench(step.google ? "google" : "ours");
+    if (res) res.empty = feats != null && feats <= 20;   // the streets never loaded: this row does not count
     const s = readSuite() || { started: Date.now(), results: [] };
     s.results[i] = Object.assign({ name: step.name }, res || { mapFps: 0, uiFps: 0, maxPauseMs: 0 });
     try { localStorage.setItem(SUITE_KEY, JSON.stringify(s)); } catch (_) {}
@@ -2480,9 +2499,14 @@ function initRemoteSession() {
     if (!s || !s.results) return;
     const box = document.createElement("div");
     box.id = "bench-suite";
-    box.style.cssText = "position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);z-index:100000;background:rgba(0,0,0,.92);color:#7CFC7C;font:13px/1.45 monospace;padding:12px 14px;border-radius:12px;border:1px solid #7CFC7C;white-space:pre;max-width:96vw;max-height:92vh;overflow:auto";
-    const rows = s.results.map((r, i) => r ? (String(i + 1).padStart(2) + ". " + r.name.padEnd(30) + " ეკრანი " + String(Math.round(r.uiFps)).padStart(3) + " fps  ხატვა " + r.mapFps.toFixed(1).padStart(4) + "/წმ  გაჭედვა " + String(Math.round(r.maxPauseMs)).padStart(5) + " ms") : (String(i + 1).padStart(2) + ". —"));
-    box.textContent = "🧪 სრული ტესტი v" + APP_VERSION + "  (" + new Date(s.started).toLocaleString() + ")\n\n" + rows.join("\n") + "\n\nგადაუღე ფოტო და გაუგზავნე Claude-ს. დახურვა: შეეხე.";
+    box.style.cssText = "position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);z-index:100000;background:rgba(0,0,0,.92);color:#7CFC7C;font:12px/1.4 monospace;padding:12px 14px;border-radius:12px;border:1px solid #7CFC7C;white-space:pre;max-width:96vw;max-height:92vh;overflow:auto";
+    const pad = (v, n) => String(v).padStart(n);
+    const rows = s.results.map((r, i) => r
+      ? pad(i + 1, 2) + ". " + r.name.padEnd(28) + pad(Math.round(r.uiFps), 3) + " fps " + pad(r.mapFps.toFixed(1), 4) + "/წმ " + pad(Math.round(r.maxPauseMs), 5) + " ms " +
+        pad(r.longPct != null ? Math.round(r.longPct) + "%" : "-", 4) + " " + pad(r.gpsMsPerS != null ? Math.round(r.gpsMsPerS) : "-", 4) + (r.empty ? "  ⚠ ცარიელი რუკა" : "")
+      : pad(i + 1, 2) + ". —");
+    box.textContent = "🧪 სრული ტესტი v" + APP_VERSION + "  (" + new Date(s.started).toLocaleString() + ")\n" +
+      "სვეტები: ეკრანი fps · ხატვა/წმ · max გაჭედვა · პროცესორი დაკავებულია (%) · GPS-ის დამუშავება (ms/წმ)\n\n" + rows.join("\n") + "\n\nგადაუღე ფოტო და გაუგზავნე Claude-ს. დახურვა: შეეხე.";
     box.addEventListener("click", (e) => { e.stopPropagation(); box.remove(); });
     document.body.appendChild(box);
   }
