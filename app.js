@@ -136,7 +136,7 @@ function initClock() {
 const OFM_STYLE_URL = "https://tiles.openfreemap.org/styles/liberty";
 const OFM_STYLE_CACHE_KEY = "tesla_nav_ofm_style_v1";
 const MAP_STYLE_KEYS = ["openfreemap", "google-roads"];
-const APP_VERSION = "3.10.82";
+const APP_VERSION = "3.10.83";
 const MAP_DEFAULT_ZOOM = 16;      // MapLibre zoom (Leaflet-equivalent 17)
 // Performance experiments (all default to the normal behaviour): ?labels=0 hides the base-map labels/icons, ?markers=0 skips the
 // charger DOM markers, ?pitch=N sets the heading-up tilt (0-60). Used to find what makes the car's browser slow.
@@ -2372,16 +2372,26 @@ function initRemoteSession() {
   // camera the real GPS uses; real fixes are held back meanwhile. Measures: map renders per second, screen frames per second
   // (requestAnimationFrame) and the longest pause between frames. Works standing still, no driving needed.
   let benchBtn = null;
-  async function runBench(target) {
+  // v3.10.83: a fixed piece of plain JS (no map, no DOM). Its time says how fast the car's processor is RIGHT NOW: if it is
+  // much slower than usual, something outside the app (Sentry, dashcam, other tabs, charging) is eating the CPU.
+  function cpuMs() {
+    const runs = [];
+    for (let k = 0; k < 3; k++) { const t = performance.now(); let x = 0; for (let i = 1; i < 2e6; i++) x += Math.sqrt(i) % 7; window.__cpuSink = x; runs.push(performance.now() - t); }
+    return runs.sort((p, q) => p - q)[1];
+  }
+  window.__cpuMs = cpuMs;
+  async function runBench(target, opts) {
     if (!window.map || !mapCamera || window.__benchActive) return;
+    const idle = !!(opts && opts.idle);   // v3.10.83: the map just standing (real GPS, no turning): what does it cost at rest?
+    const cpu = cpuMs();
     // target "google" (v3.10.79): measure the Google map that is open (its 3D / GPU camera); otherwise OUR map
     const google = target === "google" && window.GMapMode && window.GMapMode.isOpen();
     if (!google && window.GMapMode && window.GMapMode.isOpen()) window.GMapMode.close();
     window.__benchActive = true;
     const realSetFix = mapCamera.setFix.bind(mapCamera);
-    mapCamera.setFix = () => {};   // real GPS fixes wait until the test ends
+    if (!idle) mapCamera.setFix = () => {};   // real GPS fixes wait until the test ends
     const wasFollowing = isFollowCar;
-    try { setFollowCarMode(true); mapCamera.setMode("heading-up"); } catch (_) {}
+    try { if (!idle) { setFollowCarMode(true); mapCamera.setMode("heading-up"); } } catch (_) {}
     const start = Object.assign({}, currentPos || { lat: 41.7151, lng: 44.8271 });
     const speedMs = 8, turnDegS = 36, R = speedMs / (turnDegS * Math.PI / 180);   // ~12.7 m radius
     const r0 = window.__renderCount || 0, t0 = performance.now(), cam0 = google ? window.GMapMode.camMoves() : 0;
@@ -2394,8 +2404,7 @@ function initRemoteSession() {
       realSetFix({ lng: start.lng + dLng, lat: start.lat + dLat, headingDeg: hdg, speedMs });
       window.__carFix = { lng: start.lng + dLng, lat: start.lat + dLat, headingDeg: hdg, speedMs };   // Google mode follows this
     };
-    feed();
-    fixTimer = setInterval(feed, 1000);   // GPS rate: 1 fix per second, the camera smooths in between
+    if (!idle) { feed(); fixTimer = setInterval(feed, 1000); }   // GPS rate: 1 fix per second, the camera smooths in between
     if (benchBtn) benchBtn.textContent = "⏳ იზომება 10 წმ…";
     await new Promise((resolve) => {
       const loop = (ts) => {
@@ -2409,10 +2418,11 @@ function initRemoteSession() {
     const secs = (performance.now() - t0) / 1000;
     const res = { mapFps: google ? (window.GMapMode.camMoves() - cam0) / secs : ((window.__renderCount || 0) - r0) / secs, uiFps: frames / secs, maxPauseMs: maxGap, map: google ? "google " + (window.GMapMode.isVector() ? "3D" : "classic") + (window.GMapMode.gpuOn() ? " gpu" : "") : "ours",
       look: (window.__mapLight ? "lite" : "full") + " " + (map.getLayersOrder ? map.getLayersOrder().length : 0) + "L" + (window.__camMode ? " cam " + window.__camMode : "") };
+    res.cpuMs = cpu; res.idle = idle;
     res.longN = P.longN; res.longMs = P.longMs; res.longPct = P.longMs / (secs * 10); res.longMax = P.longMax; res.gpsMsPerS = P.gpsMs / secs; res.gpsPerS = P.gpsN / secs;
     window.__benchLast = res;
     mapCamera.setFix = realSetFix;
-    try { if (!wasFollowing) setFollowCarMode(false); } catch (_) {}
+    try { if (!wasFollowing && !idle) setFollowCarMode(false); } catch (_) {}
     window.__benchActive = false;
     const prof = " · გრძელი დავალება " + P.longN + " (" + Math.round(P.longMs / secs / 10) + "% დრო, max " + Math.round(P.longMax) + " ms) · GPS " + (P.gpsMs / secs).toFixed(0) + " ms/წმ";
     const txt = (google ? "Google " + (window.GMapMode.isVector() ? "3D" : "classic") + ": კამერა " : "ჩვენი: map ") + res.mapFps.toFixed(1) + "/s · ეკრანი " + res.uiFps.toFixed(0) + " fps · max გაჭედვა " + Math.round(res.maxPauseMs) + " ms";
@@ -2437,7 +2447,7 @@ function initRemoteSession() {
       const suiteBtn = document.createElement("button");
       suiteBtn.id = "bench-suite-btn";
       suiteBtn.type = "button";
-      suiteBtn.textContent = "🧪 სრული ტესტი: 10 ვარიანტი (~3 წთ, მანქანა გაჩერებული)";
+      suiteBtn.textContent = "🧪 სრული ტესტი: 11 ვარიანტი (~4 წთ, მანქანა გაჩერებული)";
       suiteBtn.style.cssText = "position:fixed;left:8px;bottom:172px;z-index:99999;min-height:44px;padding:8px 14px;border-radius:10px;border:1px solid #7CFC7C;background:rgba(0,0,0,.85);color:#7CFC7C;font:600 14px sans-serif;";
       suiteBtn.addEventListener("click", (e) => { e.stopPropagation(); startSuite(); });
       document.body.appendChild(suiteBtn);
@@ -2455,6 +2465,7 @@ function initRemoteSession() {
   // standing still. Finds what makes our map slow and whether a faster Google camera turns smoothly. ----
   const SUITE_KEY = "tesla_nav_bench_suite";
   const SUITE = [
+    { name: "ჩვენი, უძრავი (ბრუნვის გარეშე)", q: "map=ours", idle: true },
     { name: "ჩვენი სრული", q: "map=ours" },
     { name: "ჩვენი მსუბუქი", q: "map=lite" },
     { name: "მსუბუქი, dpr 0.75", q: "map=lite&dpr=0.75" },
@@ -2487,12 +2498,21 @@ function initRemoteSession() {
     }
     let feats = null;
     if (!step.google) { try { feats = window.map.queryRenderedFeatures().length; } catch (_) {} }
-    const res = await runBench(step.google ? "google" : "ours");
+    const res = await runBench(step.google ? "google" : "ours", { idle: step.idle });
     if (res) res.empty = feats != null && feats <= 20;   // the streets never loaded: this row does not count
     const s = readSuite() || { started: Date.now(), results: [] };
     s.results[i] = Object.assign({ name: step.name }, res || { mapFps: 0, uiFps: 0, maxPauseMs: 0 });
     try { localStorage.setItem(SUITE_KEY, JSON.stringify(s)); } catch (_) {}
     location.href = i + 1 < SUITE.length ? suiteUrl(i + 1) : "/?suite=done&map=ours&debug=1";
+  }
+  function gpuName() {
+    try {
+      const gl = document.createElement("canvas").getContext("webgl");
+      const ext = gl && gl.getExtension("WEBGL_debug_renderer_info");
+      const name = gl ? String(gl.getParameter(ext ? ext.UNMASKED_RENDERER_WEBGL : gl.RENDERER)) : "არ არის";
+      const lose = gl && gl.getExtension("WEBGL_lose_context"); if (lose) lose.loseContext();   // free the test context at once
+      return name.slice(0, 90);
+    } catch (_) { return "?"; }
   }
   function showSuite() {
     const s = readSuite();
@@ -2503,10 +2523,11 @@ function initRemoteSession() {
     const pad = (v, n) => String(v).padStart(n);
     const rows = s.results.map((r, i) => r
       ? pad(i + 1, 2) + ". " + r.name.padEnd(28) + pad(Math.round(r.uiFps), 3) + " fps " + pad(r.mapFps.toFixed(1), 4) + "/წმ " + pad(Math.round(r.maxPauseMs), 5) + " ms " +
-        pad(r.longPct != null ? Math.round(r.longPct) + "%" : "-", 4) + " " + pad(r.gpsMsPerS != null ? Math.round(r.gpsMsPerS) : "-", 4) + (r.empty ? "  ⚠ ცარიელი რუკა" : "")
+        pad(r.longPct != null ? Math.round(r.longPct) + "%" : "-", 4) + " " + pad(r.gpsMsPerS != null ? Math.round(r.gpsMsPerS) : "-", 4) + pad(r.cpuMs != null ? Math.round(r.cpuMs) : "-", 5) + (r.empty ? "  ⚠ ცარიელი რუკა" : "")
       : pad(i + 1, 2) + ". —");
     box.textContent = "🧪 სრული ტესტი v" + APP_VERSION + "  (" + new Date(s.started).toLocaleString() + ")\n" +
-      "სვეტები: ეკრანი fps · ხატვა/წმ · max გაჭედვა · პროცესორი დაკავებულია (%) · GPS-ის დამუშავება (ms/წმ)\n\n" + rows.join("\n") + "\n\nგადაუღე ფოტო და გაუგზავნე Claude-ს. დახურვა: შეეხე.";
+      "სვეტები: ეკრანი fps · ხატვა/წმ · max გაჭედვა · პროცესორი დაკავებულია (%) · GPS (ms/წმ) · CPU-ს სიჩქარე (ms, ნაკლები = უკეთესი)\n" +
+      "WebGL: " + gpuName() + "\n\n" + rows.join("\n") + "\n\nგადაუღე ფოტო და გაუგზავნე Claude-ს. დახურვა: შეეხე.";
     box.addEventListener("click", (e) => { e.stopPropagation(); box.remove(); });
     document.body.appendChild(box);
   }

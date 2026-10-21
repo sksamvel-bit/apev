@@ -10,41 +10,41 @@
  * 4. skipWaiting + clients.claim for atomic instant updates without stale caches.
  */
 
-const CACHE_NAME = 'tesla-nav-v3.10.82';
+const CACHE_NAME = 'tesla-nav-v3.10.83';
 const NAV_TIMEOUT_MS = 3000;   // a sleeping Render server: show the cached page after 3 s
 
 const PRECACHE_ASSETS = [
   '/',
   '/index.html',
-  '/style.css?v=3.10.82',
-  '/app.js?v=3.10.82',
-  '/speed-limit.js?v=3.10.82',
-  '/speed-cameras.js?v=3.10.82',
-  '/devices-panel.js?v=3.10.82',
-  '/routing.js?v=3.10.82',
-  '/chargers.js?v=3.10.82',
-  '/charger-list.js?v=3.10.82',
-  '/search.js?v=3.10.82',
-  '/tesla-style.js?v=3.10.82',
-  '/traffic-signals.js?v=3.10.82',
-  '/traffic.js?v=3.10.82',
-  '/gmap.js?v=3.10.82',
-  '/weather.js?v=3.10.82',
-  '/battery.js?v=3.10.82',
-  '/turn-audio.js?v=3.10.82',
-  '/speech.js?v=3.10.82',
-  '/maplibre-gl.js?v=3.10.82',
-  '/map-gl.js?v=3.10.82',
-  '/maplibre-gl.css?v=3.10.82',
+  '/style.css?v=3.10.83',
+  '/app.js?v=3.10.83',
+  '/speed-limit.js?v=3.10.83',
+  '/speed-cameras.js?v=3.10.83',
+  '/devices-panel.js?v=3.10.83',
+  '/routing.js?v=3.10.83',
+  '/chargers.js?v=3.10.83',
+  '/charger-list.js?v=3.10.83',
+  '/search.js?v=3.10.83',
+  '/tesla-style.js?v=3.10.83',
+  '/traffic-signals.js?v=3.10.83',
+  '/traffic.js?v=3.10.83',
+  '/gmap.js?v=3.10.83',
+  '/weather.js?v=3.10.83',
+  '/battery.js?v=3.10.83',
+  '/turn-audio.js?v=3.10.83',
+  '/speech.js?v=3.10.83',
+  '/maplibre-gl.js?v=3.10.83',
+  '/map-gl.js?v=3.10.83',
+  '/maplibre-gl.css?v=3.10.83',
   '/qrcode.min.js',
-  '/sim-drive.js?v=3.10.82',
+  '/sim-drive.js?v=3.10.83',
   '/manifest.json',
   '/icon.svg',
   '/icon-192.png',
   '/icon-512.png'
 ];
 
-// v3.10.82: the app page is precached only when it really is the app. A signed-out install used to store the PIN page as "/",
+// v3.10.83: the app page is precached only when it really is the app. A signed-out install used to store the PIN page as "/",
 // and with the 3 s fallback (v3.10.65) a slow server then showed that PIN form to a device that was signed in.
 const PRECACHE_PAGES = ['/', '/index.html'];
 
@@ -95,7 +95,7 @@ self.addEventListener('fetch', (event) => {
   // 1. Network-First strategy for HTML documents & navigation
   // Ensures user always gets the latest deployed index.html when online,
   // but instantly loads from cache if offline or during Tesla reverse (R) switch.
-  // v3.10.82 (audit H3): Render's free server sleeps after 15 idle minutes and needs ~30-60 s to wake. A page that waits for
+  // v3.10.83 (audit H3): Render's free server sleeps after 15 idle minutes and needs ~30-60 s to wake. A page that waits for
   // the network shows a blank screen all that time, so after NAV_TIMEOUT_MS the cached page is shown and the network answer
   // (when it comes) only refreshes the cache. With nothing cached the page still waits for the network.
   if (req.mode === 'navigate' || url.pathname === '/' || url.pathname.endsWith('.html')) {
