@@ -201,10 +201,17 @@ ok(/GOOGLE_MAPS_KEY/.test(srv) && !/PUBLIC_AUTH_PATHS[^;]*gmaps-config/.test(srv
     ok(/body\.gcam-gpu #gmap-canvas \.gm-style div:has\(> a\[href\*="maps\.google\.com\/maps"\]\) \{ left: calc\(16\.67%/.test(css) && /div:has\(> \.gm-style-cc\)/.test(css), "v3.10.79: Google's logo and credit are brought back into view on the oversized map (Google terms)");
     ok(src.includes("function gpuLogo(el, theta)") && src.includes('"rotate(" + (-theta).toFixed(2) + "deg)"'), "v3.10.79: the logo is kept upright while the picture turns");
   }
+  // v3.10.81: the full test (10 variants in a row, one table)
+  {
+    const appS = fs.readFileSync(__dirname + "/../app.js", "utf8");
+    const steps = (appS.slice(appS.indexOf("const SUITE = ["), appS.indexOf("const suiteUrl")).match(/\{ name: /g) || []).length;
+    ok(steps === 10 && appS.includes('location.href = i + 1 < SUITE.length ? suiteUrl(i + 1) : "/?suite=done&map=ours&debug=1"'), "v3.10.81: the full test runs 10 variants one after another and ends on the table");
+    ok(src.includes("if (/[?&]gmap3d=1/.test(q)) return true;") && src.includes("S.vector = /[?&]gmap3d=1/.test(location.search) ||"), "v3.10.81: ?gmap3d=1 opens Google 3D for a test without changing the saved main map");
+  }
   // v3.10.80: three maps in one picker, Google 3D is the main map
   ok(G.currentMainMap() === "google3d" && JSON.stringify(G.MAP_KINDS) === JSON.stringify(["google3d", "google", "ours"]), "v3.10.80: with nothing chosen the app opens Google 3D");
   ok(typeof G.selectMap === "function" && G.selectMap("nonsense") === false, "v3.10.80: selectMap accepts only the three maps");
-  ok(src.includes('S.vector = currentMainMap() !== "google";'), "v3.10.80: the start opens 3D unless classic was chosen");
+  ok(src.includes('currentMainMap() !== "google";   // ?gmap3d=1'), "v3.10.80: the start opens 3D unless classic was chosen");
   { const h3 = fs.readFileSync(__dirname + "/../index.html", "utf8"); ok(["google3d", "google", "ours"].every((k) => h3.includes('data-map="' + k + '"')) && h3.includes('<option value="google3d">'), "v3.10.80: the map menu and the settings list the three maps"); }
   ok(src.includes('on("gmap-btn-vector", "click", (e) => { if (e) e.stopPropagation(); if (window.openMapPicker) window.openMapPicker(); });'), "v3.10.80: the Google side panel button opens the same map picker");
   // v3.10.77: the Google map is the main map

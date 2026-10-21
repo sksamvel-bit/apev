@@ -1128,12 +1128,13 @@
   function mainMapIsGoogle(search) {
     const q = String(search || "");
     if (/[?&]map=(ours|lite)\b/.test(q)) return false;
+    if (/[?&]gmap3d=1/.test(q)) return true;
     return currentMainMap() !== "ours";
   }
   function autoOpen() {
     // v3.10.80: Google 3D unless "google" (classic) was chosen; wait until our map exists (open() pauses it) so the two never
     // render at once; give up quietly after ~15 s
-    S.vector = currentMainMap() !== "google";
+    S.vector = /[?&]gmap3d=1/.test(location.search) || currentMainMap() !== "google";   // ?gmap3d=1: the full test forces 3D (nothing saved)
     let tries = 0;
     const t = setInterval(() => {
       if (S.open || ++tries > 30) { clearInterval(t); return; }

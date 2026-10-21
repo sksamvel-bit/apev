@@ -136,7 +136,7 @@ function initClock() {
 const OFM_STYLE_URL = "https://tiles.openfreemap.org/styles/liberty";
 const OFM_STYLE_CACHE_KEY = "tesla_nav_ofm_style_v1";
 const MAP_STYLE_KEYS = ["openfreemap", "google-roads"];
-const APP_VERSION = "3.10.80";
+const APP_VERSION = "3.10.81";
 const MAP_DEFAULT_ZOOM = 16;      // MapLibre zoom (Leaflet-equivalent 17)
 // Performance experiments (all default to the normal behaviour): ?labels=0 hides the base-map labels/icons, ?markers=0 skips the
 // charger DOM markers, ?pitch=N sets the heading-up tilt (0-60). Used to find what makes the car's browser slow.
@@ -2419,14 +2419,79 @@ function initRemoteSession() {
       benchBtn.style.cssText = "position:fixed;left:8px;bottom:120px;z-index:99999;min-height:44px;padding:8px 14px;border-radius:10px;border:1px solid #7CFC7C;background:rgba(0,0,0,.85);color:#7CFC7C;font:600 14px sans-serif;";
       benchBtn.addEventListener("click", (e) => { e.stopPropagation(); runBench(window.GMapMode && window.GMapMode.isOpen() ? "google" : "ours"); });   // measures the map that is open
       document.body.appendChild(benchBtn);
+      const suiteBtn = document.createElement("button");
+      suiteBtn.id = "bench-suite-btn";
+      suiteBtn.type = "button";
+      suiteBtn.textContent = "🧪 სრული ტესტი: 10 ვარიანტი (~3 წთ, მანქანა გაჩერებული)";
+      suiteBtn.style.cssText = "position:fixed;left:8px;bottom:172px;z-index:99999;min-height:44px;padding:8px 14px;border-radius:10px;border:1px solid #7CFC7C;background:rgba(0,0,0,.85);color:#7CFC7C;font:600 14px sans-serif;";
+      suiteBtn.addEventListener("click", (e) => { e.stopPropagation(); startSuite(); });
+      document.body.appendChild(suiteBtn);
       timer = setInterval(render, 250);
     } else if (!on && el) {
       clearInterval(timer); el.remove(); el = null;
       if (benchBtn) { benchBtn.remove(); benchBtn = null; }
+      const sb = document.getElementById("bench-suite-btn"); if (sb) sb.remove();
     }
   }
   window.toggleDebugHud = toggle;
+
+  // ---- v3.10.81 full test: one tap runs the rotation test on 10 variants (each one needs a page load because pixel ratio,
+  // style and labels are fixed at start), keeps the results in localStorage and shows one table at the end. ~3 minutes,
+  // standing still. Finds what makes our map slow and whether a faster Google camera turns smoothly. ----
+  const SUITE_KEY = "tesla_nav_bench_suite";
+  const SUITE = [
+    { name: "ჩვენი სრული", q: "map=ours" },
+    { name: "ჩვენი მსუბუქი", q: "map=lite" },
+    { name: "მსუბუქი, dpr 0.75", q: "map=lite&dpr=0.75" },
+    { name: "მსუბუქი, წარწერების გარეშე", q: "map=lite&labels=0" },
+    { name: "მსუბუქი, მარკერების გარეშე", q: "map=lite&markers=0" },
+    { name: "მსუბუქი, ყველაფერი მინიმუმზე", q: "map=lite&dpr=0.75&labels=0&markers=0" },
+    { name: "მსუბუქი + GPU", q: "map=lite&cam=gpu" },
+    { name: "Google 3D, კამერა 10/წმ", q: "gmap3d=1", google: true },
+    { name: "Google 3D, კამერა 20/წმ", q: "gmap3d=1&gfps=20", google: true },
+    { name: "Google 3D, კამერა 30/წმ", q: "gmap3d=1&gfps=30", google: true }
+  ];
+  const suiteUrl = (i) => "/?suite=" + i + "&debug=1&" + SUITE[i].q;
+  function readSuite() { try { return JSON.parse(localStorage.getItem(SUITE_KEY) || "null"); } catch (_) { return null; } }
+  function startSuite() {
+    try { localStorage.setItem(SUITE_KEY, JSON.stringify({ started: Date.now(), results: [] })); } catch (_) {}
+    location.href = suiteUrl(0);
+  }
+  window.startBenchSuite = startSuite;
+  async function suiteStep(i) {
+    const step = SUITE[i];
+    if (!step) return;
+    showToast("🧪 სრული ტესტი " + (i + 1) + "/" + SUITE.length + ": " + step.name, "info", 4000);
+    // let the map (and, for Google, Google mode) settle first
+    const t0 = Date.now();
+    while (Date.now() - t0 < 20000) {
+      await new Promise((r) => setTimeout(r, 1000));
+      const ready = step.google ? (window.GMapMode && window.GMapMode.isOpen() && window.GMapMode.isVector()) : (window.map && window.map.isStyleLoaded && window.map.isStyleLoaded());
+      if (ready && Date.now() - t0 > 6000) break;
+    }
+    const res = await runBench(step.google ? "google" : "ours");
+    const s = readSuite() || { started: Date.now(), results: [] };
+    s.results[i] = Object.assign({ name: step.name }, res || { mapFps: 0, uiFps: 0, maxPauseMs: 0 });
+    try { localStorage.setItem(SUITE_KEY, JSON.stringify(s)); } catch (_) {}
+    location.href = i + 1 < SUITE.length ? suiteUrl(i + 1) : "/?suite=done&map=ours&debug=1";
+  }
+  function showSuite() {
+    const s = readSuite();
+    if (!s || !s.results) return;
+    const box = document.createElement("div");
+    box.id = "bench-suite";
+    box.style.cssText = "position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);z-index:100000;background:rgba(0,0,0,.92);color:#7CFC7C;font:13px/1.45 monospace;padding:12px 14px;border-radius:12px;border:1px solid #7CFC7C;white-space:pre;max-width:96vw;max-height:92vh;overflow:auto";
+    const rows = s.results.map((r, i) => r ? (String(i + 1).padStart(2) + ". " + r.name.padEnd(30) + " ეკრანი " + String(Math.round(r.uiFps)).padStart(3) + " fps  ხატვა " + r.mapFps.toFixed(1).padStart(4) + "/წმ  გაჭედვა " + String(Math.round(r.maxPauseMs)).padStart(5) + " ms") : (String(i + 1).padStart(2) + ". —"));
+    box.textContent = "🧪 სრული ტესტი v" + APP_VERSION + "  (" + new Date(s.started).toLocaleString() + ")\n\n" + rows.join("\n") + "\n\nგადაუღე ფოტო და გაუგზავნე Claude-ს. დახურვა: შეეხე.";
+    box.addEventListener("click", (e) => { e.stopPropagation(); box.remove(); });
+    document.body.appendChild(box);
+  }
+
   document.addEventListener("DOMContentLoaded", () => {
+    const sm = /[?&]suite=(\d+|done)/.exec(location.search);
+    if (sm) {
+      setTimeout(() => { if (sm[1] === "done") showSuite(); else suiteStep(parseInt(sm[1], 10)); }, 500);
+    }
     if (/[?&]debug=1/.test(location.search)) toggle(true);
     const sv = document.getElementById("speed-val");
     if (sv) sv.addEventListener("click", () => {
