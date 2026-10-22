@@ -136,7 +136,7 @@ function initClock() {
 const OFM_STYLE_URL = "https://tiles.openfreemap.org/styles/liberty";
 const OFM_STYLE_CACHE_KEY = "tesla_nav_ofm_style_v1";
 const MAP_STYLE_KEYS = ["openfreemap", "google-roads"];
-const APP_VERSION = "3.10.84";
+const APP_VERSION = "3.10.85";
 const MAP_DEFAULT_ZOOM = 16;      // MapLibre zoom (Leaflet-equivalent 17)
 // Performance experiments (all default to the normal behaviour): ?labels=0 hides the base-map labels/icons, ?markers=0 skips the
 // charger DOM markers, ?pitch=N sets the heading-up tilt (0-60). Used to find what makes the car's browser slow.
@@ -147,7 +147,9 @@ const PERF = (function () {
   // so the full map is the normal start and auto-Lite re-decides after a few slow seconds.
   let stored = null; try { stored = sessionStorage.getItem("lite"); localStorage.removeItem("lite"); } catch (_) {}
   const lq = q.get("lite");   // ?lite=1 forces Lite, ?lite=0 forces the full map (and disables auto-Lite)
-  return { labels: q.get("labels") !== "0", markers: q.get("markers") !== "0", pitch: isFinite(p) && p >= 0 && p <= 60 ? p : null,
+  // v3.10.85 ?labels=points: no street names along the roads (their letters are re-projected by the CPU on every frame
+  // of a turn), house numbers and place names stay; ?labels=major: only the big streets keep their names
+  return { labels: q.get("labels") !== "0", labelMode: q.get("labels") === "points" || q.get("labels") === "major" ? q.get("labels") : null, markers: q.get("markers") !== "0", pitch: isFinite(p) && p >= 0 && p <= 60 ? p : null,
            lite: lq === "1" || (lq == null && stored === "1"), liteAuto: lq == null };
 })();
 window.__perf = PERF;
@@ -367,6 +369,19 @@ function initMap() {
       } catch (_) {}
     };
     map.on("styledata", hideLabels);
+  }
+  if (PERF.labelMode) {
+    const isLine = (l) => l.layout && /^line/.test(String(l.layout["symbol-placement"] || ""));
+    const hideLineLabels = () => {
+      try {
+        map.getStyle().layers.forEach((l) => {
+          if (l.type !== "symbol" || l.source !== "openmaptiles" || !isLine(l) || (l.layout && l.layout.visibility === "none")) return;
+          if (PERF.labelMode === "major" && /major|primary|trunk|motorway/.test(l.id)) return;
+          map.setLayoutProperty(l.id, "visibility", "none");
+        });
+      } catch (_) {}
+    };
+    map.on("styledata", hideLineLabels);
   }
   window.__renderCount = 0;
   map.on("render", () => { window.__renderCount++; });
@@ -2368,7 +2383,7 @@ function initRemoteSession() {
       "gap " + f(dt) + "s  jump " + f(dist) + "m  => " + (dt && dist != null ? f(dist / dt * 3.6, 0) : "-") + " km/h",
       "follow " + isFollowCar + "  mode " + currentMapOrientation + "  fps " + f(fps, 0) + "  render " + f(rfps, 0) + "/s",
       "cost: jumpTo " + f(cam && cam.jumpMs, 1) + "ms  onFrame " + f(cam && cam.cbMs, 1) + "ms" + (CAM_GPU ? "  GPU cam: draws " + ((cam && cam.gpuRenders) || 0) : ""),
-      "flags: dpr " + f(map.getPixelRatio && map.getPixelRatio(), 2) + "  pitch " + (PERF.pitch != null ? PERF.pitch : "45*") + "  labels " + (PERF.labels ? "on" : "OFF") + "  markers " + (PERF.markers ? "on" : "OFF") + "  look " + (window.__teslaLook ? (window.__lookMode === "mono" ? "MONO" : "TESLA") : "classic") + "  map " + (MAP_RASTER ? "RASTER" : MAP_LIGHT ? "LIGHT" : "full") + " " + (map.getLayersOrder ? map.getLayersOrder().length : 0) + "L" + (CAM_FPS ? "  camfps " + CAM_FPS : ""),
+      "flags: dpr " + f(map.getPixelRatio && map.getPixelRatio(), 2) + "  pitch " + (PERF.pitch != null ? PERF.pitch : "45*") + "  labels " + (!PERF.labels ? "OFF" : PERF.labelMode || "on") + "  markers " + (PERF.markers ? "on" : "OFF") + "  look " + (window.__teslaLook ? (window.__lookMode === "mono" ? "MONO" : "TESLA") : "classic") + "  map " + (MAP_RASTER ? "RASTER" : MAP_LIGHT ? "LIGHT" : "full") + " " + (map.getLayersOrder ? map.getLayersOrder().length : 0) + "L" + (CAM_FPS ? "  camfps " + CAM_FPS : ""),
       "bearing " + f(map.getBearing(), 0) + "  pitch " + f(map.getPitch(), 0) + "  zoom " + f(map.getZoom(), 1) + "  pad " + padTop,
       "arrow offset from expected: dx " + f(dx, 0) + "  dy " + f(dy, 0) + " px",
       // v3.10.72 (audit L9): service worker state, the real screen size of the car browser (settings window sizing) and its name
@@ -2461,7 +2476,7 @@ function initRemoteSession() {
       const suiteBtn = document.createElement("button");
       suiteBtn.id = "bench-suite-btn";
       suiteBtn.type = "button";
-      suiteBtn.textContent = "🧪 სრული ტესტი: 13 ვარიანტი (~5 წთ, მანქანა გაჩერებული)";
+      suiteBtn.textContent = "🧪 სრული ტესტი: 15 ვარიანტი (~6 წთ, მანქანა გაჩერებული)";
       suiteBtn.style.cssText = "position:fixed;left:8px;bottom:172px;z-index:99999;min-height:44px;padding:8px 14px;border-radius:10px;border:1px solid #7CFC7C;background:rgba(0,0,0,.85);color:#7CFC7C;font:600 14px sans-serif;";
       suiteBtn.addEventListener("click", (e) => { e.stopPropagation(); startSuite(); });
       document.body.appendChild(suiteBtn);
@@ -2485,6 +2500,8 @@ function initRemoteSession() {
     { name: "მსუბუქი, dpr 0.75", q: "map=lite&dpr=0.75" },
     { name: "მსუბუქი, წარწერების გარეშე", q: "map=lite&labels=0" },
     { name: "მსუბუქი, მარკერების გარეშე", q: "map=lite&markers=0" },
+    { name: "მსუბუქი, ქუჩის სახელები არა, ნომრები კი", q: "map=lite&labels=points" },
+    { name: "მსუბუქი, მხოლოდ დიდი ქუჩების სახელები", q: "map=lite&labels=major" },
     { name: "მსუბუქი, ყველაფერი მინიმუმზე", q: "map=lite&dpr=0.75&labels=0&markers=0" },
     { name: "მსუბუქი + GPU", q: "map=lite&cam=gpu" },
     { name: "სურათოვანი (raster), უძრავი", q: "map=raster", idle: true },

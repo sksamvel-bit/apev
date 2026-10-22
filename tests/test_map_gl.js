@@ -336,6 +336,7 @@ test("debug HUD stays cheap and the bench records long tasks (v3.10.82)", () => 
   assert.ok(/__benchActive/.test(hud), "HUD pauses during the bench");
   assert.ok(/PerformanceObserver/.test(src) && /type: "longtask"/.test(src), "long tasks are observed");
   assert.ok(/tile\.openstreetmap\.org/.test(src) && src.includes('if (MAP_RASTER && styleKey === "openfreemap")') && hud.includes('q: "map=raster"'), "?map=raster: OSM picture tiles, measured in the full test (v3.10.84)");
+  assert.ok(hud.includes('q: "map=lite&labels=points"') && hud.includes('q: "map=lite&labels=major"') && src.includes('/^line/.test(String(l.layout["symbol-placement"]'), "street-name variants hide only the labels along the roads (v3.10.85)");
   assert.ok(/res\.longPct/.test(hud) && /res\.gpsMsPerS/.test(hud), "bench stores long-task % and GPS cost");
 });
 
