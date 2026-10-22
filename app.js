@@ -136,7 +136,7 @@ function initClock() {
 const OFM_STYLE_URL = "https://tiles.openfreemap.org/styles/liberty";
 const OFM_STYLE_CACHE_KEY = "tesla_nav_ofm_style_v1";
 const MAP_STYLE_KEYS = ["openfreemap", "google-roads"];
-const APP_VERSION = "3.10.85";
+const APP_VERSION = "3.10.86";
 const MAP_DEFAULT_ZOOM = 16;      // MapLibre zoom (Leaflet-equivalent 17)
 // Performance experiments (all default to the normal behaviour): ?labels=0 hides the base-map labels/icons, ?markers=0 skips the
 // charger DOM markers, ?pitch=N sets the heading-up tilt (0-60). Used to find what makes the car's browser slow.
@@ -2196,15 +2196,20 @@ function initEventListeners() {
 // Phone Remote Session Management
 let remoteEventSource = null;
 let currentSessionCode = null;
+const REMOTE_CODE_KEY = "tesla_remote_code_v2";
+const REMOTE_CODE_DAYS = 30;
 
 function getOrGenerateSessionCode() {
   if (!currentSessionCode) {
-    let saved = sessionStorage.getItem("tesla_remote_code");
+    // v3.10.86: the code is kept in localStorage for 30 days, so the phone's QR link survives the car going to sleep
+    // (the old per-tab copy was wiped with every browser restart and the phone then showed "offline")
+    let saved = null;
+    try { const s = JSON.parse(localStorage.getItem(REMOTE_CODE_KEY) || "null"); if (s && /^[0-9A-F]{16}$/.test(s.code) && Date.now() - s.t < REMOTE_CODE_DAYS * 864e5) saved = s.code; } catch (_) {}
     if (!saved) {
       const rnd = new Uint8Array(8);
       (window.crypto || window.msCrypto).getRandomValues(rnd);
       saved = Array.from(rnd, b => b.toString(16).padStart(2, "0")).join("").toUpperCase(); // 64-bit crypto random
-      sessionStorage.setItem("tesla_remote_code", saved);
+      try { localStorage.setItem(REMOTE_CODE_KEY, JSON.stringify({ code: saved, t: Date.now() })); } catch (_) {}
     }
     currentSessionCode = saved;
   }

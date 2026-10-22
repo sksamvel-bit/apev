@@ -340,3 +340,12 @@ test("debug HUD stays cheap and the bench records long tasks (v3.10.82)", () => 
   assert.ok(/res\.longPct/.test(hud) && /res\.gpsMsPerS/.test(hud), "bench stores long-task % and GPS cost");
 });
 
+test("phone pairing code survives a browser restart for 30 days (v3.10.86)", () => {
+  const src = require("fs").readFileSync(require("path").join(__dirname, "..", "app.js"), "utf8");
+  const s = src.indexOf("function getOrGenerateSessionCode()");
+  const fn = src.slice(s, src.indexOf("\n}", s));
+  assert.ok(fn.includes("localStorage.getItem(REMOTE_CODE_KEY") && fn.includes("localStorage.setItem(REMOTE_CODE_KEY") && !fn.includes("sessionStorage"), "kept in localStorage");
+  assert.ok(/const REMOTE_CODE_DAYS = 30;/.test(src) && fn.includes("REMOTE_CODE_DAYS * 864e5"), "renewed after 30 days");
+  assert.ok(fn.includes("getRandomValues"), "still a 64-bit random code");
+});
+
