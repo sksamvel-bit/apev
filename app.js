@@ -136,7 +136,7 @@ function initClock() {
 const OFM_STYLE_URL = "https://tiles.openfreemap.org/styles/liberty";
 const OFM_STYLE_CACHE_KEY = "tesla_nav_ofm_style_v1";
 const MAP_STYLE_KEYS = ["openfreemap", "google-roads"];
-const APP_VERSION = "3.10.83";
+const APP_VERSION = "3.10.84";
 const MAP_DEFAULT_ZOOM = 16;      // MapLibre zoom (Leaflet-equivalent 17)
 // Performance experiments (all default to the normal behaviour): ?labels=0 hides the base-map labels/icons, ?markers=0 skips the
 // charger DOM markers, ?pitch=N sets the heading-up tilt (0-60). Used to find what makes the car's browser slow.
@@ -164,6 +164,10 @@ try {
 const MAP_LIGHT = (function () { try { return new URLSearchParams(location.search).get("map") === "lite"; } catch (_) { return false; } })();
 const CAM_FPS = (function () { try { const n = parseFloat(new URLSearchParams(location.search).get("camfps")); return n >= 5 && n <= 60 ? n : null; } catch (_) { return null; } })();
 window.__mapLight = MAP_LIGHT;
+// v3.10.84 ?map=raster: our map from ready-made OSM picture tiles. The car's CPU then has nothing to parse or lay out
+// (vector tiles + labels are what keep it busy); turning is pure GPU work. Labels turn with the map. Test only for now.
+const MAP_RASTER = (function () { try { return new URLSearchParams(location.search).get("map") === "raster"; } catch (_) { return false; } })();
+window.__mapRaster = MAP_RASTER;
 // v3.10.78 ?cam=gpu: the "GPU camera" (MapGL.FollowCamera.gpuStep): MapLibre draws a few times a second, the compositor turns and
 // moves the picture in between. ?gpums=N = ms between real draws (default 250). The map container is made larger than the
 // screen (body.cam-gpu) so the turned picture never shows its corners.
@@ -198,6 +202,15 @@ if (TESLA_LOOK) document.body.classList.add("tesla-look");
 
 const layerRegistry = new window.MapGL.LayerRegistry();
 window.layerRegistry = layerRegistry;
+
+function osmRasterStyle() {
+  return {
+    version: 8,
+    sources: { "osm-raster": { type: "raster", tiles: ["https://tile.openstreetmap.org/{z}/{x}/{y}.png"], tileSize: 256, maxzoom: 19,
+      attribution: "© OpenStreetMap contributors" } },
+    layers: [{ id: "osm-raster-layer", type: "raster", source: "osm-raster" }]
+  };
+}
 
 function googleRasterStyle(lyrs, id) {
   return {
@@ -253,6 +266,7 @@ function teslaLook(style) { return TESLA_LOOK ? window.TeslaStyle.apply(style, w
 async function loadStyleJson(styleKey) {
   if (styleKey === "google-roads") return googleRasterStyle("m", "google-roads");
   if (styleKey === "google-sat") return googleRasterStyle("y", "google-sat");
+  if (MAP_RASTER && styleKey === "openfreemap") { window.__teslaBase = null; return osmRasterStyle(); }
   const ctrl = new AbortController();
   const timer = setTimeout(() => ctrl.abort(), 7000);
   try {
@@ -467,7 +481,7 @@ function initMap() {
   });
 
   // vector map health (see fallbackToGoogleRoads)
-  map.on("sourcedata", (e) => { if (e.sourceId === "openmaptiles" && e.tile) vectorHealth.tilesOk = true; });
+  map.on("sourcedata", (e) => { if ((e.sourceId === "openmaptiles" || e.sourceId === "osm-raster") && e.tile) vectorHealth.tilesOk = true; });
   map.on("error", (e) => {
     if (!vectorHealth.active || vectorHealth.tilesOk || currentMapStyle !== "openfreemap") return;
     const msg = String((e && e.error && (e.error.url || e.error.message)) || "");
@@ -2354,7 +2368,7 @@ function initRemoteSession() {
       "gap " + f(dt) + "s  jump " + f(dist) + "m  => " + (dt && dist != null ? f(dist / dt * 3.6, 0) : "-") + " km/h",
       "follow " + isFollowCar + "  mode " + currentMapOrientation + "  fps " + f(fps, 0) + "  render " + f(rfps, 0) + "/s",
       "cost: jumpTo " + f(cam && cam.jumpMs, 1) + "ms  onFrame " + f(cam && cam.cbMs, 1) + "ms" + (CAM_GPU ? "  GPU cam: draws " + ((cam && cam.gpuRenders) || 0) : ""),
-      "flags: dpr " + f(map.getPixelRatio && map.getPixelRatio(), 2) + "  pitch " + (PERF.pitch != null ? PERF.pitch : "45*") + "  labels " + (PERF.labels ? "on" : "OFF") + "  markers " + (PERF.markers ? "on" : "OFF") + "  look " + (window.__teslaLook ? (window.__lookMode === "mono" ? "MONO" : "TESLA") : "classic") + "  map " + (MAP_LIGHT ? "LIGHT" : "full") + " " + (map.getLayersOrder ? map.getLayersOrder().length : 0) + "L" + (CAM_FPS ? "  camfps " + CAM_FPS : ""),
+      "flags: dpr " + f(map.getPixelRatio && map.getPixelRatio(), 2) + "  pitch " + (PERF.pitch != null ? PERF.pitch : "45*") + "  labels " + (PERF.labels ? "on" : "OFF") + "  markers " + (PERF.markers ? "on" : "OFF") + "  look " + (window.__teslaLook ? (window.__lookMode === "mono" ? "MONO" : "TESLA") : "classic") + "  map " + (MAP_RASTER ? "RASTER" : MAP_LIGHT ? "LIGHT" : "full") + " " + (map.getLayersOrder ? map.getLayersOrder().length : 0) + "L" + (CAM_FPS ? "  camfps " + CAM_FPS : ""),
       "bearing " + f(map.getBearing(), 0) + "  pitch " + f(map.getPitch(), 0) + "  zoom " + f(map.getZoom(), 1) + "  pad " + padTop,
       "arrow offset from expected: dx " + f(dx, 0) + "  dy " + f(dy, 0) + " px",
       // v3.10.72 (audit L9): service worker state, the real screen size of the car browser (settings window sizing) and its name
@@ -2417,7 +2431,7 @@ function initRemoteSession() {
     clearInterval(fixTimer);
     const secs = (performance.now() - t0) / 1000;
     const res = { mapFps: google ? (window.GMapMode.camMoves() - cam0) / secs : ((window.__renderCount || 0) - r0) / secs, uiFps: frames / secs, maxPauseMs: maxGap, map: google ? "google " + (window.GMapMode.isVector() ? "3D" : "classic") + (window.GMapMode.gpuOn() ? " gpu" : "") : "ours",
-      look: (window.__mapLight ? "lite" : "full") + " " + (map.getLayersOrder ? map.getLayersOrder().length : 0) + "L" + (window.__camMode ? " cam " + window.__camMode : "") };
+      look: (MAP_RASTER ? "raster" : window.__mapLight ? "lite" : "full") + " " + (map.getLayersOrder ? map.getLayersOrder().length : 0) + "L" + (window.__camMode ? " cam " + window.__camMode : "") };
     res.cpuMs = cpu; res.idle = idle;
     res.longN = P.longN; res.longMs = P.longMs; res.longPct = P.longMs / (secs * 10); res.longMax = P.longMax; res.gpsMsPerS = P.gpsMs / secs; res.gpsPerS = P.gpsN / secs;
     window.__benchLast = res;
@@ -2447,7 +2461,7 @@ function initRemoteSession() {
       const suiteBtn = document.createElement("button");
       suiteBtn.id = "bench-suite-btn";
       suiteBtn.type = "button";
-      suiteBtn.textContent = "🧪 სრული ტესტი: 11 ვარიანტი (~4 წთ, მანქანა გაჩერებული)";
+      suiteBtn.textContent = "🧪 სრული ტესტი: 13 ვარიანტი (~5 წთ, მანქანა გაჩერებული)";
       suiteBtn.style.cssText = "position:fixed;left:8px;bottom:172px;z-index:99999;min-height:44px;padding:8px 14px;border-radius:10px;border:1px solid #7CFC7C;background:rgba(0,0,0,.85);color:#7CFC7C;font:600 14px sans-serif;";
       suiteBtn.addEventListener("click", (e) => { e.stopPropagation(); startSuite(); });
       document.body.appendChild(suiteBtn);
@@ -2473,6 +2487,8 @@ function initRemoteSession() {
     { name: "მსუბუქი, მარკერების გარეშე", q: "map=lite&markers=0" },
     { name: "მსუბუქი, ყველაფერი მინიმუმზე", q: "map=lite&dpr=0.75&labels=0&markers=0" },
     { name: "მსუბუქი + GPU", q: "map=lite&cam=gpu" },
+    { name: "სურათოვანი (raster), უძრავი", q: "map=raster", idle: true },
+    { name: "სურათოვანი (raster)", q: "map=raster" },
     { name: "Google 3D, კამერა 10/წმ", q: "gmap3d=1", google: true },
     { name: "Google 3D, კამერა 20/წმ", q: "gmap3d=1&gfps=20", google: true },
     { name: "Google 3D, კამერა 30/წმ", q: "gmap3d=1&gfps=30", google: true }
@@ -2493,11 +2509,11 @@ function initRemoteSession() {
     while (Date.now() - t0 < 20000) {
       await new Promise((r) => setTimeout(r, 1000));
       let ready = step.google ? (window.GMapMode && window.GMapMode.isOpen() && window.GMapMode.isVector()) : (window.map && window.map.isStyleLoaded && window.map.isStyleLoaded() && window.map.areTilesLoaded());
-      if (ready && !step.google && Date.now() - t0 > 6000) { try { ready = window.map.queryRenderedFeatures().length > 20; } catch (_) {} }   // streets really drawn (v3.10.82)
+      if (ready && !step.google && !MAP_RASTER && Date.now() - t0 > 6000) { try { ready = window.map.queryRenderedFeatures().length > 20; } catch (_) {} }   // streets really drawn (v3.10.82)
       if (ready && Date.now() - t0 > 6000) break;
     }
     let feats = null;
-    if (!step.google) { try { feats = window.map.queryRenderedFeatures().length; } catch (_) {} }
+    if (!step.google && !MAP_RASTER) { try { feats = window.map.queryRenderedFeatures().length; } catch (_) {} }   // a picture map has no features
     const res = await runBench(step.google ? "google" : "ours", { idle: step.idle });
     if (res) res.empty = feats != null && feats <= 20;   // the streets never loaded: this row does not count
     const s = readSuite() || { started: Date.now(), results: [] };

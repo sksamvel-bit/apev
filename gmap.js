@@ -1127,7 +1127,7 @@
   const MAIN_MAP_KEY = "tesla_nav_main_map";
   function mainMapIsGoogle(search) {
     const q = String(search || "");
-    if (/[?&]map=(ours|lite)\b/.test(q)) return false;
+    if (/[?&]map=(ours|lite|raster)\b/.test(q)) return false;
     if (/[?&]gmap3d=1/.test(q)) return true;
     return currentMainMap() !== "ours";
   }
