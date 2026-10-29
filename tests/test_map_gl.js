@@ -353,8 +353,15 @@ test("our map is the picture (raster) map by default, vector only on request (v3
   const src = require("fs").readFileSync(require("path").join(__dirname, "..", "app.js"), "utf8");
   assert.ok(src.includes('return m !== "vector" && m !== "lite";'), "raster unless ?map=vector / ?map=lite");
   assert.ok(src.includes('paint: rasterPaint(!!window.__night)') && src.includes('map.setPaintProperty("osm-raster-layer", k, v)'), "night is a raster paint change");
-  assert.ok(src.includes('credit.textContent = "© OpenStreetMap"'), "OSM credit is shown");
+  assert.ok(src.includes('"© OpenStreetMap © CARTO" : "© OpenStreetMap";'), "OSM credit is shown");
   const css = require("fs").readFileSync(require("path").join(__dirname, "..", "style.css"), "utf8");
   assert.ok(css.includes(".map-raster.map-style-openfreemap.night-mode-active .maplibregl-canvas { filter: none; }"), "no per-frame CSS night filter on the picture map");
+});
+
+test("?tiles=carto: CARTO day/night picture tiles, only the visible one loads (v3.10.88)", () => {
+  const src = require("fs").readFileSync(require("path").join(__dirname, "..", "app.js"), "utf8");
+  assert.ok(src.includes('src("rastertiles/voyager")') && src.includes('src("dark_all")') && src.includes("{z}/{x}/{y}@2x.png"), "Voyager by day, Dark Matter at night, @2x");
+  assert.ok(src.includes('map.setLayoutProperty("carto-night-layer", "visibility", enable ? "visible" : "none")'), "night switches the visible layer");
+  assert.ok(src.includes('q: "map=raster&tiles=carto"') && src.includes("© OpenStreetMap © CARTO"), "in the full test, with credit");
 });
 

@@ -136,7 +136,7 @@ function initClock() {
 const OFM_STYLE_URL = "https://tiles.openfreemap.org/styles/liberty";
 const OFM_STYLE_CACHE_KEY = "tesla_nav_ofm_style_v1";
 const MAP_STYLE_KEYS = ["openfreemap", "google-roads"];
-const APP_VERSION = "3.10.87";
+const APP_VERSION = "3.10.88";
 const MAP_DEFAULT_ZOOM = 16;      // MapLibre zoom (Leaflet-equivalent 17)
 // Performance experiments (all default to the normal behaviour): ?labels=0 hides the base-map labels/icons, ?markers=0 skips the
 // charger DOM markers, ?pitch=N sets the heading-up tilt (0-60). Used to find what makes the car's browser slow.
@@ -174,7 +174,7 @@ if (MAP_RASTER) {
   document.body.classList.add("map-raster");
   const credit = document.createElement("div");   // the OSM tile licence asks for a visible credit
   credit.id = "osm-credit";
-  credit.textContent = "© OpenStreetMap";
+  credit.textContent = /[?&]tiles=carto\b/.test(location.search) ? "© OpenStreetMap © CARTO" : "© OpenStreetMap";
   document.body.appendChild(credit);
 }
 window.__mapRaster = MAP_RASTER;
@@ -220,7 +220,24 @@ function rasterPaint(night) {
     ? { "raster-brightness-min": 0.88, "raster-brightness-max": 0.06, "raster-hue-rotate": 180, "raster-saturation": -0.45, "raster-contrast": 0.05, "raster-fade-duration": 0 }
     : { "raster-brightness-min": 0, "raster-brightness-max": 1, "raster-hue-rotate": 0, "raster-saturation": -0.3, "raster-contrast": 0, "raster-fade-duration": 0 };
 }
+// v3.10.88 test ?tiles=carto: CARTO picture tiles (OSM data, calmer design, sharp @2x images). Day = Voyager, night = Dark
+// Matter as real dark tiles (no colour inversion). Both are layers of one style; only the visible one loads its tiles.
+const TILES_CARTO = (function () { try { return new URLSearchParams(location.search).get("tiles") === "carto"; } catch (_) { return false; } })();
+function cartoRasterStyle() {
+  const src = (path) => ({ type: "raster", tiles: ["a", "b", "c", "d"].map((s) => `https://${s}.basemaps.cartocdn.com/${path}/{z}/{x}/{y}@2x.png`),
+    tileSize: 256, maxzoom: 20, attribution: "© OpenStreetMap contributors © CARTO" });
+  const night = !!window.__night;
+  return {
+    version: 8,
+    sources: { "carto-day": src("rastertiles/voyager"), "carto-night": src("dark_all") },
+    layers: [
+      { id: "carto-day-layer", type: "raster", source: "carto-day", layout: { visibility: night ? "none" : "visible" }, paint: { "raster-fade-duration": 0 } },
+      { id: "carto-night-layer", type: "raster", source: "carto-night", layout: { visibility: night ? "visible" : "none" }, paint: { "raster-fade-duration": 0 } }
+    ]
+  };
+}
 function osmRasterStyle() {
+  if (TILES_CARTO) return cartoRasterStyle();
   return {
     version: 8,
     sources: { "osm-raster": { type: "raster", tiles: ["https://tile.openstreetmap.org/{z}/{x}/{y}.png"], tileSize: 256, maxzoom: 19,
@@ -511,7 +528,7 @@ function initMap() {
   });
 
   // vector map health (see fallbackToGoogleRoads)
-  map.on("sourcedata", (e) => { if ((e.sourceId === "openmaptiles" || e.sourceId === "osm-raster") && e.tile) vectorHealth.tilesOk = true; });
+  map.on("sourcedata", (e) => { if ((e.sourceId === "openmaptiles" || e.sourceId === "osm-raster" || /^carto-/.test(e.sourceId || "")) && e.tile) vectorHealth.tilesOk = true; });
   map.on("error", (e) => {
     if (!vectorHealth.active || vectorHealth.tilesOk || currentMapStyle !== "openfreemap") return;
     const msg = String((e && e.error && (e.error.url || e.error.message)) || "");
@@ -673,6 +690,9 @@ function applyNightMode(enable) {
   // Tesla look has its own dark palette: rebuild the style instead of filtering the canvas
   // (patched in place: a full setStyle rebuild blanks the map and freezes the car's browser)
   if (MAP_RASTER && nightChanged && map && currentMapStyle === "openfreemap") {
+    try {
+      if (map.getLayer("carto-day-layer")) { map.setLayoutProperty("carto-day-layer", "visibility", enable ? "none" : "visible"); map.setLayoutProperty("carto-night-layer", "visibility", enable ? "visible" : "none"); }
+    } catch (_) {}
     try { if (map.getLayer("osm-raster-layer")) for (const [k, v] of Object.entries(rasterPaint(enable))) map.setPaintProperty("osm-raster-layer", k, v); } catch (_) {}
   } else if (TESLA_LOOK && nightChanged && map && currentMapStyle === "openfreemap") {
     let patched = false;
@@ -2498,7 +2518,7 @@ function initRemoteSession() {
       const suiteBtn = document.createElement("button");
       suiteBtn.id = "bench-suite-btn";
       suiteBtn.type = "button";
-      suiteBtn.textContent = "🧪 სრული ტესტი: 15 ვარიანტი (~6 წთ, მანქანა გაჩერებული)";
+      suiteBtn.textContent = "🧪 სრული ტესტი: 16 ვარიანტი (~6 წთ, მანქანა გაჩერებული)";
       suiteBtn.style.cssText = "position:fixed;left:8px;bottom:172px;z-index:99999;min-height:44px;padding:8px 14px;border-radius:10px;border:1px solid #7CFC7C;background:rgba(0,0,0,.85);color:#7CFC7C;font:600 14px sans-serif;";
       suiteBtn.addEventListener("click", (e) => { e.stopPropagation(); startSuite(); });
       document.body.appendChild(suiteBtn);
@@ -2528,6 +2548,7 @@ function initRemoteSession() {
     { name: "მსუბუქი + GPU", q: "map=lite&cam=gpu" },
     { name: "სურათოვანი (raster), უძრავი", q: "map=raster", idle: true },
     { name: "სურათოვანი (raster)", q: "map=raster" },
+    { name: "სურათოვანი CARTO (@2x)", q: "map=raster&tiles=carto" },
     { name: "Google 3D, კამერა 10/წმ", q: "gmap3d=1", google: true },
     { name: "Google 3D, კამერა 20/წმ", q: "gmap3d=1&gfps=20", google: true },
     { name: "Google 3D, კამერა 30/წმ", q: "gmap3d=1&gfps=30", google: true }
