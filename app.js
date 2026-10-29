@@ -136,7 +136,7 @@ function initClock() {
 const OFM_STYLE_URL = "https://tiles.openfreemap.org/styles/liberty";
 const OFM_STYLE_CACHE_KEY = "tesla_nav_ofm_style_v1";
 const MAP_STYLE_KEYS = ["openfreemap", "google-roads"];
-const APP_VERSION = "3.10.90";
+const APP_VERSION = "3.10.91";
 const MAP_DEFAULT_ZOOM = 16;      // MapLibre zoom (Leaflet-equivalent 17)
 // Performance experiments (all default to the normal behaviour): ?labels=0 hides the base-map labels/icons, ?markers=0 skips the
 // charger DOM markers, ?pitch=N sets the heading-up tilt (0-60). Used to find what makes the car's browser slow.
@@ -261,9 +261,9 @@ function cartoRasterStyle(key) {
     style.sources["street-names"] = { type: "geojson", data: window.__streetNames || { type: "FeatureCollection", features: [] } };
     style.layers.push({ id: "street-names-layer", type: "symbol", source: "street-names",
       layout: { "text-field": ["get", "name"], "text-font": ["Noto Sans Regular"],
-        "text-size": ["interpolate", ["linear"], ["get", "rank"], 0, 12, 4, 14, 6, 15],
+        "text-size": ["interpolate", ["linear"], ["get", "rank"], 0, 11.5, 4, 13.5, 6, 14.5],
         "symbol-sort-key": ["-", 0, ["get", "rank"]], "text-rotation-alignment": "viewport", "text-pitch-alignment": "viewport",
-        "text-max-width": 9, "text-padding": 6 },
+        "text-max-width": 14, "text-padding": 14 },   // v3.10.91: one or two lines, more room between names
       paint: Object.assign(streetNamePaint(night), { "text-opacity-transition": { duration: 0 } }) });
   }
   return style;
@@ -272,7 +272,7 @@ function cartoRasterStyle(key) {
 // (the engine fetches at most 2 at a time and caches them; the server caches Overpass tiles too).
 function startUprightLabels() {
   if (!UPRIGHT_LABELS) return;
-  let lastKey = "";
+  let lastKey = "", lastSrc = null;
   setInterval(() => {
     const eng = window.speedLimitEngine, m = window.map;
     if (!eng || !eng.osmTiles || !m || !currentPos) return;
@@ -284,10 +284,16 @@ function startUprightLabels() {
     for (const t of eng.osmTiles.values()) for (const w of t.ways) ways.push(w);
     const fc = window.MapGL.streetLabelFeatures(ways, currentPos);
     const key = fc.features.length + ":" + fc.features.map((f) => f.properties.name + f.geometry.coordinates.join()).join("|").length + ":" + currentPos.lat.toFixed(3) + currentPos.lng.toFixed(3);
-    if (key === lastKey) return;
+    // v3.10.91: also when the style (and with it the source) was rebuilt since the last update: the new source started
+    // from whatever names existed at that moment (often none), so the same names must be sent again.
+    let src = null;
+    try { src = m.getSource("street-names"); } catch (_) {}
+    if (key === lastKey && src === lastSrc) return;
     lastKey = key;
     window.__streetNames = fc;
-    try { const s = m.getSource("street-names"); if (s) s.setData(fc); } catch (_) {}
+    if (!src) return;
+    lastSrc = src;
+    try { src.setData(fc); } catch (_) {}
     try { if (m.getLayer("street-names-layer")) m.moveLayer("street-names-layer"); } catch (_) {}   // above the route line
   }, 3000);
 }

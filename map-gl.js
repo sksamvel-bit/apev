@@ -442,7 +442,8 @@
   // point labels drawn upright (viewport-aligned) are cheap; the vector map's hundreds of road-following labels were not.
   const ROAD_RANK = { motorway: 6, trunk: 5, primary: 4, secondary: 3, tertiary: 2, unclassified: 1, residential: 1, living_street: 0 };
   function streetLabelFeatures(ways, center, opts) {
-    const o = Object.assign({ radiusM: 1500, spacingM: 350, minLenM: 50, max: 120 }, opts || {});
+    // v3.10.91 calmer: the same name at most once per 700 m, any two names at least 160 m apart, 60 at most
+    const o = Object.assign({ radiusM: 1500, spacingM: 700, minGapM: 160, minLenM: 80, max: 60 }, opts || {});
     const kx = 111320 * Math.cos(center.lat * Math.PI / 180), ky = 110540;
     const xy = (p) => [(p[1] - center.lng) * kx, (p[0] - center.lat) * ky];
     const cands = [];
@@ -466,7 +467,7 @@
     const kept = [];
     for (const c of cands) {
       if (kept.length >= o.max) break;
-      if (kept.some((k) => k.name === c.name && Math.hypot(k.p[0] - c.p[0], k.p[1] - c.p[1]) < o.spacingM)) continue;
+      if (kept.some((k) => { const d = Math.hypot(k.p[0] - c.p[0], k.p[1] - c.p[1]); return d < o.minGapM || (k.name === c.name && d < o.spacingM); })) continue;
       kept.push(c);
     }
     return { type: "FeatureCollection", features: kept.map((c) => ({ type: "Feature", properties: { name: c.name, rank: c.rank },
