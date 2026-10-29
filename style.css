@@ -2302,3 +2302,85 @@ body.gcam-gpu #gmap-canvas .gm-style div:has(> .gm-style-cc) { right: calc(16.67
 
 /* v3.10.80 map picker: an unavailable Google map (no key) is shown dimmed */
 .map-style-opt.disabled { opacity: 0.45; }
+
+/* ==========================================================================
+   v3.10.92 SIDE PANEL v2 (body.dock-v2: ?labels=upright or ?dock=v2)
+   Two columns of raised keys with a short word under each icon; fits 773x601 without scrolling.
+   Depth comes from static gradients and shadows only: no backdrop-filter, no animated shadows (MCU2 GPU).
+   ========================================================================== */
+body.dock-v2 .dock-controls {
+  display: grid;
+  grid-template-columns: repeat(2, 60px);
+  gap: 6px;
+  padding: 8px;
+  top: 64px;
+  right: 8px;
+  border-radius: 18px;
+  background: linear-gradient(160deg, #232a36 0%, #151a23 55%, #0e1219 100%);
+  border: 1px solid rgba(255, 255, 255, 0.10);
+  box-shadow: 0 14px 30px rgba(0, 0, 0, 0.55), 0 3px 8px rgba(0, 0, 0, 0.45),
+              inset 0 1px 0 rgba(255, 255, 255, 0.10), inset 0 -2px 0 rgba(0, 0, 0, 0.35);
+  max-height: calc(100vh - 76px);
+}
+body.dock-v2 .dock-btn {
+  width: 60px; height: 50px; min-width: 60px; min-height: 50px;
+  flex-direction: column;
+  gap: 3px;
+  padding: 0;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  color: #dfe6f0;
+  background: linear-gradient(180deg, #343c4a 0%, #262d39 48%, #1c222c 100%);
+  box-shadow: 0 3px 0 #0a0d12, 0 5px 9px rgba(0, 0, 0, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.16);
+  transition: none;
+}
+body.dock-v2 .dock-btn svg { width: 19px; height: 19px; }
+body.dock-v2 .dock-btn::after {
+  content: attr(data-short);
+  font: 600 9.5px/1 "Noto Sans Georgian", system-ui, sans-serif;
+  letter-spacing: -0.1px;
+  color: #a9b4c4;
+  white-space: nowrap;
+  pointer-events: none;
+}
+body.dock-v2 .dock-tooltip { display: none; }
+body.dock-v2 .dock-btn:hover { background: linear-gradient(180deg, #3b4454 0%, #2b3340 48%, #202733 100%); border-color: rgba(255, 255, 255, 0.12); }
+/* pressed: the key goes down */
+body.dock-v2 .dock-btn:active {
+  transform: translateY(2px) !important;
+  box-shadow: 0 1px 0 #0a0d12, 0 2px 4px rgba(0, 0, 0, 0.45), inset 0 2px 4px rgba(0, 0, 0, 0.35);
+}
+/* switched on: lit key in the feature's colour */
+body.dock-v2 .dock-btn.active {
+  color: #7fe3ff;
+  border-color: rgba(0, 200, 255, 0.55);
+  background: linear-gradient(180deg, #1d5f86 0%, #134766 50%, #0d3550 100%);
+  box-shadow: 0 3px 0 #06202f, 0 5px 10px rgba(0, 150, 220, 0.30), inset 0 1px 0 rgba(160, 230, 255, 0.35);
+}
+body.dock-v2 .dock-btn.active::after { color: #bfefff; }
+body.dock-v2 .dock-btn.signals-active {
+  color: #6ff0b8;
+  border-color: rgba(16, 185, 129, 0.55);
+  background: linear-gradient(180deg, #1b6a4f 0%, #12503b 50%, #0c3b2b 100%);
+  box-shadow: 0 3px 0 #052419, 0 5px 10px rgba(16, 185, 129, 0.28), inset 0 1px 0 rgba(160, 255, 210, 0.30);
+}
+body.dock-v2 .dock-btn.signals-active::after { color: #c3f7df; }
+body.dock-v2 .dock-btn.night-active {
+  color: #c4c8ff;
+  border-color: rgba(129, 140, 248, 0.6);
+  background: linear-gradient(180deg, #4b4fa0 0%, #383c80 50%, #292c63 100%);
+  box-shadow: 0 3px 0 #15173a, 0 5px 10px rgba(99, 102, 241, 0.30), inset 0 1px 0 rgba(210, 212, 255, 0.35);
+}
+body.dock-v2 .dock-btn.night-active::after { color: #dfe1ff; }
+/* group dividers span both columns */
+body.dock-v2 .dock-divider {
+  display: block;
+  grid-column: 1 / -1;
+  width: 100%;
+  height: 2px;
+  margin: 0;
+  align-self: center;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.14), transparent);
+}
+body.dock-v2 .dock-controls { grid-auto-rows: auto; }
+body.dock-v2 .dock-controls > .dock-btn { height: 50px; }

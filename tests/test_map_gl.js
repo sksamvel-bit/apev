@@ -388,3 +388,13 @@ test("upright street names: one label per street piece, big roads first, no repe
   assert.ok(src.includes('"text-rotation-alignment": "viewport"') && src.includes('"rastertiles/voyager_nolabels"') && src.includes('q: "labels=upright"'), "upright, over label-free tiles, in the full test");
 });
 
+test("side panel v2: two columns of raised keys with short words, behind ?labels=upright / ?dock=v2 (v3.10.92)", () => {
+  const src = require("fs").readFileSync(require("path").join(__dirname, "..", "app.js"), "utf8");
+  const css = require("fs").readFileSync(require("path").join(__dirname, "..", "style.css"), "utf8");
+  assert.ok(src.includes("const DOCK_V2 = UPRIGHT_LABELS || /[?&]dock=v2") &&src.includes('b.setAttribute("data-short", word)'), "flag and short words");
+  const v2 = css.slice(css.lastIndexOf("/*", css.indexOf("SIDE PANEL v2")));
+  assert.ok(v2.includes("grid-template-columns: repeat(2, 60px);") && v2.includes("content: attr(data-short);"), "two columns, word under the icon");
+  const rules = v2.replace(/\/\*[\s\S]*?\*\//g, "");   // comments may name what is not used
+  assert.ok(!/backdrop-filter|animation:/.test(rules), "no blur, no animation (MCU2)");
+});
+

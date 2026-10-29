@@ -136,7 +136,7 @@ function initClock() {
 const OFM_STYLE_URL = "https://tiles.openfreemap.org/styles/liberty";
 const OFM_STYLE_CACHE_KEY = "tesla_nav_ofm_style_v1";
 const MAP_STYLE_KEYS = ["openfreemap", "google-roads"];
-const APP_VERSION = "3.10.91";
+const APP_VERSION = "3.10.92";
 const MAP_DEFAULT_ZOOM = 16;      // MapLibre zoom (Leaflet-equivalent 17)
 // Performance experiments (all default to the normal behaviour): ?labels=0 hides the base-map labels/icons, ?markers=0 skips the
 // charger DOM markers, ?pitch=N sets the heading-up tilt (0-60). Used to find what makes the car's browser slow.
@@ -228,6 +228,17 @@ function rasterPaint(night) {
 // has small street names baked in (they turn with the map), so it is only a stand-in.
 const UPRIGHT_LABELS = (function () { try { return new URLSearchParams(location.search).get("labels") === "upright"; } catch (_) { return false; } })();
 const TILES_CARTO = UPRIGHT_LABELS;   // the label-free day/night base below (layer ids kept from the v3.10.88 CARTO test)
+// v3.10.92 new side panel (?labels=upright or ?dock=v2): two columns of raised "keys" with a short Georgian word under each
+// icon, so the whole panel fits the car screen without scrolling. Static gradients and shadows only (no blur, no animation).
+const DOCK_V2 = UPRIGHT_LABELS || /[?&]dock=v2\b/.test(location.search);
+const DOCK_SHORT = { "btn-follow-car": "ცენტრი", "btn-map-orientation": "კურსი", "btn-zoom-in": "ახლოს", "btn-zoom-out": "შორს",
+  "btn-map-style": "რუკა", "btn-toggle-night": "ღამე", "btn-toggle-chargers": "დამტენი", "btn-chargers-list": "სია",
+  "btn-toggle-signals": "შუქნიშანი", "btn-toggle-cameras": "კამერა", "btn-toggle-voice": "ხმა", "btn-remote-phone": "ტელეფონი",
+  "btn-sim-drive": "ტესტი", "btn-google-mode": "Google", "btn-settings": "პარამეტრი" };
+if (DOCK_V2) {
+  document.body.classList.add("dock-v2");
+  for (const [id, word] of Object.entries(DOCK_SHORT)) { const b = document.getElementById(id); if (b) b.setAttribute("data-short", word); }
+}
 function streetNamePaint(night) {
   return night ? { "text-color": "#e6e9ee", "text-halo-color": "#111418", "text-halo-width": 1.6 }
     : { "text-color": "#2b3038", "text-halo-color": "#ffffff", "text-halo-width": 1.8 };
