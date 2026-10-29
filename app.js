@@ -136,7 +136,7 @@ function initClock() {
 const OFM_STYLE_URL = "https://tiles.openfreemap.org/styles/liberty";
 const OFM_STYLE_CACHE_KEY = "tesla_nav_ofm_style_v1";
 const MAP_STYLE_KEYS = ["openfreemap", "google-roads"];
-const APP_VERSION = "3.10.88";
+const APP_VERSION = "3.10.89";
 const MAP_DEFAULT_ZOOM = 16;      // MapLibre zoom (Leaflet-equivalent 17)
 // Performance experiments (all default to the normal behaviour): ?labels=0 hides the base-map labels/icons, ?markers=0 skips the
 // charger DOM markers, ?pitch=N sets the heading-up tilt (0-60). Used to find what makes the car's browser slow.
@@ -174,7 +174,7 @@ if (MAP_RASTER) {
   document.body.classList.add("map-raster");
   const credit = document.createElement("div");   // the OSM tile licence asks for a visible credit
   credit.id = "osm-credit";
-  credit.textContent = /[?&]tiles=carto\b/.test(location.search) ? "© OpenStreetMap © CARTO" : "© OpenStreetMap";
+  credit.textContent = /[?&](tiles=carto|labels=upright)\b/.test(location.search) ?"© OpenStreetMap © CARTO" : "© OpenStreetMap";
   document.body.appendChild(credit);
 }
 window.__mapRaster = MAP_RASTER;
@@ -222,19 +222,60 @@ function rasterPaint(night) {
 }
 // v3.10.88 test ?tiles=carto: CARTO picture tiles (OSM data, calmer design, sharp @2x images). Day = Voyager, night = Dark
 // Matter as real dark tiles (no colour inversion). Both are layers of one style; only the visible one loads its tiles.
-const TILES_CARTO = (function () { try { return new URLSearchParams(location.search).get("tiles") === "carto"; } catch (_) { return false; } })();
+// v3.10.89 test ?labels=upright: the same CARTO tiles WITHOUT labels, and our own street names on top that stay upright
+// while the map turns (MapGL.streetLabelFeatures from the streets the speed-limit engine already loads).
+const UPRIGHT_LABELS = (function () { try { return new URLSearchParams(location.search).get("labels") === "upright"; } catch (_) { return false; } })();
+const TILES_CARTO = UPRIGHT_LABELS || (function () { try { return new URLSearchParams(location.search).get("tiles") === "carto"; } catch (_) { return false; } })();
+function streetNamePaint(night) {
+  return night ? { "text-color": "#e6e9ee", "text-halo-color": "#111418", "text-halo-width": 1.6 }
+    : { "text-color": "#2b3038", "text-halo-color": "#ffffff", "text-halo-width": 1.8 };
+}
 function cartoRasterStyle() {
   const src = (path) => ({ type: "raster", tiles: ["a", "b", "c", "d"].map((s) => `https://${s}.basemaps.cartocdn.com/${path}/{z}/{x}/{y}@2x.png`),
     tileSize: 256, maxzoom: 20, attribution: "© OpenStreetMap contributors © CARTO" });
   const night = !!window.__night;
-  return {
+  const style = {
     version: 8,
-    sources: { "carto-day": src("rastertiles/voyager"), "carto-night": src("dark_all") },
+    sources: { "carto-day": src(UPRIGHT_LABELS ? "rastertiles/voyager_nolabels" : "rastertiles/voyager"), "carto-night": src(UPRIGHT_LABELS ? "dark_nolabels" : "dark_all") },
     layers: [
       { id: "carto-day-layer", type: "raster", source: "carto-day", layout: { visibility: night ? "none" : "visible" }, paint: { "raster-fade-duration": 0 } },
       { id: "carto-night-layer", type: "raster", source: "carto-night", layout: { visibility: night ? "visible" : "none" }, paint: { "raster-fade-duration": 0 } }
     ]
   };
+  if (UPRIGHT_LABELS) {
+    style.glyphs = "https://tiles.openfreemap.org/fonts/{fontstack}/{range}.pbf";
+    style.sources["street-names"] = { type: "geojson", data: window.__streetNames || { type: "FeatureCollection", features: [] } };
+    style.layers.push({ id: "street-names-layer", type: "symbol", source: "street-names",
+      layout: { "text-field": ["get", "name"], "text-font": ["Noto Sans Regular"],
+        "text-size": ["interpolate", ["linear"], ["get", "rank"], 0, 12, 4, 14, 6, 15],
+        "symbol-sort-key": ["-", 0, ["get", "rank"]], "text-rotation-alignment": "viewport", "text-pitch-alignment": "viewport",
+        "text-max-width": 9, "text-padding": 6 },
+      paint: Object.assign(streetNamePaint(night), { "text-opacity-transition": { duration: 0 } }) });
+  }
+  return style;
+}
+// Rebuilds the street names every 3 s from the loaded streets around the car and asks for the tiles around it
+// (the engine fetches at most 2 at a time and caches them; the server caches Overpass tiles too).
+function startUprightLabels() {
+  if (!UPRIGHT_LABELS) return;
+  let lastKey = "";
+  setInterval(() => {
+    const eng = window.speedLimitEngine, m = window.map;
+    if (!eng || !eng.osmTiles || !m || !currentPos) return;
+    try {
+      const [i, j] = eng.tileIndex(currentPos.lat, currentPos.lng);
+      for (let di = -1; di <= 1; di++) for (let dj = -1; dj <= 1; dj++) eng.requestTile(i + di, j + dj);
+    } catch (_) {}
+    const ways = [];
+    for (const t of eng.osmTiles.values()) for (const w of t.ways) ways.push(w);
+    const fc = window.MapGL.streetLabelFeatures(ways, currentPos);
+    const key = fc.features.length + ":" + fc.features.map((f) => f.properties.name + f.geometry.coordinates.join()).join("|").length + ":" + currentPos.lat.toFixed(3) + currentPos.lng.toFixed(3);
+    if (key === lastKey) return;
+    lastKey = key;
+    window.__streetNames = fc;
+    try { const s = m.getSource("street-names"); if (s) s.setData(fc); } catch (_) {}
+    try { if (m.getLayer("street-names-layer")) m.moveLayer("street-names-layer"); } catch (_) {}   // above the route line
+  }, 3000);
 }
 function osmRasterStyle() {
   if (TILES_CARTO) return cartoRasterStyle();
@@ -392,6 +433,7 @@ function initMap() {
     pixelRatio: (function () { const q = parseFloat(new URLSearchParams(location.search).get('dpr')); return q > 0 ? q : Math.min(window.devicePixelRatio || 1, 1.25); })()   // ?dpr=1 for perf experiments
   });
   window.map = map;
+  startUprightLabels();
   if (!PERF.labels) {
     const hideLabels = () => {
       try {
@@ -692,6 +734,7 @@ function applyNightMode(enable) {
   if (MAP_RASTER && nightChanged && map && currentMapStyle === "openfreemap") {
     try {
       if (map.getLayer("carto-day-layer")) { map.setLayoutProperty("carto-day-layer", "visibility", enable ? "none" : "visible"); map.setLayoutProperty("carto-night-layer", "visibility", enable ? "visible" : "none"); }
+      if (map.getLayer("street-names-layer")) for (const [k, v] of Object.entries(streetNamePaint(enable))) map.setPaintProperty("street-names-layer", k, v);
     } catch (_) {}
     try { if (map.getLayer("osm-raster-layer")) for (const [k, v] of Object.entries(rasterPaint(enable))) map.setPaintProperty("osm-raster-layer", k, v); } catch (_) {}
   } else if (TESLA_LOOK && nightChanged && map && currentMapStyle === "openfreemap") {
@@ -2518,7 +2561,7 @@ function initRemoteSession() {
       const suiteBtn = document.createElement("button");
       suiteBtn.id = "bench-suite-btn";
       suiteBtn.type = "button";
-      suiteBtn.textContent = "🧪 სრული ტესტი: 16 ვარიანტი (~6 წთ, მანქანა გაჩერებული)";
+      suiteBtn.textContent = "🧪 სრული ტესტი: 17 ვარიანტი (~7 წთ, მანქანა გაჩერებული)";
       suiteBtn.style.cssText = "position:fixed;left:8px;bottom:172px;z-index:99999;min-height:44px;padding:8px 14px;border-radius:10px;border:1px solid #7CFC7C;background:rgba(0,0,0,.85);color:#7CFC7C;font:600 14px sans-serif;";
       suiteBtn.addEventListener("click", (e) => { e.stopPropagation(); startSuite(); });
       document.body.appendChild(suiteBtn);
@@ -2549,6 +2592,7 @@ function initRemoteSession() {
     { name: "სურათოვანი (raster), უძრავი", q: "map=raster", idle: true },
     { name: "სურათოვანი (raster)", q: "map=raster" },
     { name: "სურათოვანი CARTO (@2x)", q: "map=raster&tiles=carto" },
+    { name: "სწორი წარწერები (CARTO + ჩვენი სახელები)", q: "labels=upright" },
     { name: "Google 3D, კამერა 10/წმ", q: "gmap3d=1", google: true },
     { name: "Google 3D, კამერა 20/წმ", q: "gmap3d=1&gfps=20", google: true },
     { name: "Google 3D, კამერა 30/წმ", q: "gmap3d=1&gfps=30", google: true }

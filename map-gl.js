@@ -436,5 +436,42 @@
     return false;
   };
 
-  return { shortestDelta, normDeg, advance, MapUtil, LayerRegistry, FollowCamera, pickLiteHidden, pickLiteDetail, LiteGovernor, lightStyle, LIGHT_KEEP };
+  // ---- v3.10.89 upright street names over a label-free picture map (?labels=upright) ----
+  // The names come from the OSM streets the speed-limit engine already loads (Overpass "out tags geom"): one label in the
+  // middle of each named street piece, the same name at most once per `spacingM`, the biggest roads first. A few dozen
+  // point labels drawn upright (viewport-aligned) are cheap; the vector map's hundreds of road-following labels were not.
+  const ROAD_RANK = { motorway: 6, trunk: 5, primary: 4, secondary: 3, tertiary: 2, unclassified: 1, residential: 1, living_street: 0 };
+  function streetLabelFeatures(ways, center, opts) {
+    const o = Object.assign({ radiusM: 1500, spacingM: 350, minLenM: 50, max: 120 }, opts || {});
+    const kx = 111320 * Math.cos(center.lat * Math.PI / 180), ky = 110540;
+    const xy = (p) => [(p[1] - center.lng) * kx, (p[0] - center.lat) * ky];
+    const cands = [];
+    for (const w of ways || []) {
+      if (!w || !w.name || !w.pts || w.pts.length < 2) continue;
+      let len = 0;
+      const seg = [];
+      for (let k = 0; k < w.pts.length - 1; k++) { const a = xy(w.pts[k]), b = xy(w.pts[k + 1]); const l = Math.hypot(b[0] - a[0], b[1] - a[1]); seg.push(l); len += l; }
+      if (len < o.minLenM) continue;
+      let half = len / 2, k = 0;
+      while (k < seg.length - 1 && half > seg[k]) { half -= seg[k]; k++; }
+      const t = seg[k] ? half / seg[k] : 0, a = w.pts[k], b = w.pts[k + 1];
+      const lat = a[0] + (b[0] - a[0]) * t, lng = a[1] + (b[1] - a[1]) * t;
+      const p = xy([lat, lng]);
+      const dist = Math.hypot(p[0], p[1]);
+      if (dist > o.radiusM) continue;
+      const base = String(w.highway || "").replace(/_link$/, "");
+      cands.push({ name: w.name, lat, lng, p, rank: ROAD_RANK[base] != null ? ROAD_RANK[base] : 0, len, dist });
+    }
+    cands.sort((a, b) => b.rank - a.rank || b.len - a.len || a.dist - b.dist);
+    const kept = [];
+    for (const c of cands) {
+      if (kept.length >= o.max) break;
+      if (kept.some((k) => k.name === c.name && Math.hypot(k.p[0] - c.p[0], k.p[1] - c.p[1]) < o.spacingM)) continue;
+      kept.push(c);
+    }
+    return { type: "FeatureCollection", features: kept.map((c) => ({ type: "Feature", properties: { name: c.name, rank: c.rank },
+      geometry: { type: "Point", coordinates: [+c.lng.toFixed(6), +c.lat.toFixed(6)] } })) };
+  }
+
+  return { shortestDelta, normDeg, advance, MapUtil, LayerRegistry, FollowCamera, pickLiteHidden, pickLiteDetail, LiteGovernor, lightStyle, LIGHT_KEEP, streetLabelFeatures };
 });

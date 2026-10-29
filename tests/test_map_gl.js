@@ -360,8 +360,28 @@ test("our map is the picture (raster) map by default, vector only on request (v3
 
 test("?tiles=carto: CARTO day/night picture tiles, only the visible one loads (v3.10.88)", () => {
   const src = require("fs").readFileSync(require("path").join(__dirname, "..", "app.js"), "utf8");
-  assert.ok(src.includes('src("rastertiles/voyager")') && src.includes('src("dark_all")') && src.includes("{z}/{x}/{y}@2x.png"), "Voyager by day, Dark Matter at night, @2x");
+  assert.ok(src.includes('"rastertiles/voyager")') && src.includes('"dark_all")') && src.includes("{z}/{x}/{y}@2x.png"), "Voyager by day, Dark Matter at night, @2x");
   assert.ok(src.includes('map.setLayoutProperty("carto-night-layer", "visibility", enable ? "visible" : "none")'), "night switches the visible layer");
   assert.ok(src.includes('q: "map=raster&tiles=carto"') && src.includes("© OpenStreetMap © CARTO"), "in the full test, with credit");
+});
+
+test("upright street names: one label per street piece, big roads first, no repeats nearby (v3.10.89)", () => {
+  const c = { lat: 41.7151, lng: 44.8271 };
+  const line = (dLat0, dLng0, dLat1, dLng1) => [[c.lat + dLat0, c.lng + dLng0], [c.lat + dLat1, c.lng + dLng1]];
+  const ways = [
+    { name: "რუსთაველის გამზირი", highway: "primary", pts: line(0, -0.003, 0, 0.003) },
+    { name: "რუსთაველის გამზირი", highway: "primary", pts: line(0.0005, -0.003, 0.0005, 0.003) },   // same name 55 m away: dropped
+    { name: "პატარა ქუჩა", highway: "residential", pts: line(0.002, 0, 0.0021, 0) },               // ~11 m long: dropped
+    { name: "ჭავჭავაძის გამზირი", highway: "secondary", pts: line(-0.004, -0.002, -0.004, 0.002) },
+    { name: "", highway: "primary", pts: line(0.001, 0, 0.002, 0) },                               // no name
+    { name: "შორეული ქუჩა", highway: "residential", pts: line(0.05, 0, 0.051, 0) }                 // 5 km away
+  ];
+  const fc = MapGL.streetLabelFeatures(ways, c);
+  const names = fc.features.map((f) => f.properties.name);
+  assert.deepStrictEqual(names, ["რუსთაველის გამზირი", "ჭავჭავაძის გამზირი"]);
+  assert.strictEqual(fc.features[0].properties.rank, 4);
+  near(fc.features[0].geometry.coordinates[0], c.lng, 1e-5, "label sits in the middle of the street");
+  const src = require("fs").readFileSync(require("path").join(__dirname, "..", "app.js"), "utf8");
+  assert.ok(src.includes('"text-rotation-alignment": "viewport"') && src.includes('"rastertiles/voyager_nolabels"') && src.includes('q: "labels=upright"'), "upright, over label-free tiles, in the full test");
 });
 
