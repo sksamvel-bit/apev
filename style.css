@@ -2103,6 +2103,10 @@ input {
 
 /* ---- Tesla look (opt-in ?style=tesla): native dark palette, so the CSS invert filter is switched off; blue car arrow ---- */
 .tesla-look.map-style-openfreemap.night-mode-active .maplibregl-canvas { filter: none; }
+/* v3.10.87 picture map: night is a raster paint change (rasterPaint in app.js), never a per-frame CSS filter */
+.map-raster.map-style-openfreemap.night-mode-active .maplibregl-canvas { filter: none; }
+#osm-credit { position: fixed; right: 64px; bottom: 2px; z-index: 5; font: 10px/1.2 sans-serif; color: #555; background: rgba(255,255,255,.6); padding: 1px 4px; border-radius: 3px; pointer-events: none; }
+.night-mode-active #osm-credit { color: #aaa; background: rgba(0,0,0,.5); }
 .tesla-look #navArrowGrad stop:first-child { stop-color: #6aa6ff; }
 .tesla-look #navArrowGrad stop:last-child { stop-color: #3e6ae1; }
 

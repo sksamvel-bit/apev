@@ -136,7 +136,7 @@ function initClock() {
 const OFM_STYLE_URL = "https://tiles.openfreemap.org/styles/liberty";
 const OFM_STYLE_CACHE_KEY = "tesla_nav_ofm_style_v1";
 const MAP_STYLE_KEYS = ["openfreemap", "google-roads"];
-const APP_VERSION = "3.10.86";
+const APP_VERSION = "3.10.87";
 const MAP_DEFAULT_ZOOM = 16;      // MapLibre zoom (Leaflet-equivalent 17)
 // Performance experiments (all default to the normal behaviour): ?labels=0 hides the base-map labels/icons, ?markers=0 skips the
 // charger DOM markers, ?pitch=N sets the heading-up tilt (0-60). Used to find what makes the car's browser slow.
@@ -166,9 +166,17 @@ try {
 const MAP_LIGHT = (function () { try { return new URLSearchParams(location.search).get("map") === "lite"; } catch (_) { return false; } })();
 const CAM_FPS = (function () { try { const n = parseFloat(new URLSearchParams(location.search).get("camfps")); return n >= 5 && n <= 60 ? n : null; } catch (_) { return null; } })();
 window.__mapLight = MAP_LIGHT;
-// v3.10.84 ?map=raster: our map from ready-made OSM picture tiles. The car's CPU then has nothing to parse or lay out
-// (vector tiles + labels are what keep it busy); turning is pure GPU work. Labels turn with the map. Test only for now.
-const MAP_RASTER = (function () { try { return new URLSearchParams(location.search).get("map") === "raster"; } catch (_) { return false; } })();
+// v3.10.84 picture map (OSM raster tiles): the car's CPU has nothing to parse or lay out (vector tiles + labels are what
+// kept it busy); turning is pure GPU work, labels turn with the map. v3.10.87: the DEFAULT for our map, because the car
+// measured it ~10x smoother while driving (13 fps vs 1-4 for the vector map). The old vector map: ?map=vector or ?map=lite.
+const MAP_RASTER = (function () { try { const m = new URLSearchParams(location.search).get("map"); return m !== "vector" && m !== "lite"; } catch (_) { return true; } })();
+if (MAP_RASTER) {
+  document.body.classList.add("map-raster");
+  const credit = document.createElement("div");   // the OSM tile licence asks for a visible credit
+  credit.id = "osm-credit";
+  credit.textContent = "© OpenStreetMap";
+  document.body.appendChild(credit);
+}
 window.__mapRaster = MAP_RASTER;
 // v3.10.78 ?cam=gpu: the "GPU camera" (MapGL.FollowCamera.gpuStep): MapLibre draws a few times a second, the compositor turns and
 // moves the picture in between. ?gpums=N = ms between real draws (default 250). The map container is made larger than the
@@ -205,12 +213,19 @@ if (TESLA_LOOK) document.body.classList.add("tesla-look");
 const layerRegistry = new window.MapGL.LayerRegistry();
 window.layerRegistry = layerRegistry;
 
+/** Day: OSM colours a little toned down. Night: the picture inverted by the GPU (brightness min/max swapped) with hues
+ *  turned back, i.e. dark streets on a dark map. A paint change, not a CSS filter: no extra cost per frame. */
+function rasterPaint(night) {
+  return night
+    ? { "raster-brightness-min": 0.88, "raster-brightness-max": 0.06, "raster-hue-rotate": 180, "raster-saturation": -0.45, "raster-contrast": 0.05, "raster-fade-duration": 0 }
+    : { "raster-brightness-min": 0, "raster-brightness-max": 1, "raster-hue-rotate": 0, "raster-saturation": -0.3, "raster-contrast": 0, "raster-fade-duration": 0 };
+}
 function osmRasterStyle() {
   return {
     version: 8,
     sources: { "osm-raster": { type: "raster", tiles: ["https://tile.openstreetmap.org/{z}/{x}/{y}.png"], tileSize: 256, maxzoom: 19,
       attribution: "© OpenStreetMap contributors" } },
-    layers: [{ id: "osm-raster-layer", type: "raster", source: "osm-raster" }]
+    layers: [{ id: "osm-raster-layer", type: "raster", source: "osm-raster", paint: rasterPaint(!!window.__night) }]
   };
 }
 
@@ -657,7 +672,9 @@ function applyNightMode(enable) {
   localStorage.setItem("tesla_nav_night_mode", isNightMode ? "true" : "false");
   // Tesla look has its own dark palette: rebuild the style instead of filtering the canvas
   // (patched in place: a full setStyle rebuild blanks the map and freezes the car's browser)
-  if (TESLA_LOOK && nightChanged && map && currentMapStyle === "openfreemap") {
+  if (MAP_RASTER && nightChanged && map && currentMapStyle === "openfreemap") {
+    try { if (map.getLayer("osm-raster-layer")) for (const [k, v] of Object.entries(rasterPaint(enable))) map.setPaintProperty("osm-raster-layer", k, v); } catch (_) {}
+  } else if (TESLA_LOOK && nightChanged && map && currentMapStyle === "openfreemap") {
     let patched = false;
     try {
       if (window.__teslaBase && map.isStyleLoaded()) {
@@ -2159,7 +2176,7 @@ function initEventListeners() {
 
     // v3.10.77: which map opens with the app (gmap.js reads it on the next start)
     const mm = document.getElementById("input-main-map");
-    if (mm) { try { localStorage.setItem("tesla_nav_main_map", ["google3d", "google", "ours"].includes(mm.value) ? mm.value : "google3d"); } catch (_) {} }
+    if (mm) { try { localStorage.setItem("tesla_nav_main_map", ["google3d", "google", "ours"].includes(mm.value) ? mm.value : "ours"); } catch (_) {} }
     localStorage.setItem("saved_home", document.getElementById("input-home-addr").value.trim());
     localStorage.setItem("saved_work", document.getElementById("input-work-addr").value.trim());
     modal.classList.remove("open");
@@ -2168,7 +2185,7 @@ function initEventListeners() {
   });
 
   // Populate settings inputs
-  { const mm = document.getElementById("input-main-map"); if (mm) { let v = "google3d"; try { const s = localStorage.getItem("tesla_nav_main_map"); if (["google3d", "google", "ours"].includes(s)) v = s; } catch (_) {} mm.value = v; } }
+  { const mm = document.getElementById("input-main-map"); if (mm) { let v = "ours"; try { const s = localStorage.getItem("tesla_nav_main_map"); if (["google3d", "google", "ours"].includes(s)) v = s; } catch (_) {} mm.value = v; } }
   document.getElementById("input-home-addr").value = localStorage.getItem("saved_home") || "";
   document.getElementById("input-work-addr").value = localStorage.getItem("saved_work") || "";
   if (selectTeslaModel) selectTeslaModel.value = batteryEngine.modelKey;
@@ -2499,8 +2516,8 @@ function initRemoteSession() {
   // standing still. Finds what makes our map slow and whether a faster Google camera turns smoothly. ----
   const SUITE_KEY = "tesla_nav_bench_suite";
   const SUITE = [
-    { name: "ჩვენი, უძრავი (ბრუნვის გარეშე)", q: "map=ours", idle: true },
-    { name: "ჩვენი სრული", q: "map=ours" },
+    { name: "ვექტორული, უძრავი (ბრუნვის გარეშე)", q: "map=vector", idle: true },
+    { name: "ვექტორული სრული", q: "map=vector" },
     { name: "ჩვენი მსუბუქი", q: "map=lite" },
     { name: "მსუბუქი, dpr 0.75", q: "map=lite&dpr=0.75" },
     { name: "მსუბუქი, წარწერების გარეშე", q: "map=lite&labels=0" },

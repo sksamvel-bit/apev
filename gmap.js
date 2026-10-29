@@ -1125,9 +1125,11 @@
   // ---- v3.10.77: the Google map is the main map (Samvel). It opens by itself when the app starts, unless the driver chose
   // our map in the settings (localStorage tesla_nav_main_map = "ours") or the address has ?map=ours / ?map=lite. ----
   const MAIN_MAP_KEY = "tesla_nav_main_map";
+  // v3.10.87: once, forget the start map chosen before (it was Google 3D for everyone), so the app opens on our map
+  try { if (typeof localStorage !== "undefined" && !localStorage.getItem("tesla_nav_main_map_v87")) { localStorage.removeItem(MAIN_MAP_KEY); localStorage.setItem("tesla_nav_main_map_v87", "1"); } } catch (_) {}
   function mainMapIsGoogle(search) {
     const q = String(search || "");
-    if (/[?&]map=(ours|lite|raster)\b/.test(q)) return false;
+    if (/[?&]map=(ours|lite|raster|vector)\b/.test(q)) return false;
     if (/[?&]gmap3d=1/.test(q)) return true;
     return currentMainMap() !== "ours";
   }
@@ -1148,7 +1150,7 @@
   function currentMainMap() {
     let v = null;
     try { v = localStorage.getItem(MAIN_MAP_KEY); } catch (_) {}
-    return MAP_KINDS.includes(v) ? v : "google3d";
+    return MAP_KINDS.includes(v) ? v : "ours";   // v3.10.87: our picture map is the start map
   }
   /** The map on the screen right now. */
   function shownMap() { return S.open ? (S.vector ? "google3d" : "google") : "ours"; }
