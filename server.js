@@ -1411,6 +1411,15 @@ const server = http.createServer((req, res) => {
     return;
   }
 
+  // API Endpoint: /api/tiles-config (v3.10.90) - the CARTO Basemaps key (free, non-commercial; env CARTO_BASEMAPS_KEY) for the
+  // label-free picture map behind ?labels=upright. It is a browser key (it ends up in every tile URL), kept out of the public repo.
+  if (pathname === '/api/tiles-config') {
+    const cartoKey = (process.env.CARTO_BASEMAPS_KEY || '').trim();
+    res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' });
+    res.end(JSON.stringify({ cartoKey: /^[A-Za-z0-9_-]{8,200}$/.test(cartoKey) ? cartoKey : '' }));
+    return;
+  }
+
   // API Endpoint: /api/info (Network info and IP)
   if (pathname === '/api/info') {
     const hostHeader = String(req.headers.host || '');

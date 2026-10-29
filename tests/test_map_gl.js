@@ -353,16 +353,19 @@ test("our map is the picture (raster) map by default, vector only on request (v3
   const src = require("fs").readFileSync(require("path").join(__dirname, "..", "app.js"), "utf8");
   assert.ok(src.includes('return m !== "vector" && m !== "lite";'), "raster unless ?map=vector / ?map=lite");
   assert.ok(src.includes('paint: rasterPaint(!!window.__night)') && src.includes('map.setPaintProperty("osm-raster-layer", k, v)'), "night is a raster paint change");
-  assert.ok(src.includes('"© OpenStreetMap © CARTO" : "© OpenStreetMap";'), "OSM credit is shown");
+  assert.ok(src.includes('"© Esri © OpenStreetMap" : "© OpenStreetMap";'), "OSM credit is shown");
   const css = require("fs").readFileSync(require("path").join(__dirname, "..", "style.css"), "utf8");
   assert.ok(css.includes(".map-raster.map-style-openfreemap.night-mode-active .maplibregl-canvas { filter: none; }"), "no per-frame CSS night filter on the picture map");
 });
 
-test("?tiles=carto: CARTO day/night picture tiles, only the visible one loads (v3.10.88)", () => {
+test("label-free base: CARTO only with a key (it shows API KEY REQUIRED without), Esri otherwise (v3.10.90)", () => {
   const src = require("fs").readFileSync(require("path").join(__dirname, "..", "app.js"), "utf8");
-  assert.ok(src.includes('"rastertiles/voyager")') && src.includes('"dark_all")') && src.includes("{z}/{x}/{y}@2x.png"), "Voyager by day, Dark Matter at night, @2x");
+  assert.ok(src.includes('carto("rastertiles/voyager_nolabels")') && src.includes('carto("rastertiles/dark_nolabels")') && src.includes("@2x.png?key=${encodeURIComponent(key)}"), "CARTO tiles always carry the key");
+  assert.ok(src.includes('sources: key ? {') && src.includes('esri("World_Light_Gray_Base")') && src.includes('esri("World_Dark_Gray_Base")'), "no key: Esri gray canvas");
+  assert.ok(src.includes('fetch("/api/tiles-config"') && !src.includes('tiles=carto"'), "key from the server, ?tiles=carto gone");
   assert.ok(src.includes('map.setLayoutProperty("carto-night-layer", "visibility", enable ? "visible" : "none")'), "night switches the visible layer");
-  assert.ok(src.includes('q: "map=raster&tiles=carto"') && src.includes("© OpenStreetMap © CARTO"), "in the full test, with credit");
+  const srv = require("fs").readFileSync(require("path").join(__dirname, "..", "server.js"), "utf8");
+  assert.ok(srv.includes("pathname === '/api/tiles-config'") && srv.includes("process.env.CARTO_BASEMAPS_KEY"), "server hands out the key from the env, never from the repo");
 });
 
 test("upright street names: one label per street piece, big roads first, no repeats nearby (v3.10.89)", () => {

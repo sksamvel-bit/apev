@@ -136,7 +136,7 @@ function initClock() {
 const OFM_STYLE_URL = "https://tiles.openfreemap.org/styles/liberty";
 const OFM_STYLE_CACHE_KEY = "tesla_nav_ofm_style_v1";
 const MAP_STYLE_KEYS = ["openfreemap", "google-roads"];
-const APP_VERSION = "3.10.89";
+const APP_VERSION = "3.10.90";
 const MAP_DEFAULT_ZOOM = 16;      // MapLibre zoom (Leaflet-equivalent 17)
 // Performance experiments (all default to the normal behaviour): ?labels=0 hides the base-map labels/icons, ?markers=0 skips the
 // charger DOM markers, ?pitch=N sets the heading-up tilt (0-60). Used to find what makes the car's browser slow.
@@ -174,7 +174,7 @@ if (MAP_RASTER) {
   document.body.classList.add("map-raster");
   const credit = document.createElement("div");   // the OSM tile licence asks for a visible credit
   credit.id = "osm-credit";
-  credit.textContent = /[?&](tiles=carto|labels=upright)\b/.test(location.search) ?"© OpenStreetMap © CARTO" : "© OpenStreetMap";
+  credit.textContent = /[?&]labels=upright\b/.test(location.search) ? "© Esri © OpenStreetMap" : "© OpenStreetMap";
   document.body.appendChild(credit);
 }
 window.__mapRaster = MAP_RASTER;
@@ -220,23 +220,37 @@ function rasterPaint(night) {
     ? { "raster-brightness-min": 0.88, "raster-brightness-max": 0.06, "raster-hue-rotate": 180, "raster-saturation": -0.45, "raster-contrast": 0.05, "raster-fade-duration": 0 }
     : { "raster-brightness-min": 0, "raster-brightness-max": 1, "raster-hue-rotate": 0, "raster-saturation": -0.3, "raster-contrast": 0, "raster-fade-duration": 0 };
 }
-// v3.10.88 test ?tiles=carto: CARTO picture tiles (OSM data, calmer design, sharp @2x images). Day = Voyager, night = Dark
-// Matter as real dark tiles (no colour inversion). Both are layers of one style; only the visible one loads its tiles.
-// v3.10.89 test ?labels=upright: the same CARTO tiles WITHOUT labels, and our own street names on top that stay upright
-// while the map turns (MapGL.streetLabelFeatures from the streets the speed-limit engine already loads).
+// v3.10.89 test ?labels=upright: a picture map WITHOUT labels and our own street names on top that stay upright while the
+// map turns (MapGL.streetLabelFeatures from the streets the speed-limit engine already loads). Day and night are two layers
+// of one style; only the visible one loads its tiles. v3.10.90: CARTO now answers every tile without a key with an
+// "API KEY REQUIRED" picture (checked 2026-10-29). The free non-commercial key lives in Render (CARTO_BASEMAPS_KEY) and
+// comes from /api/tiles-config. Without it the base is Esri's light / dark gray canvas: it works without a key, but it
+// has small street names baked in (they turn with the map), so it is only a stand-in.
 const UPRIGHT_LABELS = (function () { try { return new URLSearchParams(location.search).get("labels") === "upright"; } catch (_) { return false; } })();
-const TILES_CARTO = UPRIGHT_LABELS || (function () { try { return new URLSearchParams(location.search).get("tiles") === "carto"; } catch (_) { return false; } })();
+const TILES_CARTO = UPRIGHT_LABELS;   // the label-free day/night base below (layer ids kept from the v3.10.88 CARTO test)
 function streetNamePaint(night) {
   return night ? { "text-color": "#e6e9ee", "text-halo-color": "#111418", "text-halo-width": 1.6 }
     : { "text-color": "#2b3038", "text-halo-color": "#ffffff", "text-halo-width": 1.8 };
 }
-function cartoRasterStyle() {
-  const src = (path) => ({ type: "raster", tiles: ["a", "b", "c", "d"].map((s) => `https://${s}.basemaps.cartocdn.com/${path}/{z}/{x}/{y}@2x.png`),
+let cartoKeyPromise = null;
+function cartoKey() {
+  if (!cartoKeyPromise) cartoKeyPromise = fetch("/api/tiles-config", { cache: "no-store", credentials: "same-origin" })
+    .then((r) => (r.ok ? r.json() : {})).then((j) => (j && j.cartoKey) || "").catch(() => "");
+  return cartoKeyPromise;
+}
+function cartoRasterStyle(key) {
+  const carto = (path) => ({ type: "raster", tiles: ["a", "b", "c", "d"].map((s) => `https://${s}.basemaps.cartocdn.com/${path}/{z}/{x}/{y}@2x.png?key=${encodeURIComponent(key)}`),
     tileSize: 256, maxzoom: 20, attribution: "© OpenStreetMap contributors © CARTO" });
+  const esri = (name) => ({ type: "raster", tiles: [`https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/${name}/MapServer/tile/{z}/{y}/{x}`],
+    tileSize: 256, maxzoom: 16, attribution: "© Esri, © OpenStreetMap contributors" });
+  window.__tilesBase = key ? "carto" : "esri";
+  const credit = document.getElementById("osm-credit");
+  if (credit) credit.textContent = key ? "© OpenStreetMap © CARTO" : "© Esri © OpenStreetMap";
   const night = !!window.__night;
   const style = {
     version: 8,
-    sources: { "carto-day": src(UPRIGHT_LABELS ? "rastertiles/voyager_nolabels" : "rastertiles/voyager"), "carto-night": src(UPRIGHT_LABELS ? "dark_nolabels" : "dark_all") },
+    sources: key ? { "carto-day": carto("rastertiles/voyager_nolabels"), "carto-night": carto("rastertiles/dark_nolabels") }
+      : { "carto-day": esri("World_Light_Gray_Base"), "carto-night": esri("World_Dark_Gray_Base") },
     layers: [
       { id: "carto-day-layer", type: "raster", source: "carto-day", layout: { visibility: night ? "none" : "visible" }, paint: { "raster-fade-duration": 0 } },
       { id: "carto-night-layer", type: "raster", source: "carto-night", layout: { visibility: night ? "visible" : "none" }, paint: { "raster-fade-duration": 0 } }
@@ -278,7 +292,6 @@ function startUprightLabels() {
   }, 3000);
 }
 function osmRasterStyle() {
-  if (TILES_CARTO) return cartoRasterStyle();
   return {
     version: 8,
     sources: { "osm-raster": { type: "raster", tiles: ["https://tile.openstreetmap.org/{z}/{x}/{y}.png"], tileSize: 256, maxzoom: 19,
@@ -341,6 +354,7 @@ function teslaLook(style) { return TESLA_LOOK ? window.TeslaStyle.apply(style, w
 async function loadStyleJson(styleKey) {
   if (styleKey === "google-roads") return googleRasterStyle("m", "google-roads");
   if (styleKey === "google-sat") return googleRasterStyle("y", "google-sat");
+  if (TILES_CARTO && styleKey === "openfreemap") { window.__teslaBase = null; return cartoRasterStyle(await cartoKey()); }
   if (MAP_RASTER && styleKey === "openfreemap") { window.__teslaBase = null; return osmRasterStyle(); }
   const ctrl = new AbortController();
   const timer = setTimeout(() => ctrl.abort(), 7000);
@@ -381,6 +395,10 @@ async function applyMapStyle(styleKey) {
     return;
   }
   if (token !== styleRequestToken || !map) return;   // a newer style request replaced this one
+  // v3.10.90 safety: the picture-map styles are ready at once, before MapLibre has finished its empty start style. Wait for
+  // that start style before replacing it (a blank map was seen in a test; the cause was not proven). No wait afterwards.
+  if (!map.isStyleLoaded()) await new Promise((resolve) => { map.once("style.load", resolve); setTimeout(resolve, 3000); });
+  if (token !== styleRequestToken || !map) return;
   map.setStyle(layerRegistry.inject(style), { diff: false });
 }
 
@@ -2561,7 +2579,7 @@ function initRemoteSession() {
       const suiteBtn = document.createElement("button");
       suiteBtn.id = "bench-suite-btn";
       suiteBtn.type = "button";
-      suiteBtn.textContent = "🧪 სრული ტესტი: 17 ვარიანტი (~7 წთ, მანქანა გაჩერებული)";
+      suiteBtn.textContent = "🧪 სრული ტესტი: 16 ვარიანტი (~7 წთ, მანქანა გაჩერებული)";
       suiteBtn.style.cssText = "position:fixed;left:8px;bottom:172px;z-index:99999;min-height:44px;padding:8px 14px;border-radius:10px;border:1px solid #7CFC7C;background:rgba(0,0,0,.85);color:#7CFC7C;font:600 14px sans-serif;";
       suiteBtn.addEventListener("click", (e) => { e.stopPropagation(); startSuite(); });
       document.body.appendChild(suiteBtn);
@@ -2591,8 +2609,7 @@ function initRemoteSession() {
     { name: "მსუბუქი + GPU", q: "map=lite&cam=gpu" },
     { name: "სურათოვანი (raster), უძრავი", q: "map=raster", idle: true },
     { name: "სურათოვანი (raster)", q: "map=raster" },
-    { name: "სურათოვანი CARTO (@2x)", q: "map=raster&tiles=carto" },
-    { name: "სწორი წარწერები (CARTO + ჩვენი სახელები)", q: "labels=upright" },
+    { name: "სწორი წარწერები (Esri + ჩვენი სახელები)", q: "labels=upright" },
     { name: "Google 3D, კამერა 10/წმ", q: "gmap3d=1", google: true },
     { name: "Google 3D, კამერა 20/წმ", q: "gmap3d=1&gfps=20", google: true },
     { name: "Google 3D, კამერა 30/წმ", q: "gmap3d=1&gfps=30", google: true }
