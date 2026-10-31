@@ -335,8 +335,9 @@ test("debug HUD stays cheap and the bench records long tasks (v3.10.82)", () => 
   assert.ok(!/getStyle\(\)/.test(hud), "HUD never copies the whole style");
   assert.ok(/__benchActive/.test(hud), "HUD pauses during the bench");
   assert.ok(/PerformanceObserver/.test(src) && /type: "longtask"/.test(src), "long tasks are observed");
-  assert.ok(/tile\.openstreetmap\.org/.test(src) && src.includes('if (MAP_RASTER && styleKey === "openfreemap")') && hud.includes('q: "map=raster"'), "?map=raster: OSM picture tiles, measured in the full test (v3.10.84)");
-  assert.ok(hud.includes('q: "map=lite&labels=points"') && hud.includes('q: "map=lite&labels=major"') && src.includes('/^line/.test(String(l.layout["symbol-placement"]'), "street-name variants hide only the labels along the roads (v3.10.85)");
+  assert.ok(/tile\.openstreetmap\.org/.test(src) && src.includes('if (MAP_RASTER && styleKey === "openfreemap")'), "?map=raster: OSM picture tiles (v3.10.84)");
+  assert.ok(hud.includes('q: "gmap3d=1&gtraffic=0&gtilt=45"') && hud.includes('q: "gmap3d=1&gtraffic=0&gscale=0.7"'), "v3.10.93: the full test measures only Google 3D variants");
+  assert.ok(src.includes('/^line/.test(String(l.layout["symbol-placement"]'), "street-name variants hide only the labels along the roads (v3.10.85)");
   assert.ok(/res\.longPct/.test(hud) && /res\.gpsMsPerS/.test(hud), "bench stores long-task % and GPS cost");
 });
 
@@ -385,7 +386,7 @@ test("upright street names: one label per street piece, big roads first, no repe
   assert.strictEqual(fc.features[0].properties.rank, 4);
   near(fc.features[0].geometry.coordinates[0], c.lng, 1e-5, "label sits in the middle of the street");
   const src = require("fs").readFileSync(require("path").join(__dirname, "..", "app.js"), "utf8");
-  assert.ok(src.includes('"text-rotation-alignment": "viewport"') && src.includes('"rastertiles/voyager_nolabels"') && src.includes('q: "labels=upright"'), "upright, over label-free tiles, in the full test");
+  assert.ok(src.includes('"text-rotation-alignment": "viewport"') && src.includes('"rastertiles/voyager_nolabels"'), "upright, over label-free tiles");
 });
 
 test("side panel v2: two columns of raised keys with short words, behind ?labels=upright / ?dock=v2 (v3.10.92)", () => {
@@ -396,5 +397,12 @@ test("side panel v2: two columns of raised keys with short words, behind ?labels
   assert.ok(v2.includes("grid-template-columns: repeat(2, 60px);") && v2.includes("content: attr(data-short);"), "two columns, word under the icon");
   const rules = v2.replace(/\/\*[\s\S]*?\*\//g, "");   // comments may name what is not used
   assert.ok(!/backdrop-filter|animation:/.test(rules), "no blur, no animation (MCU2)");
+});
+
+test("Google 3D lightening switches: ?gtilt=N and ?gtraffic=0, Google 3D is the start map (v3.10.93)", () => {
+  const g = require("fs").readFileSync(require("path").join(__dirname, "..", "gmap.js"), "utf8");
+  assert.ok(g.includes("o.tilt = S.gtilt || 0;") && g.includes("S.gtilt = Math.min(60, Math.max(0, parseInt(gt[1], 10)));"), "tilt 0..60, flat by default");
+  assert.ok(g.includes("if (S.noTraffic) S.trafficOn = false;"), "traffic layer can be left off for a test");
+  assert.ok(g.includes('return MAP_KINDS.includes(v) ? v : "google3d";') && g.includes('"tesla_nav_main_map_v93"'), "Google 3D by default, old choice reset once");
 });
 

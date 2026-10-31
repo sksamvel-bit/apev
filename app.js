@@ -136,7 +136,7 @@ function initClock() {
 const OFM_STYLE_URL = "https://tiles.openfreemap.org/styles/liberty";
 const OFM_STYLE_CACHE_KEY = "tesla_nav_ofm_style_v1";
 const MAP_STYLE_KEYS = ["openfreemap", "google-roads"];
-const APP_VERSION = "3.10.92";
+const APP_VERSION = "3.10.93";
 const MAP_DEFAULT_ZOOM = 16;      // MapLibre zoom (Leaflet-equivalent 17)
 // Performance experiments (all default to the normal behaviour): ?labels=0 hides the base-map labels/icons, ?markers=0 skips the
 // charger DOM markers, ?pitch=N sets the heading-up tilt (0-60). Used to find what makes the car's browser slow.
@@ -2274,7 +2274,7 @@ function initEventListeners() {
 
     // v3.10.77: which map opens with the app (gmap.js reads it on the next start)
     const mm = document.getElementById("input-main-map");
-    if (mm) { try { localStorage.setItem("tesla_nav_main_map", ["google3d", "google", "ours"].includes(mm.value) ? mm.value : "ours"); } catch (_) {} }
+    if (mm) { try { localStorage.setItem("tesla_nav_main_map", ["google3d", "google", "ours"].includes(mm.value) ? mm.value : "google3d"); } catch (_) {} }
     localStorage.setItem("saved_home", document.getElementById("input-home-addr").value.trim());
     localStorage.setItem("saved_work", document.getElementById("input-work-addr").value.trim());
     modal.classList.remove("open");
@@ -2283,7 +2283,7 @@ function initEventListeners() {
   });
 
   // Populate settings inputs
-  { const mm = document.getElementById("input-main-map"); if (mm) { let v = "ours"; try { const s = localStorage.getItem("tesla_nav_main_map"); if (["google3d", "google", "ours"].includes(s)) v = s; } catch (_) {} mm.value = v; } }
+  { const mm = document.getElementById("input-main-map"); if (mm) { let v = "google3d"; try { const s = localStorage.getItem("tesla_nav_main_map"); if (["google3d", "google", "ours"].includes(s)) v = s; } catch (_) {} mm.value = v; } }
   document.getElementById("input-home-addr").value = localStorage.getItem("saved_home") || "";
   document.getElementById("input-work-addr").value = localStorage.getItem("saved_work") || "";
   if (selectTeslaModel) selectTeslaModel.value = batteryEngine.modelKey;
@@ -2596,7 +2596,7 @@ function initRemoteSession() {
       const suiteBtn = document.createElement("button");
       suiteBtn.id = "bench-suite-btn";
       suiteBtn.type = "button";
-      suiteBtn.textContent = "🧪 სრული ტესტი: 16 ვარიანტი (~7 წთ, მანქანა გაჩერებული)";
+      suiteBtn.textContent = "🧪 Google 3D ტესტი: 8 ვარიანტი (~4 წთ)";
       suiteBtn.style.cssText = "position:fixed;left:8px;bottom:172px;z-index:99999;min-height:44px;padding:8px 14px;border-radius:10px;border:1px solid #7CFC7C;background:rgba(0,0,0,.85);color:#7CFC7C;font:600 14px sans-serif;";
       suiteBtn.addEventListener("click", (e) => { e.stopPropagation(); startSuite(); });
       document.body.appendChild(suiteBtn);
@@ -2613,23 +2613,17 @@ function initRemoteSession() {
   // style and labels are fixed at start), keeps the results in localStorage and shows one table at the end. ~3 minutes,
   // standing still. Finds what makes our map slow and whether a faster Google camera turns smoothly. ----
   const SUITE_KEY = "tesla_nav_bench_suite";
+  // v3.10.93: Google 3D only (Samvel: "only the Google 3D map"). What makes it lighter on the MCU2: the traffic layer,
+  // the picture resolution (?gscale), the camera rate (?gfps) and the 3D tilt (?gtilt). All rows without traffic but the first.
   const SUITE = [
-    { name: "ვექტორული, უძრავი (ბრუნვის გარეშე)", q: "map=vector", idle: true },
-    { name: "ვექტორული სრული", q: "map=vector" },
-    { name: "ჩვენი მსუბუქი", q: "map=lite" },
-    { name: "მსუბუქი, dpr 0.75", q: "map=lite&dpr=0.75" },
-    { name: "მსუბუქი, წარწერების გარეშე", q: "map=lite&labels=0" },
-    { name: "მსუბუქი, მარკერების გარეშე", q: "map=lite&markers=0" },
-    { name: "მსუბუქი, ქუჩის სახელები არა, ნომრები კი", q: "map=lite&labels=points" },
-    { name: "მსუბუქი, მხოლოდ დიდი ქუჩების სახელები", q: "map=lite&labels=major" },
-    { name: "მსუბუქი, ყველაფერი მინიმუმზე", q: "map=lite&dpr=0.75&labels=0&markers=0" },
-    { name: "მსუბუქი + GPU", q: "map=lite&cam=gpu" },
-    { name: "სურათოვანი (raster), უძრავი", q: "map=raster", idle: true },
-    { name: "სურათოვანი (raster)", q: "map=raster" },
-    { name: "სწორი წარწერები (Esri + ჩვენი სახელები)", q: "labels=upright" },
-    { name: "Google 3D, კამერა 10/წმ", q: "gmap3d=1", google: true },
-    { name: "Google 3D, კამერა 20/წმ", q: "gmap3d=1&gfps=20", google: true },
-    { name: "Google 3D, კამერა 30/წმ", q: "gmap3d=1&gfps=30", google: true }
+    { name: "Google 3D, უძრავი (ბრუნვის გარეშე)", q: "gmap3d=1", google: true, idle: true },
+    { name: "Google 3D ახლანდელი (საცობებით)", q: "gmap3d=1", google: true },
+    { name: "საცობების გარეშე", q: "gmap3d=1&gtraffic=0", google: true },
+    { name: "საცობების გარეშე, 70% გარჩევადობა", q: "gmap3d=1&gtraffic=0&gscale=0.7", google: true },
+    { name: "საცობების გარეშე, კამერა 5/წმ", q: "gmap3d=1&gtraffic=0&gfps=5", google: true },
+    { name: "საცობების გარეშე, კამერა 20/წმ", q: "gmap3d=1&gtraffic=0&gfps=20", google: true },
+    { name: "3D დახრა 45°", q: "gmap3d=1&gtraffic=0&gtilt=45", google: true },
+    { name: "3D დახრა 45°, 70% გარჩევადობა", q: "gmap3d=1&gtraffic=0&gtilt=45&gscale=0.7", google: true }
   ];
   const suiteUrl = (i) => "/?suite=" + i + "&debug=1&" + SUITE[i].q;
   function readSuite() { try { return JSON.parse(localStorage.getItem(SUITE_KEY) || "null"); } catch (_) { return null; } }

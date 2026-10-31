@@ -205,17 +205,17 @@ ok(/GOOGLE_MAPS_KEY/.test(srv) && !/PUBLIC_AUTH_PATHS[^;]*gmaps-config/.test(srv
   {
     const appS = fs.readFileSync(__dirname + "/../app.js", "utf8");
     const steps = (appS.slice(appS.indexOf("const SUITE = ["), appS.indexOf("const suiteUrl")).match(/\{ name: /g) || []).length;
-    ok(steps === 16 && appS.includes('location.href = i + 1 < SUITE.length ? suiteUrl(i + 1) : "/?suite=done&map=ours&debug=1"'), "v3.10.81: the full test runs 13 variants (v3.10.83: + map at rest, v3.10.84: + raster, v3.10.85: + street-name variants, v3.10.89: + upright names, v3.10.90: CARTO row removed) one after another and ends on the table");
+    ok(steps === 8 && appS.includes('location.href = i + 1 < SUITE.length ? suiteUrl(i + 1) : "/?suite=done&map=ours&debug=1"'), "v3.10.81: the full test runs 13 variants (v3.10.83: + map at rest, v3.10.84: + raster, v3.10.85: + street-name variants, v3.10.89: + upright names, v3.10.90: CARTO row removed) one after another and ends on the table");
     ok(src.includes("if (/[?&]gmap3d=1/.test(q)) return true;") && src.includes("S.vector = /[?&]gmap3d=1/.test(location.search) ||"), "v3.10.81: ?gmap3d=1 opens Google 3D for a test without changing the saved main map");
   }
   // v3.10.80: three maps in one picker, Google 3D is the main map
-  ok(G.currentMainMap() === "ours" && JSON.stringify(G.MAP_KINDS) === JSON.stringify(["google3d", "google", "ours"]), "v3.10.87: with nothing chosen the app opens our picture map");
+  ok(G.currentMainMap() === "google3d" && JSON.stringify(G.MAP_KINDS) === JSON.stringify(["google3d", "google", "ours"]), "v3.10.93: with nothing chosen the app opens Google 3D again");
   ok(typeof G.selectMap === "function" && G.selectMap("nonsense") === false, "v3.10.80: selectMap accepts only the three maps");
   ok(src.includes('currentMainMap() !== "google";   // ?gmap3d=1'), "v3.10.80: the start opens 3D unless classic was chosen");
   { const h3 = fs.readFileSync(__dirname + "/../index.html", "utf8"); ok(["google3d", "google", "ours"].every((k) => h3.includes('data-map="' + k + '"')) && h3.includes('<option value="google3d">'), "v3.10.80: the map menu and the settings list the three maps"); }
   ok(src.includes('on("gmap-btn-vector", "click", (e) => { if (e) e.stopPropagation(); if (window.openMapPicker) window.openMapPicker(); });'), "v3.10.80: the Google side panel button opens the same map picker");
   // v3.10.77: the Google map is the main map
-  ok(G.mainMapIsGoogle("") === false && G.mainMapIsGoogle("?debug=1") === false && G.mainMapIsGoogle("?gmap3d=1") === true && G.mainMapIsGoogle("?map=vector") === false, "v3.10.87: by default the app opens on our map; ?gmap3d=1 still opens Google 3D");
+  ok(G.mainMapIsGoogle("") === true && G.mainMapIsGoogle("?debug=1") === true && G.mainMapIsGoogle("?gmap3d=1") === true && G.mainMapIsGoogle("?map=vector") === false, "v3.10.93: by default the app opens on Google 3D; ?map=... still opens our map");
   ok(G.mainMapIsGoogle("?map=ours") === false && G.mainMapIsGoogle("?debug=1&map=lite") === false && G.mainMapIsGoogle("?map=raster") === false,"v3.10.77: ?map=ours / ?map=lite open our map");
   const initSrc = src.slice(src.indexOf("async function init()"), src.indexOf("const api = {"));
   ok(initSrc.includes("if (S.enabled && mainMapIsGoogle(q)) autoOpen();"), "v3.10.77: Google opens by itself only when Google mode is configured");

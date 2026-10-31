@@ -431,7 +431,7 @@
     o.renderingType = "VECTOR";
     o.colorScheme = night ? "DARK" : "LIGHT";   // a Map ID map ignores `styles`; the colour scheme is fixed at creation
     o.heading = view.heading || 0;
-    o.tilt = 0;
+    o.tilt = S.gtilt || 0;   // v3.10.93 ?gtilt=N: the 3D look (45 = Tesla-like); 0 = flat
     return o;
   }
 
@@ -472,6 +472,7 @@
     S.carMarker = null; S.carRot = null; S.lastMarker = null; S.lastCam = null;
     S.traffic = new TrafficLayer();
     try { S.trafficOn = localStorage.getItem("gmapTraffic") !== "0"; } catch (_) { S.trafficOn = true; }
+    if (S.noTraffic) S.trafficOn = false;   // v3.10.93 ?gtraffic=0 (test): no traffic layer, the saved choice is left alone
     applyTraffic();
   }
 
@@ -1125,8 +1126,9 @@
   // ---- v3.10.77: the Google map is the main map (Samvel). It opens by itself when the app starts, unless the driver chose
   // our map in the settings (localStorage tesla_nav_main_map = "ours") or the address has ?map=ours / ?map=lite. ----
   const MAIN_MAP_KEY = "tesla_nav_main_map";
-  // v3.10.87: once, forget the start map chosen before (it was Google 3D for everyone), so the app opens on our map
-  try { if (typeof localStorage !== "undefined" && !localStorage.getItem("tesla_nav_main_map_v87")) { localStorage.removeItem(MAIN_MAP_KEY); localStorage.setItem("tesla_nav_main_map_v87", "1"); } } catch (_) {}
+  // v3.10.93: once, forget the start map chosen before, so the app opens on Google 3D (Samvel wants only the Google 3D map;
+  // our map stays as the automatic fallback when Google cannot load). The v87 flag is set too, so that reset never runs again.
+  try { if (typeof localStorage !== "undefined" && !localStorage.getItem("tesla_nav_main_map_v93")) { localStorage.removeItem(MAIN_MAP_KEY); localStorage.setItem("tesla_nav_main_map_v93", "1"); localStorage.setItem("tesla_nav_main_map_v87", "1"); } } catch (_) {}
   function mainMapIsGoogle(search) {
     const q = String(search || "");
     if (/[?&]map=(ours|lite|raster|vector)\b/.test(q)) return false;
@@ -1150,7 +1152,7 @@
   function currentMainMap() {
     let v = null;
     try { v = localStorage.getItem(MAIN_MAP_KEY); } catch (_) {}
-    return MAP_KINDS.includes(v) ? v : "ours";   // v3.10.87: our picture map is the start map
+    return MAP_KINDS.includes(v) ? v : "google3d";   // v3.10.93: Google 3D is the start map again (Samvel: only Google 3D)
   }
   /** The map on the screen right now. */
   function shownMap() { return S.open ? (S.vector ? "google3d" : "google") : "ours"; }
@@ -1263,6 +1265,10 @@
     if (gf) S.gfps = Math.min(30, Math.max(2, parseInt(gf[1], 10)));
     const gs = /[?&]gscale=(0?\.\d+|1(?:\.0+)?)/.exec(q);
     if (gs) { const v = parseFloat(gs[1]); S.gscale = v >= 1 ? 0 : Math.max(0.5, v); }
+    // v3.10.93 lightening tests for the Google 3D map: ?gtilt=N (0..60) tilt, ?gtraffic=0 no traffic layer
+    const gt = /[?&]gtilt=(\d+)/.exec(q);
+    if (gt) S.gtilt = Math.min(60, Math.max(0, parseInt(gt[1], 10)));
+    S.noTraffic = /[?&]gtraffic=0(&|$)/.test(q);
     // v3.10.79 ?gcam=gpu: GPU camera on the 3D (vector) map; ?gcamms=N ms between real camera moves (default 250)
     S.gpuOn = /[?&]gcam=gpu/.test(q);
     const gm = /[?&]gcamms=(\d+)/.exec(q);
