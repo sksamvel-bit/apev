@@ -693,6 +693,18 @@ class RoutingEngine {
   setRouteData(upcomingLatLngs, passedLatLngs) {
     this.routeGeo.upcoming = RoutingEngine.lineGeo(upcomingLatLngs);
     this.routeGeo.passed = RoutingEngine.lineGeo(passedLatLngs);
+    this.pushRouteData();
+  }
+
+  /** v3.10.94: while Google mode covers this map, the 1 Hz progress updates are kept and not drawn (each one re-parsed
+   *  the line and re-rendered the hidden map on the MCU2); the latest geometry is drawn once when the map shows again. */
+  setMapHidden(on) {
+    this.mapHidden = !!on;
+    if (!this.mapHidden) this.pushRouteData();
+  }
+
+  pushRouteData() {
+    if (this.mapHidden) return;
     if (!this.map || typeof this.map.getSource !== "function") return;
     const up = this.map.getSource("route-source");
     const pa = this.map.getSource("route-passed-source");

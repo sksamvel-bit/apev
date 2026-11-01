@@ -80,4 +80,13 @@ global.fetch = async () => { if (failNext) throw new Error('network down'); retu
   for (let m = 1000; m <= 2200; m += 28) e5.updateVehiclePosition({ lat: 41.70 + m / 111139, lng: 44.80 }, 50, 0);
   window.__gmapNavigating = false;
   ok(sq.length === 0, 'while Google mode navigates, routing.js says nothing');
+  // ---- v3.10.94: hidden under Google mode -> progress is kept, not drawn; drawn once when the map shows again ----
+  const sets = []; const src = { setData: (d) => sets.push(d) };
+  const e6 = new RE({ fitBounds() { }, removeLayer() { }, getSource: () => src }, null, null, { speak() { } }, null); e6.onManeuverUpdate = () => { }; e6.onSummaryUpdate = () => { };
+  await e6.calculateRoute({ lat: 41.70, lng: 44.80 }, { lat: 41.72, lng: 44.82 }, true);
+  e6.setMapHidden(true); sets.length = 0;
+  for (let m = 0; m <= 1400; m += 14) e6.updateVehiclePosition({ lat: 41.70 + m / 111139, lng: 44.80 }, 50, 0);
+  ok(sets.length === 0, 'hidden map: no setData while Google mode covers it');
+  e6.setMapHidden(false);
+  ok(sets.length === 2 && sets[1] === e6.routeGeo.passed && e6.routeGeo.passed.geometry.coordinates.length > 2, 'shown again: the latest route progress is drawn once');
 })();
