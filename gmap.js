@@ -337,7 +337,7 @@
     enabled: false, key: "", open: false, map: null, traffic: null, trafficOn: true, loading: null, g: null,
     carMarker: null, carPos: null, carHeading: 0, follow: true, placeMarker: null, catMarkers: [], activeCat: null,
     routeLines: [], routes: [], routeIdx: 0, stepIdx: 0, segIdx: 0, offRouteTracker: null, rerouting: false, voice: null, glide: null, raf: null, lastFrame: 0, idle: 0, lastFix: null,
-    vector: false, mapId: "", carRot: null, carTimer: null, lastCam: null, lastMarker: null, camCount: 0, gfps: 0, gscale: 0, gtilt: 45, debug: false, warned: {}, rebuilding: false,
+    vector: false, mapId: "", carRot: null, carTimer: null, lastCam: null, lastMarker: null, camCount: 0, gfps: 0, gscale: 0, gtilt: 30, debug: false, warned: {}, rebuilding: false,
     navigating: false, place: null, sessionToken: null, night: null, timers: []
   };
 
@@ -431,7 +431,7 @@
     o.renderingType = "VECTOR";
     o.colorScheme = night ? "DARK" : "LIGHT";   // a Map ID map ignores `styles`; the colour scheme is fixed at creation
     o.heading = view.heading || 0;
-    o.tilt = S.gtilt || 0;   // v3.10.95: 45 by default (the 3D look, fastest row of the parked car test); ?gtilt=0 = flat
+    o.tilt = S.gtilt || 0;   // v3.10.97: 30 by default (Samvel's choice: 45 cost ~30-40% fps while driving, flat was smoothest); ?gtilt=0 = flat
     return o;
   }
 

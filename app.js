@@ -136,7 +136,7 @@ function initClock() {
 const OFM_STYLE_URL = "https://tiles.openfreemap.org/styles/liberty";
 const OFM_STYLE_CACHE_KEY = "tesla_nav_ofm_style_v1";
 const MAP_STYLE_KEYS = ["openfreemap", "google-roads"];
-const APP_VERSION = "3.10.96";
+const APP_VERSION = "3.10.97";
 const MAP_DEFAULT_ZOOM = 16;      // MapLibre zoom (Leaflet-equivalent 17)
 // Performance experiments (all default to the normal behaviour): ?labels=0 hides the base-map labels/icons, ?markers=0 skips the
 // charger DOM markers, ?pitch=N sets the heading-up tilt (0-60). Used to find what makes the car's browser slow.
@@ -2616,17 +2616,17 @@ function initRemoteSession() {
   // standing still. Finds what makes our map slow and whether a faster Google camera turns smoothly. ----
   const SUITE_KEY = "tesla_nav_bench_suite";
   // v3.10.93: Google 3D only (Samvel: "only the Google 3D map"). What makes it lighter on the MCU2: the traffic layer,
-  // the picture resolution (?gscale), the camera rate (?gfps) and the 3D tilt (?gtilt). v3.10.95: the default is tilt 45 + 20/s;
-  // the last row is the v3.10.93 default (flat, 10/s) for comparison.
+  // the picture resolution (?gscale), the camera rate (?gfps) and the 3D tilt (?gtilt). v3.10.97: the default is tilt 30 + 20/s with traffic
+  // (traffic off never helped in the car); the rows compare the tilt; the last row is the v3.10.93 default (flat, 10/s).
   const SUITE = [
     { name: "Google 3D, უძრავი (ბრუნვის გარეშე)", q: "gmap3d=1", google: true, idle: true },
-    { name: "Google 3D ახლანდელი (45°, 20/წმ, საცობებით)", q: "gmap3d=1", google: true },
-    { name: "საცობების გარეშე", q: "gmap3d=1&gtraffic=0", google: true },
-    { name: "საცობების გარეშე, 70% გარჩევადობა", q: "gmap3d=1&gtraffic=0&gscale=0.7", google: true },
-    { name: "საცობების გარეშე, კამერა 10/წმ", q: "gmap3d=1&gtraffic=0&gfps=10", google: true },
-    { name: "საცობების გარეშე, კამერა 30/წმ", q: "gmap3d=1&gtraffic=0&gfps=30", google: true },
-    { name: "ბრტყელი (დახრის გარეშე)", q: "gmap3d=1&gtraffic=0&gtilt=0", google: true },
-    { name: "საცობებით, ბრტყელი, 10/წმ (v3.10.93)", q: "gmap3d=1&gtilt=0&gfps=10", google: true }
+    { name: "Google 3D ახლანდელი (30°, 20/წმ, საცობებით)", q: "gmap3d=1", google: true },
+    { name: "დახრა 45°", q: "gmap3d=1&gtilt=45", google: true },
+    { name: "დახრა 20°", q: "gmap3d=1&gtilt=20", google: true },
+    { name: "ბრტყელი (0°)", q: "gmap3d=1&gtilt=0", google: true },
+    { name: "30°, 70% გარჩევადობა", q: "gmap3d=1&gscale=0.7", google: true },
+    { name: "30°, კამერა 10/წმ", q: "gmap3d=1&gfps=10", google: true },
+    { name: "ბრტყელი, 10/წმ (v3.10.93)", q: "gmap3d=1&gtilt=0&gfps=10", google: true }
   ];
   const suiteUrl = (i) => "/?suite=" + i + "&debug=1&" + SUITE[i].q;
   function readSuite() { try { return JSON.parse(localStorage.getItem(SUITE_KEY) || "null"); } catch (_) { return null; } }

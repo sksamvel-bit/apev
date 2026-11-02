@@ -336,7 +336,7 @@ test("debug HUD stays cheap and the bench records long tasks (v3.10.82)", () => 
   assert.ok(/__benchActive/.test(hud), "HUD pauses during the bench");
   assert.ok(/PerformanceObserver/.test(src) && /type: "longtask"/.test(src), "long tasks are observed");
   assert.ok(/tile\.openstreetmap\.org/.test(src) && src.includes('if (MAP_RASTER && styleKey === "openfreemap")'), "?map=raster: OSM picture tiles (v3.10.84)");
-  assert.ok(hud.includes('q: "gmap3d=1&gtraffic=0&gtilt=0"') && hud.includes('q: "gmap3d=1&gtraffic=0&gscale=0.7"'), "v3.10.93: the full test measures only Google 3D variants");
+  assert.ok(hud.includes('q: "gmap3d=1&gtilt=0"') && hud.includes('q: "gmap3d=1&gtilt=45"') && hud.includes('q: "gmap3d=1&gscale=0.7"'), "v3.10.93: the full test measures only Google 3D variants");
   assert.ok(src.includes('/^line/.test(String(l.layout["symbol-placement"]'), "street-name variants hide only the labels along the roads (v3.10.85)");
   assert.ok(/res\.longPct/.test(hud) && /res\.gpsMsPerS/.test(hud), "bench stores long-task % and GPS cost");
 });
@@ -402,7 +402,7 @@ test("side panel v2: two columns of raised keys with short words, behind ?labels
 test("Google 3D lightening switches: ?gtilt=N and ?gtraffic=0, Google 3D is the start map (v3.10.93)", () => {
   const g = require("fs").readFileSync(require("path").join(__dirname, "..", "gmap.js"), "utf8");
   assert.ok(g.includes("o.tilt = S.gtilt || 0;") && g.includes("S.gtilt = Math.min(60, Math.max(0, parseInt(gt[1], 10)));"), "tilt 0..60");
-  assert.ok(g.includes("gscale: 0, gtilt: 45,"), "v3.10.95: 3D tilt 45 by default");
+  assert.ok(g.includes("gscale: 0, gtilt: 30,"), "v3.10.97: 3D tilt 30 by default");
   assert.ok(g.includes('m.addListener("tilesloaded"') && g.includes("S.map.setTilt(S.gtilt || 0)") && g.includes("tilt: () =>"), "v3.10.96: tilt set again after load and on reuse, real tilt reported");
   assert.ok(g.includes("if (S.noTraffic) S.trafficOn = false;"), "traffic layer can be left off for a test");
   assert.ok(g.includes('return MAP_KINDS.includes(v) ? v : "google3d";') && g.includes('"tesla_nav_main_map_v93"'), "Google 3D by default, old choice reset once");
