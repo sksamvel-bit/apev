@@ -79,7 +79,7 @@ ok(G.warnText({ sku: 'mapload', month: 6400, monthCap: 8000 }) === 'Google-áƒ˜áƒ
   m.tick(0); for (let t = 100; t <= 1000; t += 100) { const v = m.tick(t); if (v != null) out = v; }
   ok(out != null && Math.abs(out - 10) < 0.01, 'fps meter: 10 frames in 1 s -> 10 fps');
 }
-ok(/S\.vector \? \(S\.gpuOn \? 16 : 100\) : 50/.test(src) && /gfps=/.test(src), '3D map moves the camera at 10 fps (classic 20; 60 with the GPU camera, v3.10.79), ?gfps=N overrides');
+ok(/S\.vector \? \(S\.gpuOn \? 16 : 50\) : 50/.test(src) && /gfps=/.test(src), '3D map moves the camera at 20 fps (v3.10.95; 60 with the GPU camera), ?gfps=N overrides');
 ok(G.scaledBoxStyle(0) === 'position:absolute;inset:0' && G.scaledBoxStyle(1) === 'position:absolute;inset:0', 'gscale off: the map fills the screen at full resolution');
 ok(/width:75%;height:75%;transform:scale\(1\.3333\)/.test(G.scaledBoxStyle(0.75)), 'gscale 0.75: 75% box stretched x1.333 back to full screen');
 {

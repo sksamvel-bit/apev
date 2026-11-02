@@ -337,7 +337,7 @@
     enabled: false, key: "", open: false, map: null, traffic: null, trafficOn: true, loading: null, g: null,
     carMarker: null, carPos: null, carHeading: 0, follow: true, placeMarker: null, catMarkers: [], activeCat: null,
     routeLines: [], routes: [], routeIdx: 0, stepIdx: 0, segIdx: 0, offRouteTracker: null, rerouting: false, voice: null, glide: null, raf: null, lastFrame: 0, idle: 0, lastFix: null,
-    vector: false, mapId: "", carRot: null, carTimer: null, lastCam: null, lastMarker: null, camCount: 0, gfps: 0, gscale: 0, debug: false, warned: {}, rebuilding: false,
+    vector: false, mapId: "", carRot: null, carTimer: null, lastCam: null, lastMarker: null, camCount: 0, gfps: 0, gscale: 0, gtilt: 45, debug: false, warned: {}, rebuilding: false,
     navigating: false, place: null, sessionToken: null, night: null, timers: []
   };
 
@@ -431,7 +431,7 @@
     o.renderingType = "VECTOR";
     o.colorScheme = night ? "DARK" : "LIGHT";   // a Map ID map ignores `styles`; the colour scheme is fixed at creation
     o.heading = view.heading || 0;
-    o.tilt = S.gtilt || 0;   // v3.10.93 ?gtilt=N: the 3D look (45 = Tesla-like); 0 = flat
+    o.tilt = S.gtilt || 0;   // v3.10.95: 45 by default (the 3D look, fastest row of the parked car test); ?gtilt=0 = flat
     return o;
   }
 
@@ -517,9 +517,9 @@
     return { path: S.g.core.SymbolPath.FORWARD_CLOSED_ARROW, scale: 6, rotation, fillColor: "#3e6ae1", fillOpacity: 1, strokeColor: "#ffffff", strokeWeight: 2 };
   }
 
-  // Arrow/camera rate: 20 fps on the classic map; 10 fps on the vector (3D) map, where every camera move re-renders the whole map.
+  // Arrow/camera rate: 20 fps on both maps (v3.10.95: the 3D map was 10 fps; the parked car test showed 20 smoother).
   // ?gfps=N (2..30) overrides both, for measuring in the car.
-  function carFrameMs() { return S.gfps ? 1000 / S.gfps : (S.vector ? (S.gpuOn ? 16 : 100) : 50); }   // GPU camera: the turn is cheap, 60 fps
+  function carFrameMs() { return S.gfps ? 1000 / S.gfps : (S.vector ? (S.gpuOn ? 16 : 50) : 50); }   // GPU camera: the turn is cheap, 60 fps
 
   /** One frame of the glide: arrow position/rotation, and the camera while following (heading-up on the vector map). */
   function drawCar(f) {
