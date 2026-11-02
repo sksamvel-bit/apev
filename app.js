@@ -136,7 +136,7 @@ function initClock() {
 const OFM_STYLE_URL = "https://tiles.openfreemap.org/styles/liberty";
 const OFM_STYLE_CACHE_KEY = "tesla_nav_ofm_style_v1";
 const MAP_STYLE_KEYS = ["openfreemap", "google-roads"];
-const APP_VERSION = "3.10.95";
+const APP_VERSION = "3.10.96";
 const MAP_DEFAULT_ZOOM = 16;      // MapLibre zoom (Leaflet-equivalent 17)
 // Performance experiments (all default to the normal behaviour): ?labels=0 hides the base-map labels/icons, ?markers=0 skips the
 // charger DOM markers, ?pitch=N sets the heading-up tilt (0-60). Used to find what makes the car's browser slow.
@@ -2569,6 +2569,7 @@ function initRemoteSession() {
     const res = { mapFps: google ? (window.GMapMode.camMoves() - cam0) / secs : ((window.__renderCount || 0) - r0) / secs, uiFps: frames / secs, maxPauseMs: maxGap, map: google ? "google " + (window.GMapMode.isVector() ? "3D" : "classic") + (window.GMapMode.gpuOn() ? " gpu" : "") : "ours",
       look: (MAP_RASTER ? "raster" : window.__mapLight ? "lite" : "full") + " " + (map.getLayersOrder ? map.getLayersOrder().length : 0) + "L" + (window.__camMode ? " cam " + window.__camMode : "") };
     res.cpuMs = cpu; res.idle = idle;
+    if (google && window.GMapMode.tilt) res.tilt = window.GMapMode.tilt();   // v3.10.96: the tilt Google really shows
     res.longN = P.longN; res.longMs = P.longMs; res.longPct = P.longMs / (secs * 10); res.longMax = P.longMax; res.gpsMsPerS = P.gpsMs / secs; res.gpsPerS = P.gpsN / secs;
     window.__benchLast = res;
     mapCamera.setFix = realSetFix;
@@ -2673,7 +2674,7 @@ function initRemoteSession() {
     const pad = (v, n) => String(v).padStart(n);
     const rows = s.results.map((r, i) => r
       ? pad(i + 1, 2) + ". " + r.name.padEnd(28) + pad(Math.round(r.uiFps), 3) + " fps " + pad(r.mapFps.toFixed(1), 4) + "/წმ " + pad(Math.round(r.maxPauseMs), 5) + " ms " +
-        pad(r.longPct != null ? Math.round(r.longPct) + "%" : "-", 4) + " " + pad(r.gpsMsPerS != null ? Math.round(r.gpsMsPerS) : "-", 4) + pad(r.cpuMs != null ? Math.round(r.cpuMs) : "-", 5) + (r.empty ? "  ⚠ ცარიელი რუკა" : "")
+        pad(r.longPct != null ? Math.round(r.longPct) + "%" : "-", 4) + " " + pad(r.gpsMsPerS != null ? Math.round(r.gpsMsPerS) : "-", 4) + pad(r.cpuMs != null ? Math.round(r.cpuMs) : "-", 5) + (r.tilt != null ? "  " + r.tilt + "°" : "") + (r.empty ? "  ⚠ ცარიელი რუკა" : "")
       : pad(i + 1, 2) + ". —");
     box.textContent = "🧪 სრული ტესტი v" + APP_VERSION + "  (" + new Date(s.started).toLocaleString() + ")\n" +
       "სვეტები: ეკრანი fps · ხატვა/წმ · max გაჭედვა · პროცესორი დაკავებულია (%) · GPS (ms/წმ) · CPU-ს სიჩქარე (ms, ნაკლები = უკეთესი)\n" +

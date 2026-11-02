@@ -460,6 +460,7 @@
       S.map.setCenter(v.center);
       if (v.zoom) S.map.setZoom(v.zoom);
       if (S.vector && isFinite(v.heading)) S.map.setHeading(v.heading);
+      if (S.vector && S.map.setTilt) S.map.setTilt(S.gtilt || 0);
     } else {
       const el = document.createElement("div");   // a fresh element per map: a Map ID cannot be added to an existing map
       // the GPU camera turns the vector map picture: its div is larger than the screen (?gscale does not apply then)
@@ -467,6 +468,8 @@
       box.appendChild(el);
       S.map = new Map(el, mapOptions(S.vector, S.night, v));
       S.maps[key] = { map: S.map, el };
+      // v3.10.96: the car photos showed a flat map with tilt 45 in the options; set it again once the first tiles are in
+      if (S.vector && S.gtilt) { const m = S.map; const l = m.addListener("tilesloaded", () => { l.remove(); if (m.setTilt) m.setTilt(S.gtilt); }); }
       S.map.addListener("dragstart", () => { S.follow = false; $("gmap-btn-me") && $("gmap-btn-me").classList.remove("active"); });
     }
     S.carMarker = null; S.carRot = null; S.lastMarker = null; S.lastCam = null;
@@ -636,7 +639,7 @@
       const fps = meter.tick(t);
       if (fps != null) {
         box.textContent = "Google " + (S.vector ? "3D" : "classic") + "  fps " + fps.toFixed(1) + "  camera " + (S.camCount - cam0) + "/s  arrow " + Math.round(1000 / carFrameMs()) + " fps" +
-          "  traffic " + (S.trafficOn ? "on" : "off") + (S.gscale ? "  scale " + S.gscale : "") + (S.mapId ? "" : "  DEMO_MAP_ID");
+          "  traffic " + (S.trafficOn ? "on" : "off") + (S.vector && S.map.getTilt ? "  tilt " + Math.round(S.map.getTilt() || 0) + "/" + (S.gtilt || 0) : "") + (S.gscale ? "  scale " + S.gscale : "") + (S.mapId ? "" : "  DEMO_MAP_ID");
         cam0 = S.camCount;
       }
       S.debugRaf = requestAnimationFrame(loop);
@@ -1280,7 +1283,7 @@
     if (S.enabled && mainMapIsGoogle(q)) autoOpen();
   }
 
-  const api = { init, open, close, isOpen: () => S.open, isEnabled: () => S.enabled, camMoves: () => S.camCount, isVector: () => !!S.vector, gpuOn: () => !!S.gpuOn, mainMapIsGoogle, MAIN_MAP_KEY, selectMap, shownMap, currentMainMap, MAP_KINDS, gpuPlan, openWithQuery, openWithDestination, focusPlace, SIDE_PROXIES, mapKey, distToPolylineM, nearestOnPolyline, createOffRouteTracker, createVoiceCues, nearestChargers, createCarGlide, aheadPoint, mapOptions, cameraNeedsUpdate, createFpsMeter, scaledBoxStyle, capText, warnText, decodePolyline, parseRoutesResponse, routesRequestBody, nextStepIndex, fmtDist, buildLoaderUrl, createDebouncer, osrmUrl, summarizeRoute, mapStyles, bearing, meters, CATEGORIES };
+  const api = { init, open, close, isOpen: () => S.open, isEnabled: () => S.enabled, camMoves: () => S.camCount, isVector: () => !!S.vector, tilt: () => (S.map && S.map.getTilt ? Math.round(S.map.getTilt() || 0) : 0), gpuOn: () => !!S.gpuOn, mainMapIsGoogle, MAIN_MAP_KEY, selectMap, shownMap, currentMainMap, MAP_KINDS, gpuPlan, openWithQuery, openWithDestination, focusPlace, SIDE_PROXIES, mapKey, distToPolylineM, nearestOnPolyline, createOffRouteTracker, createVoiceCues, nearestChargers, createCarGlide, aheadPoint, mapOptions, cameraNeedsUpdate, createFpsMeter, scaledBoxStyle, capText, warnText, decodePolyline, parseRoutesResponse, routesRequestBody, nextStepIndex, fmtDist, buildLoaderUrl, createDebouncer, osrmUrl, summarizeRoute, mapStyles, bearing, meters, CATEGORIES };
   if (typeof document !== "undefined") {
     if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", () => init());
     else init();
