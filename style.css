@@ -2130,7 +2130,7 @@ input {
 .gmap-search { display: flex; background: var(--bg-card); border: 1px solid rgba(255,255,255,0.12); border-radius: 14px; overflow: hidden; }
 .gmap-search input { flex: 1; min-width: 0; background: transparent; border: 0; outline: 0; color: #fff; font-size: 1.1rem; padding: 14px 16px; }
 .gmap-search button { background: transparent; border: 0; color: #9aa0a8; font-size: 1.1rem; padding: 0 16px; cursor: pointer; }
-#gmap-results { display: none; max-height: 45vh; overflow-y: auto; background: var(--bg-card); border: 1px solid rgba(255,255,255,0.12); border-radius: 14px; }
+#gmap-results { display: none; max-height: 62vh; overflow-y: auto; background: var(--bg-card); border: 1px solid rgba(255,255,255,0.12); border-radius: 14px; }
 #gmap-results.show { display: block; }
 .gmap-result { display: flex; flex-direction: column; align-items: flex-start; width: 100%; text-align: left; background: transparent; border: 0; border-bottom: 1px solid rgba(255,255,255,0.06); color: #fff; padding: 12px 16px; cursor: pointer; }
 .gmap-result:last-child { border-bottom: 0; }
@@ -2167,6 +2167,10 @@ body.gmap-open .car-hud-stats { z-index: 950; bottom: 72px; }
 body.gmap-open:has(#gmap-card.show) .car-hud-stats { visibility: hidden; }
 .gmap-nav-signal { display: none; margin-top: 5px; padding: 3px 8px; border-radius: 8px; background: rgba(0,0,0,0.25); color: #fde68a; font-size: 0.95rem; font-weight: 700; }
 .gmap-nav-signal.show { display: block; }
+/* v3.10.115: "შემდეგ: მარცხნივ" when two maneuvers come close together; quick places under the Google search */
+.gmap-nav-then { display: none; margin-top: 4px; font-size: 0.95rem; font-weight: 700; color: #bbf7d0; }
+.gmap-nav-then.show { display: block; }
+.gmap-quick .gmap-result-main { font-size: 1.1rem; }
 body.gmap-open .dock-controls { display: none; } /* the Google layer has its own side panel (same look, see v3.10.55 below) */
 #btn-google-mode[hidden] { display: none; }
 

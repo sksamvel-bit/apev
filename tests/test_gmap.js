@@ -357,3 +357,15 @@ ok(/strokeColor: "#3e6ae1", strokeOpacity: 0\.7, strokeWeight: 4/.test(src) && !
   ok(/\.gmap-compass \{ position: absolute; top: 72px; right: 25px;/.test(css) && !/side-closed \.gmap-compass \{/.test(css), 'v3.10.114: compass above the panel, never beside it');
   ok(/\.gmap-side \{ top: 128px; right: 10px; gap: 2px;[^}]*max-height: calc\(100vh - 140px\)/.test(css) && /\.gmap-side \.gmap-btn \{ width: 70px; height: 42px; min-height: 32px;/.test(css), 'v3.10.114: panel under the compass, 70x32 buttons (area of 47x47)');
 }
+
+// v3.10.115: home / work / recent places under the Google search; "then …" when two maneuvers come close
+{
+  const a = { name: 'A', lat: 41.7, lng: 44.8 }, b = { name: 'B', lat: 41.72, lng: 44.8 }, a2 = { name: 'A (2)', lat: 41.70001, lng: 44.80001 };
+  let l = G.addRecent([], a); l = G.addRecent(l, b); l = G.addRecent(l, a2);
+  ok(l.length === 2 && l[0].name === 'A (2)' && l[1].name === 'B', 'v3.10.115: recents newest first, the same spot (< 60 m) only once');
+  let big = []; for (let i = 0; i < 8; i++) big = G.addRecent(big, { name: 'P' + i, lat: 41 + i * 0.01, lng: 44 });
+  ok(big.length === 5 && big[0].name === 'P7', 'v3.10.115: at most 5 recents');
+  ok(G.thenPhrase('TURN_LEFT') === 'მარცხნივ' && G.thenPhrase('TURN_SLIGHT_RIGHT') === 'ოდნავ მარჯვნივ' && G.thenPhrase('ROUNDABOUT_LEFT') === 'წრეზე' && G.thenPhrase('UTURN_LEFT') === 'მობრუნება' && G.thenPhrase('STRAIGHT') === '' && G.thenPhrase('') === '', 'v3.10.115: "then" words for the next maneuver');
+  ok(G.thenIsClose(80) && !G.thenIsClose(200) && !G.thenIsClose(NaN), 'v3.10.115: "then" only when the next maneuver is < 150 m after this one');
+  ok(/function showQuickList\(\)/.test(src) && /goFav\("home"\)/.test(src) && /S\.pendingFav = \{ kind, text \}/.test(src) && /speak\(thenTxt \? t \+ ", შემდეგ " \+ thenTxt : t\)/.test(src), 'v3.10.115: quick list wired, home/work coordinates learned once, "then" also spoken');
+}

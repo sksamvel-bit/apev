@@ -452,6 +452,27 @@
     return { arrive: hhmm, dur, dist: fmtDist(remainM) };
   }
 
+  /** v3.10.115: recent places (newest first, max 5, the same place only once: same name or within 60 m). */
+  function addRecent(list, p, max = 5) {
+    const out = [p].concat((list || []).filter((r) => r && r.name !== p.name && meters(r, p) > 60));
+    return out.slice(0, max);
+  }
+  /** v3.10.115: the "then" line: what the maneuver after the next one is, in two words; "" when there is nothing to say. */
+  function thenPhrase(m) {
+    m = String(m || "");
+    const side = /LEFT/.test(m) ? "მარცხნივ" : /RIGHT/.test(m) ? "მარჯვნივ" : "";
+    if (/^UTURN/.test(m)) return "მობრუნება";
+    if (/^ROUNDABOUT/.test(m)) return "წრეზე";
+    if (/^RAMP/.test(m)) return side ? "გასასვლელი " + side : "";
+    if (/^FORK/.test(m)) return side ? "განშტოება " + side : "";
+    if (/SLIGHT/.test(m)) return side ? "ოდნავ " + side : "";
+    if (/SHARP/.test(m)) return side ? "მკვეთრად " + side : "";
+    if (/^TURN_(LEFT|RIGHT)$/.test(m)) return side;
+    return "";
+  }
+  /** The next maneuver is "close" after the coming one: under 150 m apart (along the route when known). */
+  function thenIsClose(gapM) { return isFinite(gapM) && gapM >= 0 && gapM < 150; }
+
   /** v3.10.110: map zoom while following, by speed (Samvel: street names and house numbers on the Google map). Google shows
    *  house numbers from about zoom 18, so slow or standing = 18; town speed = 17; above 65 km/h = 16 (more road ahead).
    *  Hysteresis (18 until > 20 km/h, 16 until < 55 km/h) so a speed around a threshold does not zoom back and forth. */
@@ -972,6 +993,72 @@
     }
   }
 
+  // ---------- v3.10.115: home, work and recent places under the search box (one tap, no typing) ----------
+  const FAV_KEY = "gmapFavs", RECENT_KEY = "gmapRecent";
+  function readJson(k, d) { try { const v = JSON.parse(localStorage.getItem(k) || "null"); return v == null ? d : v; } catch (_) { return d; } }
+  function writeJson(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (_) {} }
+
+  function rememberPlace(pl) {
+    if (!pl || !pl.loc || !isFinite(pl.loc.lat)) return;
+    const p = { name: String(pl.name || "ადგილი").slice(0, 80), address: String(pl.address || "").slice(0, 160), lat: +pl.loc.lat, lng: +pl.loc.lng };
+    writeJson(RECENT_KEY, addRecent(readJson(RECENT_KEY, []), p));
+    // the home / work address from the settings, searched once: its coordinates are kept, so the next time is one tap
+    if (S.pendingFav) {
+      const favs = readJson(FAV_KEY, {});
+      favs[S.pendingFav.kind] = Object.assign({ text: S.pendingFav.text }, p);
+      writeJson(FAV_KEY, favs);
+      S.pendingFav = null;
+    }
+  }
+
+  function goPlace(p) {
+    clearResults();
+    const input = $("gmap-search-input");
+    if (input) { input.value = p.name; input.blur(); }
+    showPlace({ name: p.name, address: p.address, loc: { lat: p.lat, lng: p.lng } });
+    routeToPlace();
+  }
+
+  function goFav(kind) {
+    const text = (localStorage.getItem(kind === "home" ? "saved_home" : "saved_work") || "").trim();
+    const fav = readJson(FAV_KEY, {})[kind];
+    if (fav && fav.text === text && isFinite(fav.lat)) { goPlace(fav); return; }
+    if (!text) { setStatus((kind === "home" ? "სახლის" : "სამსახურის") + " მისამართი ჩაწერეთ პარამეტრებში (⚙️)", 5000); return; }
+    S.pendingFav = { kind, text };   // the result the driver picks becomes home / work (saved by rememberPlace)
+    const input = $("gmap-search-input");
+    if (input) input.value = text;
+    suggest(text);
+  }
+
+  function quickRow(icon, title, sub, fn) {
+    const b = document.createElement("button");
+    b.type = "button";
+    b.className = "gmap-result gmap-quick";
+    const main = document.createElement("span");
+    main.className = "gmap-result-main";
+    main.textContent = icon + " " + title;
+    const sec = document.createElement("span");
+    sec.className = "gmap-result-sec";
+    sec.textContent = sub;
+    b.appendChild(main);
+    b.appendChild(sec);
+    b.addEventListener("mousedown", (e) => e.preventDefault());   // keep the input focused until the tap is handled
+    b.addEventListener("click", (e) => { e.stopPropagation(); fn(); });
+    return b;
+  }
+
+  function showQuickList() {
+    const box = $("gmap-results");
+    if (!box) return;
+    box.textContent = "";
+    const home = (localStorage.getItem("saved_home") || "").trim(), work = (localStorage.getItem("saved_work") || "").trim();
+    box.appendChild(quickRow("🏠", "სახლი", home || "მისამართი ჩაწერეთ პარამეტრებში", () => goFav("home")));
+    box.appendChild(quickRow("🏢", "სამსახური", work || "მისამართი ჩაწერეთ პარამეტრებში", () => goFav("work")));
+    readJson(RECENT_KEY, []).forEach((r) => { if (r && isFinite(r.lat)) box.appendChild(quickRow("🕘", r.name, r.address, () => goPlace(r))); });
+    box.classList.add("show");
+    S.quickShown = true;
+  }
+
   async function choosePrediction(pp) {
     try {
       await permit("details");
@@ -1010,6 +1097,7 @@
     const loc = p.loc && typeof p.loc.lat === "function" ? { lat: p.loc.lat(), lng: p.loc.lng() } : p.loc;
     if (!loc) return;
     S.place = { name: p.name, address: p.address, loc };
+    rememberPlace(S.place);
     resetRoutes();
     if (!S.placeMarker) S.placeMarker = new S.g.core.Marker({ map: S.map, zIndex: 900 });
     S.placeMarker.setPosition(loc);
@@ -1182,7 +1270,18 @@
       icon.classList.toggle("show", !!mi);
       if (mi) { $("gmap-nav-icon-path").setAttribute("d", mi.d); $("gmap-nav-icon-g").setAttribute("transform", mi.left ? "translate(24,0) scale(-1,1)" : ""); }
     }
-    if (S.voice) { const t = S.voice.update(S.stepIdx, st, d, window.currentSpeedKmhForLock || 0); if (t) speak(t); }
+    // v3.10.115: "then …" when the maneuver after this one comes within 150 m of it
+    const nx = rt.steps[S.stepIdx + 1];
+    let thenTxt = "";
+    if (nx) {
+      const gap = rt.stepAlong && rt.stepAlong[S.stepIdx + 1] != null && rt.stepAlong[S.stepIdx] != null ? rt.stepAlong[S.stepIdx + 1] - rt.stepAlong[S.stepIdx] : meters(st.loc, nx.loc);
+      if (thenIsClose(gap)) thenTxt = thenPhrase(nx.maneuver);
+    }
+    let th = $("gmap-nav-then");
+    if (!th) { th = document.createElement("div"); th.id = "gmap-nav-then"; th.className = "gmap-nav-then"; nav.insertBefore(th, $("gmap-nav-signal") || null); }
+    th.textContent = thenTxt ? "შემდეგ: " + thenTxt : "";
+    th.classList.toggle("show", !!thenTxt);
+    if (S.voice) { const t = S.voice.update(S.stepIdx, st, d, window.currentSpeedKmhForLock || 0); if (t) speak(thenTxt ? t + ", შემდეგ " + thenTxt : t); }
     nav.classList.add("show");
   }
 
@@ -1513,7 +1612,9 @@
     const input = $("gmap-search-input");
     if (input) {
       const deb = createDebouncer(suggest, 300);
-      input.addEventListener("input", () => { if (input.value.trim().length < 3) { deb.cancel(); clearResults(); } else deb(input.value); });
+      input.addEventListener("input", () => { S.quickShown = false; S.pendingFav = null; if (input.value.trim().length < 3) { deb.cancel(); if (!input.value.trim()) showQuickList(); else clearResults(); } else deb(input.value); });
+      input.addEventListener("focus", () => { if (!input.value.trim()) showQuickList(); });
+      input.addEventListener("blur", () => { setTimeout(() => { if (S.quickShown) { S.quickShown = false; clearResults(); } }, 250); });
       input.addEventListener("keydown", (e) => { if (e.key === "Enter") { deb.cancel(); suggest(input.value); } });
     }
     on("gmap-search-clear", "click", () => { if (input) input.value = ""; clearResults(); closeCard(); });
@@ -1583,7 +1684,7 @@
     if (S.enabled && mainMapIsGoogle(q)) autoOpen();
   }
 
-  const api = { init, open, close, isOpen: () => S.open, isEnabled: () => S.enabled, camMoves: () => S.camCount, isVector: () => !!S.vector, tilt: () => (S.map && S.map.getTilt ? Math.round(S.map.getTilt() || 0) : 0), renderType: () => (S.map && S.map.getRenderingType ? String(S.map.getRenderingType() || "") : ""), gpuOn: () => !!S.gpuOn, mainMapIsGoogle, MAIN_MAP_KEY, selectMap, shownMap, currentMainMap, MAP_KINDS, gpuPlan, openWithQuery, openWithDestination, focusPlace, SIDE_PROXIES, mapKey, distToPolylineM, nearestOnPolyline, createOffRouteTracker, createVoiceCues, nearestChargers, createCarGlide, aheadPoint, mapOptions, cameraNeedsUpdate, createFpsMeter, scaledBoxStyle, capText, warnText, decodePolyline, parseRoutesResponse, routesRequestBody, nextStepIndex, fmtDist, autoZoom, sideShouldHide, maneuverIcon, routeCum, remainingOnRoute, etaInfo, stepAlongs, nextStepAlong, distToStep, hasArrived, parseSavedNav, buildLoaderUrl, createDebouncer, osrmUrl, summarizeRoute, mapStyles, bearing, meters, CATEGORIES };
+  const api = { init, open, close, isOpen: () => S.open, isEnabled: () => S.enabled, camMoves: () => S.camCount, isVector: () => !!S.vector, tilt: () => (S.map && S.map.getTilt ? Math.round(S.map.getTilt() || 0) : 0), renderType: () => (S.map && S.map.getRenderingType ? String(S.map.getRenderingType() || "") : ""), gpuOn: () => !!S.gpuOn, mainMapIsGoogle, MAIN_MAP_KEY, selectMap, shownMap, currentMainMap, MAP_KINDS, gpuPlan, openWithQuery, openWithDestination, focusPlace, SIDE_PROXIES, mapKey, distToPolylineM, nearestOnPolyline, createOffRouteTracker, createVoiceCues, nearestChargers, createCarGlide, aheadPoint, mapOptions, cameraNeedsUpdate, createFpsMeter, scaledBoxStyle, capText, warnText, decodePolyline, parseRoutesResponse, routesRequestBody, nextStepIndex, fmtDist, addRecent, thenPhrase, thenIsClose, autoZoom, sideShouldHide, maneuverIcon, routeCum, remainingOnRoute, etaInfo, stepAlongs, nextStepAlong, distToStep, hasArrived, parseSavedNav, buildLoaderUrl, createDebouncer, osrmUrl, summarizeRoute, mapStyles, bearing, meters, CATEGORIES };
   if (typeof document !== "undefined") {
     if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", () => init());
     else init();
