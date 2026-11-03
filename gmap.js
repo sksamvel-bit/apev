@@ -421,6 +421,18 @@
     return { arrive: hhmm, dur, dist: fmtDist(remainM) };
   }
 
+  /** v3.10.110: map zoom while following, by speed (Samvel: street names and house numbers on the Google map). Google shows
+   *  house numbers from about zoom 18, so slow or standing = 18; town speed = 17; above 65 km/h = 16 (more road ahead).
+   *  Hysteresis (18 until > 20 km/h, 16 until < 55 km/h) so a speed around a threshold does not zoom back and forth. */
+  function autoZoom(kmh, cur) {
+    const z = Math.round(cur);
+    if (kmh < 12) return 18;
+    if (kmh > 65) return 16;
+    if (z === 18) return kmh > 20 ? 17 : 18;
+    if (z === 16) return kmh < 55 ? 17 : 16;
+    return 17;
+  }
+
   function fmtDist(m) { return m >= 1000 ? (m / 1000).toFixed(m >= 10000 ? 0 : 1) + " კმ" : Math.round(m / 10) * 10 + " მ"; }
 
   // ---------- the mode ----------
@@ -741,6 +753,15 @@
     S.debugRaf = requestAnimationFrame(loop);
   }
 
+  /** Follows autoZoom while the camera follows the car; a zoom the driver chose (+ / −) is kept for 60 s, ?gzoom=0 turns it off. */
+  function applyAutoZoom(fix) {
+    if (S.noAutoZoom || !S.follow || !S.map || Date.now() - (S.manualZoomAt || 0) < 60000) return;
+    const kmh = (fix.speedMs || 0) * 3.6 || window.currentSpeedKmhForLock || 0;
+    const cur = S.map.getZoom() || 17;
+    const z = autoZoom(kmh, cur);
+    if (z !== Math.round(cur)) S.map.setZoom(z);
+  }
+
   /** The latest fix from the main app: window.__carFix (GPS heading snapped to the road) or, as a fallback, window.currentPos. */
   function readFix() {
     const f = window.__carFix;
@@ -759,6 +780,7 @@
     const fix = readFix();
     if (!fix || fix === S.lastFix) return;
     S.lastFix = fix;
+    applyAutoZoom(fix);
     if (!S.glide && window.MapGL) S.glide = createCarGlide(window.MapGL);
     if (S.glide) { S.glide.setFix(fix, performance.now()); wakeCar(); }
     const pos = { lat: fix.lat, lng: fix.lng };
@@ -1385,11 +1407,12 @@
     const on = (id, ev, fn) => { const el = $(id); if (el) el.addEventListener(ev, fn); };
     on("btn-google-mode", "click", () => (S.open ? close() : open()));
     on("gmap-btn-close", "click", close);
-    on("gmap-btn-zoom-in", "click", () => S.map && S.map.setZoom(S.map.getZoom() + 1));
-    on("gmap-btn-zoom-out", "click", () => S.map && S.map.setZoom(S.map.getZoom() - 1));
+    on("gmap-btn-zoom-in", "click", () => { if (!S.map) return; S.manualZoomAt = Date.now(); S.map.setZoom(S.map.getZoom() + 1); });
+    on("gmap-btn-zoom-out", "click", () => { if (!S.map) return; S.manualZoomAt = Date.now(); S.map.setZoom(S.map.getZoom() - 1); });
     on("gmap-btn-me", "click", () => {
       if (!S.map) return;
       S.follow = true;
+      S.manualZoomAt = 0;   // v3.10.110: back to the speed zoom
       $("gmap-btn-me").classList.add("active");
       wakeCar();   // the glide re-centres (and on the vector map turns heading-up) on its next frame
     });
@@ -1459,6 +1482,7 @@
     const gt = /[?&]gtilt=(\d+)/.exec(q);
     if (gt) S.gtilt = Math.min(60, Math.max(0, parseInt(gt[1], 10)));
     S.noTraffic = /[?&]gtraffic=0(&|$)/.test(q);
+    S.noAutoZoom = /[?&]gzoom=0(&|$)/.test(q);   // v3.10.110: no speed zoom (e.g. for the fps suite)
     // v3.10.79 ?gcam=gpu: GPU camera on the 3D (vector) map; ?gcamms=N ms between real camera moves (default 250)
     S.gpuOn = /[?&]gcam=gpu/.test(q);
     const gm = /[?&]gcamms=(\d+)/.exec(q);
@@ -1470,7 +1494,7 @@
     if (S.enabled && mainMapIsGoogle(q)) autoOpen();
   }
 
-  const api = { init, open, close, isOpen: () => S.open, isEnabled: () => S.enabled, camMoves: () => S.camCount, isVector: () => !!S.vector, tilt: () => (S.map && S.map.getTilt ? Math.round(S.map.getTilt() || 0) : 0), renderType: () => (S.map && S.map.getRenderingType ? String(S.map.getRenderingType() || "") : ""), gpuOn: () => !!S.gpuOn, mainMapIsGoogle, MAIN_MAP_KEY, selectMap, shownMap, currentMainMap, MAP_KINDS, gpuPlan, openWithQuery, openWithDestination, focusPlace, SIDE_PROXIES, mapKey, distToPolylineM, nearestOnPolyline, createOffRouteTracker, createVoiceCues, nearestChargers, createCarGlide, aheadPoint, mapOptions, cameraNeedsUpdate, createFpsMeter, scaledBoxStyle, capText, warnText, decodePolyline, parseRoutesResponse, routesRequestBody, nextStepIndex, fmtDist, maneuverIcon, routeCum, remainingOnRoute, etaInfo, stepAlongs, nextStepAlong, distToStep, hasArrived, parseSavedNav, buildLoaderUrl, createDebouncer, osrmUrl, summarizeRoute, mapStyles, bearing, meters, CATEGORIES };
+  const api = { init, open, close, isOpen: () => S.open, isEnabled: () => S.enabled, camMoves: () => S.camCount, isVector: () => !!S.vector, tilt: () => (S.map && S.map.getTilt ? Math.round(S.map.getTilt() || 0) : 0), renderType: () => (S.map && S.map.getRenderingType ? String(S.map.getRenderingType() || "") : ""), gpuOn: () => !!S.gpuOn, mainMapIsGoogle, MAIN_MAP_KEY, selectMap, shownMap, currentMainMap, MAP_KINDS, gpuPlan, openWithQuery, openWithDestination, focusPlace, SIDE_PROXIES, mapKey, distToPolylineM, nearestOnPolyline, createOffRouteTracker, createVoiceCues, nearestChargers, createCarGlide, aheadPoint, mapOptions, cameraNeedsUpdate, createFpsMeter, scaledBoxStyle, capText, warnText, decodePolyline, parseRoutesResponse, routesRequestBody, nextStepIndex, fmtDist, autoZoom, maneuverIcon, routeCum, remainingOnRoute, etaInfo, stepAlongs, nextStepAlong, distToStep, hasArrived, parseSavedNav, buildLoaderUrl, createDebouncer, osrmUrl, summarizeRoute, mapStyles, bearing, meters, CATEGORIES };
   if (typeof document !== "undefined") {
     if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", () => init());
     else init();

@@ -316,3 +316,12 @@ ok(/strokeColor: "#3e6ae1", strokeOpacity: 0\.7, strokeWeight: 4/.test(src) && !
   const appSrc = fs.readFileSync(__dirname + '/../app.js', 'utf8');
   ok(/width: 170,[^\n]*\n\s*height: 170,/.test(appSrc), 'v3.10.109: the pairing QR fits the 601 px screen');
 }
+
+// v3.10.110: Google map zoom by speed (house numbers from zoom 18), manual zoom kept 60 s, ?gzoom=0 off
+{
+  ok(G.autoZoom(0, 17) === 18 && G.autoZoom(40, 17) === 17 && G.autoZoom(90, 17) === 16, 'v3.10.110: standing 18, town 17, fast 16');
+  ok(G.autoZoom(18, 18) === 18 && G.autoZoom(25, 18) === 17 && G.autoZoom(60, 16) === 16 && G.autoZoom(50, 16) === 17, 'v3.10.110: hysteresis around 12-20 and 55-65 km/h');
+  ok(/S\.manualZoomAt = Date\.now\(\); S\.map\.setZoom\(S\.map\.getZoom\(\) \+ 1\)/.test(src) && /Date\.now\(\) - \(S\.manualZoomAt \|\| 0\) < 60000/.test(src) && /S\.manualZoomAt = 0;/.test(src), 'v3.10.110: + / − keeps the driver zoom for 60 s, ◎ returns to the speed zoom');
+  const appSrc = fs.readFileSync(__dirname + '/../app.js', 'utf8');
+  ok(/S\.noAutoZoom = \/\[\?&\]gzoom=0/.test(src) && !/q: "gmap3d=1"/.test(appSrc), 'v3.10.110: ?gzoom=0; the fps suite rows keep a fixed zoom');
+}
