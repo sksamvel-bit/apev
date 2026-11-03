@@ -285,3 +285,12 @@ ok(/strokeColor: "#3e6ae1", strokeOpacity: 0\.7, strokeWeight: 4/.test(src) && !
   ok(/setStatus\("მარშრუტი ვერ გადაითვალა/.test(src), 'v3.10.105: a failed reroute does not leave "გადაითვალა..." on the screen');
   ok(/AbortError" \? "timeout" : "network"/.test(src) && /code === "timeout"/.test(src) && /code === "network"/.test(src), 'v3.10.105: Google timeout / no network get their own text');
 }
+
+// v3.10.106: docs/NAV_STANDARDS.md sizes (1 CSS px ~ 0.26 mm in the car): secondary text >= 0.95rem, close buttons 48x48
+{
+  const css = fs.readFileSync(__dirname + '/../style.css', 'utf8');
+  ok(/#gmap-nav-text \{ font-size: 0\.95rem;/.test(css) && /\.gmap-nav-signal \{[^}]*font-size: 0\.95rem;/.test(css) && /\.gmap-route-note \{[^}]*font-size: 0\.95rem;/.test(css), 'v3.10.106: banner text, signal, traffic delay >= 3.8 mm (S2)');
+  ok(/\.gmap-result-main \{ font-size: 1\.25rem;/.test(css) && /#gmap-card-title \{ font-size: 1\.25rem;/.test(css), 'v3.10.106: search result name and card title >= 5 mm (S1)');
+  ok(/#gmap-nav-stop \{[^}]*width: 48px; height: 48px;/.test(css) && /\.gmap-card-x \{[^}]*width: 48px; height: 48px;/.test(css), 'v3.10.106: close buttons 12x12 mm (S4)');
+  ok(fs.existsSync(__dirname + '/../docs/NAV_STANDARDS.md'), 'docs/NAV_STANDARDS.md exists (the rules every version is checked against)');
+}
