@@ -333,3 +333,12 @@ ok(/strokeColor: "#3e6ae1", strokeOpacity: 0\.7, strokeWeight: 4/.test(src) && !
   ok(/updateCompass\(headingUp \? f\.heading : mapHeading\)/.test(src) && /if \(a === S\.compassDeg\) return;/.test(src), 'v3.10.111: compass follows the map heading, only on a 1 degree change');
   ok(/const headingUp = S\.vector && S\.follow && !S\.northUp;/.test(src) && /localStorage\.setItem\("gmapNorthUp"/.test(src), 'v3.10.111: north-up mode stops the map turning, remembered');
 }
+
+// v3.10.112 (design "ე"): the Google side panel hides while driving; edge tab, compass and round ◎ stay
+{
+  const html = fs.readFileSync(__dirname + '/../index.html', 'utf8'), css = fs.readFileSync(__dirname + '/../style.css', 'utf8');
+  ok(G.sideShouldHide(true, 40, 9000) && !G.sideShouldHide(true, 40, 5000) && !G.sideShouldHide(true, 5, 60000) && !G.sideShouldHide(false, 40, 60000), 'v3.10.112: hides after 8 s without a touch at > 10 km/h, never while standing');
+  ok(/id="gmap-side-tab"/.test(html) && /id="gmap-fab-me"/.test(html) && /\.gmap-side-tab \{[^}]*width: 48px;/.test(css) && /\.gmap-fab-me \{[^}]*width: 52px; height: 52px;/.test(css), 'v3.10.112: edge tab 48 px touch area, round ◎ 52 px');
+  ok(/#gmap-layer\.side-closed \.gmap-side \{ transform: translateX/.test(css) && !/side-closed[^}]*backdrop-filter/.test(css), 'v3.10.112: the panel slides with a transform only (no blur, no re-layout)');
+  ok(/S\.sideFixed = \/\[\?&\]gside=fixed/.test(src) && /setInterval\(sideTick, 1000\)/.test(src), 'v3.10.112: ?gside=fixed keeps it open; checked once a second');
+}

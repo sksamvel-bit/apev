@@ -577,6 +577,7 @@
       // v3.10.96: the car photos showed a flat map with tilt 45 in the options; set it again once the first tiles are in
       if (S.vector && S.gtilt) { const m = S.map; const l = m.addListener("tilesloaded", () => { l.remove(); if (m.setTilt) m.setTilt(S.gtilt); }); }
       S.map.addListener("dragstart", () => { S.follow = false; $("gmap-btn-me") && $("gmap-btn-me").classList.remove("active"); });
+      S.map.addListener("click", () => { if (S.sideOpen && !S.sideFixed) setSideOpen(false); });   // v3.10.112: a tap on the map tucks the panel away
     }
     S.carMarker = null; S.carRot = null; S.lastMarker = null; S.lastCam = null;
     S.traffic = new TrafficLayer();
@@ -685,6 +686,24 @@
     if (a === S.compassDeg) return;
     S.compassDeg = a;
     r.style.transform = "rotate(" + a + "deg)";
+  }
+
+  /** v3.10.112 (design "ე"): hide the side panel after 8 s without a touch while the car moves (> 10 km/h); it never hides
+   *  by itself while standing. ?gside=fixed keeps it open. */
+  function sideShouldHide(open, kmh, idleMs) { return !!open && kmh > 10 && idleMs > 8000; }
+
+  function setSideOpen(open) {
+    S.sideOpen = !!open;
+    S.sideTouchAt = Date.now();
+    const layer = $("gmap-layer");
+    if (layer) layer.classList.toggle("side-closed", !S.sideOpen);
+  }
+
+  function sideTick() {
+    if (S.sideFixed) return;
+    if (sideShouldHide(S.sideOpen, S.lastKmh || 0, Date.now() - (S.sideTouchAt || 0))) setSideOpen(false);
+    const fab = $("gmap-fab-me"), me = $("gmap-btn-me");
+    if (fab && me) fab.classList.toggle("active", me.classList.contains("active"));
   }
 
   /** A tap on the compass: north up (the map stops turning) or back to heading up. Kept in localStorage. */
@@ -805,6 +824,7 @@
     const fix = readFix();
     if (!fix || fix === S.lastFix) return;
     S.lastFix = fix;
+    S.lastKmh = (fix.speedMs || 0) * 3.6 || window.currentSpeedKmhForLock || 0;
     applyAutoZoom(fix);
     if (!S.glide && window.MapGL) S.glide = createCarGlide(window.MapGL);
     if (S.glide) { S.glide.setFix(fix, performance.now()); wakeCar(); }
@@ -1351,6 +1371,8 @@
       startDebugMeter();
       S.timers.push(setInterval(syncCar, 250));
       resumeSavedNav();
+      setSideOpen(true);
+      S.timers.push(setInterval(sideTick, 1000));
     } catch (e) {
       // v3.10.77: no Google map (no network, the free-tier cap, a key problem): back to our map instead of an empty layer
       const msg = (e && e.message) || "Google რუკა მიუწვდომელია";
@@ -1433,6 +1455,9 @@
     on("btn-google-mode", "click", () => (S.open ? close() : open()));
     on("gmap-btn-close", "click", close);
     on("gmap-compass", "click", (e) => { e.stopPropagation(); toggleNorthUp(); });
+    on("gmap-side-tab", "click", (e) => { e.stopPropagation(); setSideOpen(true); });
+    on("gmap-fab-me", "click", (e) => { e.stopPropagation(); const me = $("gmap-btn-me"); if (me) me.click(); sideTick(); });
+    { const side = document.querySelector("#gmap-layer .gmap-side"); if (side) side.addEventListener("click", () => { S.sideTouchAt = Date.now(); }, true); }
     on("gmap-btn-zoom-in", "click", () => { if (!S.map) return; S.manualZoomAt = Date.now(); S.map.setZoom(S.map.getZoom() + 1); });
     on("gmap-btn-zoom-out", "click", () => { if (!S.map) return; S.manualZoomAt = Date.now(); S.map.setZoom(S.map.getZoom() - 1); });
     on("gmap-btn-me", "click", () => {
@@ -1508,7 +1533,8 @@
     const gt = /[?&]gtilt=(\d+)/.exec(q);
     if (gt) S.gtilt = Math.min(60, Math.max(0, parseInt(gt[1], 10)));
     S.noTraffic = /[?&]gtraffic=0(&|$)/.test(q);
-    S.noAutoZoom = /[?&]gzoom=0(&|$)/.test(q);   // v3.10.110: no speed zoom (e.g. for the fps suite)
+    S.noAutoZoom = /[?&]gzoom=0(&|$)/.test(q);
+    S.sideFixed = /[?&]gside=fixed/.test(q);   // v3.10.112: the side panel never hides itself   // v3.10.110: no speed zoom (e.g. for the fps suite)
     // v3.10.79 ?gcam=gpu: GPU camera on the 3D (vector) map; ?gcamms=N ms between real camera moves (default 250)
     S.gpuOn = /[?&]gcam=gpu/.test(q);
     try { S.northUp = localStorage.getItem("gmapNorthUp") === "1"; } catch (_) { S.northUp = false; }   // v3.10.111
@@ -1522,7 +1548,7 @@
     if (S.enabled && mainMapIsGoogle(q)) autoOpen();
   }
 
-  const api = { init, open, close, isOpen: () => S.open, isEnabled: () => S.enabled, camMoves: () => S.camCount, isVector: () => !!S.vector, tilt: () => (S.map && S.map.getTilt ? Math.round(S.map.getTilt() || 0) : 0), renderType: () => (S.map && S.map.getRenderingType ? String(S.map.getRenderingType() || "") : ""), gpuOn: () => !!S.gpuOn, mainMapIsGoogle, MAIN_MAP_KEY, selectMap, shownMap, currentMainMap, MAP_KINDS, gpuPlan, openWithQuery, openWithDestination, focusPlace, SIDE_PROXIES, mapKey, distToPolylineM, nearestOnPolyline, createOffRouteTracker, createVoiceCues, nearestChargers, createCarGlide, aheadPoint, mapOptions, cameraNeedsUpdate, createFpsMeter, scaledBoxStyle, capText, warnText, decodePolyline, parseRoutesResponse, routesRequestBody, nextStepIndex, fmtDist, autoZoom, maneuverIcon, routeCum, remainingOnRoute, etaInfo, stepAlongs, nextStepAlong, distToStep, hasArrived, parseSavedNav, buildLoaderUrl, createDebouncer, osrmUrl, summarizeRoute, mapStyles, bearing, meters, CATEGORIES };
+  const api = { init, open, close, isOpen: () => S.open, isEnabled: () => S.enabled, camMoves: () => S.camCount, isVector: () => !!S.vector, tilt: () => (S.map && S.map.getTilt ? Math.round(S.map.getTilt() || 0) : 0), renderType: () => (S.map && S.map.getRenderingType ? String(S.map.getRenderingType() || "") : ""), gpuOn: () => !!S.gpuOn, mainMapIsGoogle, MAIN_MAP_KEY, selectMap, shownMap, currentMainMap, MAP_KINDS, gpuPlan, openWithQuery, openWithDestination, focusPlace, SIDE_PROXIES, mapKey, distToPolylineM, nearestOnPolyline, createOffRouteTracker, createVoiceCues, nearestChargers, createCarGlide, aheadPoint, mapOptions, cameraNeedsUpdate, createFpsMeter, scaledBoxStyle, capText, warnText, decodePolyline, parseRoutesResponse, routesRequestBody, nextStepIndex, fmtDist, autoZoom, sideShouldHide, maneuverIcon, routeCum, remainingOnRoute, etaInfo, stepAlongs, nextStepAlong, distToStep, hasArrived, parseSavedNav, buildLoaderUrl, createDebouncer, osrmUrl, summarizeRoute, mapStyles, bearing, meters, CATEGORIES };
   if (typeof document !== "undefined") {
     if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", () => init());
     else init();
