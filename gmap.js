@@ -6,8 +6,9 @@
  * the car position) is drawn on top of it, which is allowed. The mode is opt-in: it needs GOOGLE_MAPS_KEY on the server
  * (/api/gmaps-config, behind the access PIN); without the key the dock button stays hidden and nothing is loaded from Google.
  *
- * The Google script is loaded only when the driver opens the mode. The map is a classic (raster, mapId-less) map with JSON styles,
- * which is much lighter than the vector/3D map on the Atom MCU2.
+ * The Google script is loaded only when the driver opens the mode. Since v3.10.93 it is the start map: the vector (3D, heading-up)
+ * map by default, the classic raster map as an option (?map / map menu); our MapLibre map is the automatic fallback. Routes, search
+ * and rerouting come from Google (Routes API, Places API New), with OSRM only when Google cannot answer.
  */
 (function (root, factory) {
   if (typeof module === "object" && module.exports) module.exports = factory();
@@ -379,6 +380,14 @@
       return cum[nr.i] + t * (cum[nr.i + 1] - cum[nr.i]);
     });
   }
+  /** v3.10.105: index of the next maneuver by metres along the route: the first one (from step 1, never going back) the car has not
+   *  yet passed by 5 m (GPS lag); -1 when some maneuver could not be placed on the line (the caller then uses nextStepIndex). */
+  function nextStepAlong(stepAlong, carAlongM, from) {
+    const n = stepAlong.length;
+    if (!n || stepAlong.some((a) => a == null)) return -1;
+    for (let k = Math.max(from || 0, 1); k < n; k++) if (stepAlong[k] > carAlongM - 5) return k;
+    return n - 1;
+  }
   /** Distance to the next maneuver: along the route when the car is on it; straight line otherwise, or when the along value is
    *  impossible (shorter than the straight line: the maneuver matched a wrong part of a looping route). */
   function distToStep(straightM, alongStepM, carAlongM) {
@@ -390,8 +399,10 @@
   function hasArrived(distToPlaceM, remainOnRouteM) {
     return distToPlaceM < 30 || (remainOnRouteM != null && remainOnRouteM < 30);
   }
-  /** v3.10.104: the saved Google navigation (localStorage gmapNav) if it is fresh (3 h): { name, address, lat, lng } or null. */
-  const NAV_KEY = "gmapNav", NAV_MAX_AGE_MS = 3 * 3600 * 1000;
+  /** v3.10.104: the saved Google navigation (localStorage gmapNav) if it is fresh: { name, address, lat, lng } or null.
+   *  v3.10.105: "fresh" = refreshed by the running navigation within the last 10 min (a reload on shifting into R), not 3 h:
+   *  a trip that ended without the arrival (parked 50 m before the end) must not start again on the next drive. */
+  const NAV_KEY = "gmapNav", NAV_MAX_AGE_MS = 10 * 60 * 1000, NAV_NEAR_M = 300;
   function parseSavedNav(str, now) {
     try {
       const n = JSON.parse(str || "null");
@@ -450,7 +461,7 @@
       const isCap = j && j.error === "cap";
       const e = new Error(isCap ? capText(j) : "Google-ის ნებართვა ვერ მივიღე (" + r.status + ")");
       e.code = isCap ? "cap:" + sku + ":" + j.reason : "http" + r.status;
-      if (isCap) { setStatus(e.message); say(e.message); }
+      if (isCap) { setStatus(e.message, 8000); say(e.message); }
       throw e;
     }
     if (j && j.warn) {
@@ -461,7 +472,10 @@
   }
   const isCap = (e) => !!(e && typeof e.code === "string" && e.code.indexOf("cap:") === 0);
 
-  function setStatus(text) {
+  /** The status bubble; with ms it hides itself after that long. v3.10.105: one timer, so an older timer never hides a newer text. */
+  function setStatus(text, ms) {
+    clearTimeout(S.statusTimer);
+    if (text && ms) S.statusTimer = setTimeout(() => setStatus(""), ms);
     const el = $("gmap-status");
     if (!el) return;
     el.textContent = text || "";
@@ -767,11 +781,11 @@
       const left = S.carAlong != null && rt && rt.cum ? rt.cum[rt.cum.length - 1] - S.carAlong : null;
       if (S.place && S.place.loc && hasArrived(meters(pos, S.place.loc), left)) {
         stopNavigation();
-        setStatus("დანიშნულების ადგილზე ხართ");
+        setStatus("დანიშნულების ადგილზე ხართ", 5000);
         speak("დანიშნულების ადგილზე მიხვედით");
-        setTimeout(() => setStatus(""), 5000);
         return;
       }
+      if (Date.now() - (S.navSavedAt || 0) > 30000) saveNav();
       updateNavBanner();
       updateSignal(pos, fix.headingDeg);
     }
@@ -845,15 +859,17 @@
       if (!S.sessionToken) newToken();
       const c = S.map ? S.map.getCenter() : null;
       const center = c ? { lat: c.lat(), lng: c.lng() } : currentCenter();
+      const seq = S.sugSeq = (S.sugSeq || 0) + 1;
       await permit("autocomplete");
       const res = await S.g.places.AutocompleteSuggestion.fetchAutocompleteSuggestions({
         input: q, sessionToken: S.sessionToken, language: "ka", region: "ge", includedRegionCodes: ["ge"],
         locationBias: { center, radius: 30000 }
       });
+      if (seq !== S.sugSeq) return;   // v3.10.105: an older, slower answer must not replace the newer one
       renderSuggestions((res && res.suggestions) || []);
     } catch (e) {
-      if (isCap(e) || (e && e.code === "permit")) { clearResults(); if (!isCap(e)) setStatus(e.message); return; }
-      setStatus("ძიება ვერ მუშაობს: ჩართულია თუ არა Places API (New) თქვენს Google პროექტში?");
+      if (isCap(e) || (e && e.code === "permit")) { clearResults(); if (!isCap(e)) setStatus(e.message, 6000); return; }
+      setStatus("ძიება ვერ მუშაობს: ჩართულია თუ არა Places API (New) თქვენს Google პროექტში?", 6000);
       console.warn("[GMap] autocomplete:", e && e.message);
     }
   }
@@ -872,7 +888,7 @@
       showPlace({ name, address: place.formattedAddress || "", loc: place.location });
     } catch (e) {
       if (isCap(e)) return;
-      setStatus("ადგილის დეტალები ვერ ჩაიტვირთა");
+      setStatus("ადგილის დეტალები ვერ ჩაიტვირთა", 6000);
       console.warn("[GMap] place details:", e && e.message);
     }
   }
@@ -959,7 +975,8 @@
         headers: { "Content-Type": "application/json", "X-Goog-Api-Key": S.key, "X-Goog-FieldMask": ROUTES_FIELD_MASK },
         body: JSON.stringify(routesRequestBody(from, to, departInMin))
       });
-    } finally { clearTimeout(timer); }
+    } catch (e) { throw fail(e && e.name === "AbortError" ? "timeout" : "network"); }
+    finally { clearTimeout(timer); }
     if (!r.ok) {
       let code = "google" + r.status;
       try { const j = await r.json(); if (j && j.error && j.error.status) code += ":" + j.error.status; } catch (_) {}
@@ -973,6 +990,8 @@
   function fallbackNote(code) {
     if (/^cap/.test(code)) return "Google მარშრუტების ლიმიტი ამოიწურა (" + (/month/.test(code) ? "თვის" : "დღის") + "), ნაჩვენებია OSRM მარშრუტი ტრაფიკის გარეშე.";
     if (code === "no-key") return "Google-ის გასაღები არ არის (GOOGLE_MAPS_KEY), ნაჩვენებია OSRM მარშრუტი ტრაფიკის გარეშე.";
+    if (code === "timeout") return "Google-მა მარშრუტი 10 წამში არ დააბრუნა, ნაჩვენებია OSRM მარშრუტი ტრაფიკის გარეშე.";
+    if (code === "network") return "Google-თან კავშირი ვერ დამყარდა, ნაჩვენებია OSRM მარშრუტი ტრაფიკის გარეშე.";
     if (/^google403/.test(code)) return "Google-მა მარშრუტი უარყო: რუკის გასაღებზე (Maps Platform API Key) Routes API უნდა იყოს ჩართული. ნაჩვენებია OSRM მარშრუტი.";
     // the code at the end (e.g. google503:UNAVAILABLE) lets the driver send us the exact reason from the car
     return "Google მარშრუტი ვერ მუშაობს (" + (code || "?") + "), ნაჩვენებია OSRM მარშრუტი ტრაფიკის გარეშე.";
@@ -984,7 +1003,7 @@
     // alternatives first (grey, under), the chosen one last (blue). v3.10.102: thin and see-through, no white casing,
     // so Google's traffic colours on the road stay visible under / beside the route
     S.routes.forEach((rt, i) => {
-      if (i === S.routeIdx) return;
+      if (i === S.routeIdx || S.navigating) return;
       const l = new Polyline({ path: rt.coords, map: S.map, strokeColor: "#8a8f98", strokeOpacity: 0.6, strokeWeight: 4, zIndex: 5, clickable: true });
       l.addListener("click", () => selectRoute(i));
       S.routeLines.push(l);
@@ -1044,14 +1063,18 @@
     updateEta();
     const rt = S.routes[S.routeIdx];
     if (!S.navigating || !rt || !rt.steps.length) { nav.classList.remove("show"); return; }
-    if (S.carPos) S.stepIdx = nextStepIndex(rt.steps, S.carPos, S.stepIdx);
-    const st = rt.steps[S.stepIdx];
-    let d = S.carPos ? meters(S.carPos, st.loc) : st.distanceM;
-    if (S.carPos && S.carAlong != null) {
+    const onRoute = S.carPos && S.carAlong != null;
+    if (onRoute) {
       if (!rt.cum) rt.cum = routeCum(rt.coords);
       if (!rt.stepAlong) rt.stepAlong = stepAlongs(rt.coords, rt.cum, rt.steps);
-      d = distToStep(d, rt.stepAlong[S.stepIdx], S.carAlong);
     }
+    if (S.carPos) {
+      const k = onRoute ? nextStepAlong(rt.stepAlong, S.carAlong, S.stepIdx) : -1;
+      S.stepIdx = k >= 0 ? k : nextStepIndex(rt.steps, S.carPos, S.stepIdx);
+    }
+    const st = rt.steps[S.stepIdx];
+    let d = S.carPos ? meters(S.carPos, st.loc) : st.distanceM;
+    if (onRoute) d = distToStep(d, rt.stepAlong[S.stepIdx], S.carAlong);
     $("gmap-nav-dist").textContent = fmtDist(d);
     $("gmap-nav-text").textContent = st.text;
     const icon = $("gmap-nav-icon");
@@ -1069,7 +1092,8 @@
     if (!S.routes.length) return;
     S.navigating = true; S.follow = true; S.stepIdx = 0; S.segIdx = 0; S.carAlong = null;
     // v3.10.104: remembered, so a page reload (the car browser reloads on shifting into R) carries on with the same destination
-    try { if (S.place && S.place.loc) localStorage.setItem(NAV_KEY, JSON.stringify({ name: S.place.name, address: S.place.address, lat: S.place.loc.lat, lng: S.place.loc.lng, t: Date.now() })); } catch (_) {}
+    saveNav();
+    drawRoutes();   // v3.10.105: without the grey alternatives (a tap on one would switch the route while driving)
     S.offRouteTracker = createOffRouteTracker({ thresholdM: OFF_ROUTE_M, ticks: 4, cooldownMs: 20000, maxReroutes: 12 });
     S.voice = createVoiceCues();
     prefetchSignals();
@@ -1086,10 +1110,18 @@
     updateNavBanner();
   }
 
+  /** Saves the running navigation; called on start and every 30 s while driving (the 10 min freshness above). */
+  function saveNav() {
+    S.navSavedAt = Date.now();
+    try { if (S.place && S.place.loc) localStorage.setItem(NAV_KEY, JSON.stringify({ name: S.place.name, address: S.place.address, lat: S.place.loc.lat, lng: S.place.loc.lng, t: S.navSavedAt })); } catch (_) {}
+  }
+
   function stopNavigation() {
-    if (S.navigating) { try { localStorage.removeItem(NAV_KEY); } catch (_) {} }
+    const was = S.navigating;
+    if (was) { try { localStorage.removeItem(NAV_KEY); } catch (_) {} }
     S.navigating = false;
     S.carAlong = null;
+    if (was && S.map && S.routes.length) drawRoutes();   // the alternatives come back with the route card
     S.offRouteTracker = null;
     S.voice = null;
     if (typeof window !== "undefined") window.__gmapNavigating = false;
@@ -1127,10 +1159,10 @@
       if (S.voice) S.voice.reset();
       prefetchSignals();
       speak("მარშრუტი გადაითვალა");
-      setStatus(note || "მარშრუტი გადაითვალა");
-      setTimeout(() => setStatus(""), 3000);
+      setStatus(note || "მარშრუტი გადაითვალა", note ? 6000 : 3000);
     } catch (e) {
       console.warn("[GMap] reroute failed:", e && e.message);
+      setStatus("მარშრუტი ვერ გადაითვალა, ვცდი ისევ, როცა გზიდან გადახვევთ", 5000);   // v3.10.105: was stuck on "გადაითვალა..."
     } finally {
       S.rerouting = false;
     }
@@ -1144,12 +1176,12 @@
     if (!saved || S.navigating) return;
     for (let k = 0; k < 20 && !S.carPos && S.open; k++) await new Promise((r) => setTimeout(r, 500));
     if (!S.open || S.navigating) return;
+    if (S.carPos && meters(S.carPos, saved) < NAV_NEAR_M) { try { localStorage.removeItem(NAV_KEY); } catch (_) {} return; }   // already there
     showPlace({ name: saved.name, address: saved.address, loc: { lat: saved.lat, lng: saved.lng } });
     await routeToPlace();
     if (!S.open || !S.place || !S.routes.length || S.navigating) return;
     startNavigation();
-    setStatus("ნავიგაცია გაგრძელდა: " + saved.name);
-    setTimeout(() => setStatus(""), 4000);
+    setStatus("ნავიგაცია გაგრძელდა: " + saved.name, 4000);
   }
 
   async function routeToPlace() {
@@ -1438,7 +1470,7 @@
     if (S.enabled && mainMapIsGoogle(q)) autoOpen();
   }
 
-  const api = { init, open, close, isOpen: () => S.open, isEnabled: () => S.enabled, camMoves: () => S.camCount, isVector: () => !!S.vector, tilt: () => (S.map && S.map.getTilt ? Math.round(S.map.getTilt() || 0) : 0), renderType: () => (S.map && S.map.getRenderingType ? String(S.map.getRenderingType() || "") : ""), gpuOn: () => !!S.gpuOn, mainMapIsGoogle, MAIN_MAP_KEY, selectMap, shownMap, currentMainMap, MAP_KINDS, gpuPlan, openWithQuery, openWithDestination, focusPlace, SIDE_PROXIES, mapKey, distToPolylineM, nearestOnPolyline, createOffRouteTracker, createVoiceCues, nearestChargers, createCarGlide, aheadPoint, mapOptions, cameraNeedsUpdate, createFpsMeter, scaledBoxStyle, capText, warnText, decodePolyline, parseRoutesResponse, routesRequestBody, nextStepIndex, fmtDist, maneuverIcon, routeCum, remainingOnRoute, etaInfo, stepAlongs, distToStep, hasArrived, parseSavedNav, buildLoaderUrl, createDebouncer, osrmUrl, summarizeRoute, mapStyles, bearing, meters, CATEGORIES };
+  const api = { init, open, close, isOpen: () => S.open, isEnabled: () => S.enabled, camMoves: () => S.camCount, isVector: () => !!S.vector, tilt: () => (S.map && S.map.getTilt ? Math.round(S.map.getTilt() || 0) : 0), renderType: () => (S.map && S.map.getRenderingType ? String(S.map.getRenderingType() || "") : ""), gpuOn: () => !!S.gpuOn, mainMapIsGoogle, MAIN_MAP_KEY, selectMap, shownMap, currentMainMap, MAP_KINDS, gpuPlan, openWithQuery, openWithDestination, focusPlace, SIDE_PROXIES, mapKey, distToPolylineM, nearestOnPolyline, createOffRouteTracker, createVoiceCues, nearestChargers, createCarGlide, aheadPoint, mapOptions, cameraNeedsUpdate, createFpsMeter, scaledBoxStyle, capText, warnText, decodePolyline, parseRoutesResponse, routesRequestBody, nextStepIndex, fmtDist, maneuverIcon, routeCum, remainingOnRoute, etaInfo, stepAlongs, nextStepAlong, distToStep, hasArrived, parseSavedNav, buildLoaderUrl, createDebouncer, osrmUrl, summarizeRoute, mapStyles, bearing, meters, CATEGORIES };
   if (typeof document !== "undefined") {
     if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", () => init());
     else init();

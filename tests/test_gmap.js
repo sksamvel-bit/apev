@@ -269,7 +269,19 @@ ok(/strokeColor: "#3e6ae1", strokeOpacity: 0\.7, strokeWeight: 4/.test(src) && !
   ok(G.distToStep(800, 900, 500) === 800, 'v3.10.104: along shorter than straight line (wrong match on a loop) -> straight line');
   ok(G.hasArrived(25, null) && G.hasArrived(120, 20) && !G.hasArrived(120, 80) && !G.hasArrived(120, null), 'v3.10.104: arrival by 30 m to the place or 30 m of route left');
   const now = 1e12, saved = JSON.stringify({ name: 'X', address: 'A', lat: 41.7, lng: 44.8, t: now - 60000 });
-  ok(G.parseSavedNav(saved, now).lat === 41.7 && G.parseSavedNav(saved, now + 4 * 3600e3) === null && G.parseSavedNav('{bad', now) === null && G.parseSavedNav(null, now) === null, 'v3.10.104: saved navigation fresh for 3 h, junk ignored');
-  ok(/localStorage\.setItem\(NAV_KEY/.test(src) && /if \(S\.navigating\) \{ try \{ localStorage\.removeItem\(NAV_KEY\)/.test(src) && /setInterval\(syncCar, 250\)\);\s*resumeSavedNav\(\);/.test(src), 'v3.10.104: saved on start, cleared on stop, resumed when the Google map opens');
+  ok(G.parseSavedNav(saved, now).lat === 41.7 && G.parseSavedNav(saved, now + 11 * 60e3) === null && G.parseSavedNav('{bad', now) === null && G.parseSavedNav(null, now) === null, 'v3.10.105: saved navigation fresh for 10 min only, junk ignored');
+  ok(/localStorage\.setItem\(NAV_KEY/.test(src) && /if \(was\) \{ try \{ localStorage\.removeItem\(NAV_KEY\)/.test(src) && /setInterval\(syncCar, 250\)\);\s*resumeSavedNav\(\);/.test(src), 'v3.10.104: saved on start, cleared on stop, resumed when the Google map opens');
   ok(/\$\("gmap-card-start"\)\.hidden = false;/.test(src), 'v3.10.104: start button also for the OSRM fallback route');
+}
+
+// v3.10.105: review fixes (resume, next maneuver along the route, alternatives, search race, status timer, error texts)
+{
+  ok(G.nextStepAlong([0, 300, 900], 100, 0) === 1 && G.nextStepAlong([0, 300, 900], 297, 1) === 1 && G.nextStepAlong([0, 300, 900], 306, 1) === 2, 'v3.10.105: next maneuver by metres along the route (switches 5 m after it)');
+  ok(G.nextStepAlong([0, 300, 900], 100, 2) === 2 && G.nextStepAlong([0, 300, 900], 2000, 0) === 2 && G.nextStepAlong([0, null, 900], 100, 0) === -1, 'v3.10.105: never back, last at the end, unplaced maneuver -> old method');
+  ok(/if \(Date\.now\(\) - \(S\.navSavedAt \|\| 0\) > 30000\) saveNav\(\);/.test(src) && /meters\(S\.carPos, saved\) < NAV_NEAR_M/.test(src), 'v3.10.105: navigation refreshed every 30 s; not resumed within 300 m of the place');
+  ok(/if \(i === S\.routeIdx \|\| S\.navigating\) return;/.test(src) && /saveNav\(\);\s*drawRoutes\(\);/.test(src) && /if \(was && S\.map && S\.routes\.length\) drawRoutes\(\);/.test(src), 'v3.10.105: grey alternatives hidden while navigating, back after stop');
+  ok(/if \(seq !== S\.sugSeq\) return;/.test(src), 'v3.10.105: an older search answer never replaces a newer one');
+  ok(/clearTimeout\(S\.statusTimer\);/.test(src) && !/setTimeout\(\(\) => setStatus\(""\), \d+\)/.test(src.replace('S.statusTimer = setTimeout(() => setStatus(""), ms)', '')), 'v3.10.105: one status timer (no stray timers hiding newer texts)');
+  ok(/setStatus\("მარშრუტი ვერ გადაითვალა/.test(src), 'v3.10.105: a failed reroute does not leave "გადაითვალა..." on the screen');
+  ok(/AbortError" \? "timeout" : "network"/.test(src) && /code === "timeout"/.test(src) && /code === "network"/.test(src), 'v3.10.105: Google timeout / no network get their own text');
 }
