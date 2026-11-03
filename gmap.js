@@ -28,12 +28,43 @@
 
   /** Main dock buttons repeated on the Google side panel (v3.10.56): our data and our settings, never Google data on our map. */
   const SIDE_PROXIES = [
-    { icon: "📋", title: "დამტენების სია", target: "btn-chargers-list", activeClass: "active" },
-    { icon: "📷", title: "სიჩქარის კამერები", target: "btn-toggle-cameras", activeClass: "signals-active" },
-    { icon: "🔊", iconOff: "🔇", title: "ხმოვანი ნავიგაცია", target: "btn-toggle-voice", activeClass: "active" },
-    { icon: "📱", title: "ტელეფონით მართვა", target: "btn-remote-phone" },
-    { icon: "⚙️", title: "პარამეტრები", target: "btn-settings" }
+    { icon: "📋", ikey: "list", tone: "amber", title: "დამტენების სია", target: "btn-chargers-list", activeClass: "active" },
+    { icon: "📷", ikey: "camera", tone: "red", title: "სიჩქარის კამერები", target: "btn-toggle-cameras", activeClass: "signals-active" },
+    { icon: "🔊", iconOff: "🔇", ikey: "volume", ikeyOff: "volumeOff", tone: "teal", title: "ხმოვანი ნავიგაცია", target: "btn-toggle-voice", activeClass: "active" },
+    { icon: "📱", ikey: "phone", tone: "gray", title: "ტელეფონით მართვა", target: "btn-remote-phone" },
+    { icon: "⚙️", ikey: "settings", tone: "gray", title: "პარამეტრები", target: "btn-settings" }
   ];
+
+  /** v3.10.113 (Samvel, panel style 3 "coloured categories"): one line-icon set instead of emoji (emoji differ per system
+   *  and look like stickers). 24x24, 2 px round strokes, drawn in currentColor; the colour comes from the button's data-tone. */
+  const PANEL_ICONS = {
+    traffic: "M9 3h6a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H9a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2zM12 6.2a1.3 1.3 0 1 0 0 2.6a1.3 1.3 0 1 0 0-2.6zM12 10.7a1.3 1.3 0 1 0 0 2.6a1.3 1.3 0 1 0 0-2.6zM12 15.2a1.3 1.3 0 1 0 0 2.6a1.3 1.3 0 1 0 0-2.6z",
+    night: "M20 14.5A8 8 0 1 1 9.5 4a6.5 6.5 0 0 0 10.5 10.5z",
+    map: "M12 4l9 4.5-9 4.5-9-4.5zM3 12.5l9 4.5 9-4.5M3 16.5l9 4.5 9-4.5",
+    locate: "M12 5a7 7 0 1 0 0 14a7 7 0 1 0 0-14zM12 10.5a1.5 1.5 0 1 0 0 3a1.5 1.5 0 1 0 0-3zM12 2v3M12 19v3M2 12h3M19 12h3",
+    plus: "M12 5v14M5 12h14",
+    minus: "M5 12h14",
+    bolt: "M13 3L5 14h6l-1 7 8-11h-6z",
+    list: "M9 6h11M9 12h11M9 18h11M4.5 6h.01M4.5 12h.01M4.5 18h.01",
+    camera: "M4 8h3l2-3h6l2 3h3a1 1 0 0 1 1 1v9a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V9a1 1 0 0 1 1-1zM12 9.5a3.5 3.5 0 1 0 0 7a3.5 3.5 0 1 0 0-7z",
+    volume: "M4 10v4h4l5 4V6L8 10zM16.5 9a4 4 0 0 1 0 6M19 6.5a7.5 7.5 0 0 1 0 11",
+    volumeOff: "M4 10v4h4l5 4V6L8 10zM17 10l4 4M21 10l-4 4",
+    phone: "M9 3h6a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H9a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2zM11 18h2",
+    settings: "M12 9a3 3 0 1 0 0 6a3 3 0 1 0 0-6zM12 2v3M12 19v3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M2 12h3M19 12h3M4.9 19.1L7 17M17 7l2.1-2.1",
+    close: "M6 6l12 12M18 6L6 18"
+  };
+  /** Puts icon `name` into button `b` (DOM only, no innerHTML); tone = the colour family in style.css. */
+  function setPanelIcon(b, name, tone) {
+    if (!b || !PANEL_ICONS[name] || typeof document === "undefined") return;
+    const NS = "http://www.w3.org/2000/svg", svg = document.createElementNS(NS, "svg"), path = document.createElementNS(NS, "path");
+    [["viewBox", "0 0 24 24"], ["width", "22"], ["height", "22"], ["fill", "none"], ["stroke", "currentColor"], ["stroke-width", "2"], ["stroke-linecap", "round"], ["stroke-linejoin", "round"], ["aria-hidden", "true"]].forEach(([k, v]) => svg.setAttribute(k, v));
+    path.setAttribute("d", PANEL_ICONS[name]);
+    svg.appendChild(path);
+    b.textContent = "";
+    b.appendChild(svg);
+    if (tone) b.setAttribute("data-tone", tone);
+    if (!b.getAttribute("aria-label") && b.title) b.setAttribute("aria-label", b.title);
+  }
 
   // ---------- pure helpers (unit-tested) ----------
   function buildLoaderUrl(key, callbackName) {
@@ -1490,6 +1521,9 @@
     // buttons that make sense over the Google map (they click the same main button, so the logic and state stay one).
     const side = document.querySelector(".gmap-side"), closeBtn = $("gmap-btn-close");
     if (side) {
+      // v3.10.113: the buttons written in index.html get the same line icons
+      [["gmap-btn-traffic", "traffic", "green"], ["gmap-btn-night", "night", "violet"], ["gmap-btn-vector", "map", "sky"], ["gmap-btn-me", "locate", "sky"],
+        ["gmap-btn-zoom-in", "plus", ""], ["gmap-btn-zoom-out", "minus", ""], ["gmap-btn-close", "close", "red"]].forEach(([id, ic, tone]) => setPanelIcon($(id), ic, tone));
       const add = (icon, title, fn) => {
         const b = document.createElement("button");
         b.type = "button";
@@ -1500,15 +1534,16 @@
         side.insertBefore(b, closeBtn || null);
         return b;
       };
-      CATEGORIES.forEach((cat) => { const b = add(cat.label.split(" ")[0], cat.label.split(" ").slice(1).join(" ") || cat.label, () => { if (S.map) toggleCategory(cat, b); }); b.dataset.cat = cat.id; });
+      CATEGORIES.forEach((cat) => { const b = add(cat.label.split(" ")[0], cat.label.split(" ").slice(1).join(" ") || cat.label, () => { if (S.map) toggleCategory(cat, b); }); b.dataset.cat = cat.id; setPanelIcon(b, "bolt", "amber"); });
       SIDE_PROXIES.forEach((p) => {
         const main = $(p.target);
         if (!main) return;
         const b = add(p.icon, p.title, () => { main.click(); mirror(); });
+        setPanelIcon(b, p.ikey, p.tone);
         const mirror = () => {
           const on = !!p.activeClass && main.classList.contains(p.activeClass);
           b.classList.toggle("active", on);
-          if (p.iconOff) b.textContent = on ? p.icon : p.iconOff;
+          if (p.ikeyOff) setPanelIcon(b, on ? p.ikey : p.ikeyOff, p.tone);
         };
         mirror();
         if (typeof MutationObserver !== "undefined" && p.activeClass) new MutationObserver(mirror).observe(main, { attributes: true, attributeFilter: ["class"] });

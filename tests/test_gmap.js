@@ -342,3 +342,11 @@ ok(/strokeColor: "#3e6ae1", strokeOpacity: 0\.7, strokeWeight: 4/.test(src) && !
   ok(/#gmap-layer\.side-closed \.gmap-side \{ transform: translateX/.test(css) && !/side-closed[^}]*backdrop-filter/.test(css), 'v3.10.112: the panel slides with a transform only (no blur, no re-layout)');
   ok(/S\.sideFixed = \/\[\?&\]gside=fixed/.test(src) && /setInterval\(sideTick, 1000\)/.test(src), 'v3.10.112: ?gside=fixed keeps it open; checked once a second');
 }
+
+// v3.10.113: panel style 3 (coloured categories): line icons instead of emoji, one colour per kind of function
+{
+  const css = fs.readFileSync(__dirname + '/../style.css', 'utf8');
+  ok(/function setPanelIcon\(b, name, tone\)/.test(src) && /createElementNS\(NS, "path"\)/.test(src) && !/setPanelIcon[\s\S]{0,600}innerHTML/.test(src), 'v3.10.113: icons are built with DOM calls (no innerHTML)');
+  for (const k of ['traffic', 'night', 'map', 'locate', 'plus', 'minus', 'bolt', 'list', 'camera', 'volume', 'volumeOff', 'phone', 'settings', 'close']) ok(new RegExp('\\n\\s+' + k + ': "M').test(src), 'v3.10.113: icon ' + k);
+  ok(/data-tone="green"\] \{ color: #22c55e; \}/.test(css) && /\.gmap-side \.gmap-btn\.active \{ background: color-mix\(in srgb, currentColor 18%, transparent\);/.test(css), 'v3.10.113: colour per category, active = soft tint of its own colour');
+}

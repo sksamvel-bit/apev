@@ -2245,6 +2245,20 @@ body.gmap-open #gmap-nav { top: 60px; }
 .gmap-side .gmap-btn:active { transform: scale(0.92); background: rgba(255, 255, 255, 0.18); }
 .gmap-side .gmap-btn.active { border-color: rgba(0, 210, 255, 0.6); background: rgba(0, 136, 255, 0.22); color: var(--accent-cyan); }
 .gmap-side .gmap-btn.gmap-close { margin-top: 6px; background: rgba(225, 29, 72, 0.22); border-color: rgba(225, 29, 72, 0.6); }
+/* v3.10.113 (Samvel, panel style 3 "coloured categories"): line icons, one colour per kind of function; a switched-on
+   button gets a soft tint of its own colour instead of the shared blue */
+.gmap-side .gmap-btn { color: #cbd5e1; }
+.gmap-side .gmap-btn svg { width: 22px; height: 22px; pointer-events: none; }
+.gmap-side .gmap-btn[data-tone="green"] { color: #22c55e; }
+.gmap-side .gmap-btn[data-tone="violet"] { color: #a78bfa; }
+.gmap-side .gmap-btn[data-tone="sky"] { color: #38bdf8; }
+.gmap-side .gmap-btn[data-tone="amber"] { color: #fbbf24; }
+.gmap-side .gmap-btn[data-tone="red"] { color: #f87171; }
+.gmap-side .gmap-btn[data-tone="teal"] { color: #2dd4bf; }
+.gmap-side .gmap-btn[data-tone="gray"] { color: #94a3b8; }
+.gmap-side .gmap-btn.active { background: color-mix(in srgb, currentColor 18%, transparent); border-color: color-mix(in srgb, currentColor 40%, transparent); }
+.gmap-side .gmap-btn.gmap-close { background: rgba(248, 113, 113, 0.14); border-color: rgba(248, 113, 113, 0.35); }
+.gmap-fab-me.active { color: #38bdf8; }
 
 /* v3.10.61: devices + guest PINs, the 3rd column of the settings window (owner only). The window widens to three columns
    so everything fits without scrolling; below 1100 px the panel takes the full width under the two columns. */
