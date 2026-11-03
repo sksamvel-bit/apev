@@ -255,3 +255,6 @@ ok(/body\.gmap-open:has\(#gmap-card\.show\) \.car-hud-stats \{ visibility: hidde
   ok(html.includes('id="gmap-nav-icon"') && html.includes('id="gmap-eta-time"') && html.includes('id="gmap-eta-rest"'), 'v3.10.101: banner icon + arrival strip markup');
   ok(/if \(eta\) eta\.classList\.remove\("show"\)/.test(src), 'v3.10.101: arrival strip hidden when navigation stops');
 }
+
+// v3.10.102: Google route line thin + see-through, no white casing, so the traffic colours under it stay visible
+ok(/strokeColor: "#3e6ae1", strokeOpacity: 0\.7, strokeWeight: 4/.test(src) && !/strokeColor: "#ffffff", strokeOpacity: 1, strokeWeight: 10/.test(src), 'v3.10.102: route line does not hide Google traffic');

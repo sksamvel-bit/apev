@@ -939,17 +939,17 @@
   function drawRoutes() {
     clearRoute();
     const { Polyline } = S.g.maps;
-    // alternatives first (grey, under), the chosen one last (white casing + blue)
+    // alternatives first (grey, under), the chosen one last (blue). v3.10.102: thin and see-through, no white casing,
+    // so Google's traffic colours on the road stay visible under / beside the route
     S.routes.forEach((rt, i) => {
       if (i === S.routeIdx) return;
-      const l = new Polyline({ path: rt.coords, map: S.map, strokeColor: "#8a8f98", strokeOpacity: 0.9, strokeWeight: 6, zIndex: 5, clickable: true });
+      const l = new Polyline({ path: rt.coords, map: S.map, strokeColor: "#8a8f98", strokeOpacity: 0.6, strokeWeight: 4, zIndex: 5, clickable: true });
       l.addListener("click", () => selectRoute(i));
       S.routeLines.push(l);
     });
     const sel = S.routes[S.routeIdx];
     S.selLines = [
-      new Polyline({ path: sel.coords, map: S.map, strokeColor: "#ffffff", strokeOpacity: 1, strokeWeight: 10, zIndex: 10 }),
-      new Polyline({ path: sel.coords, map: S.map, strokeColor: "#3e6ae1", strokeOpacity: 1, strokeWeight: 6, zIndex: 11 }),
+      new Polyline({ path: sel.coords, map: S.map, strokeColor: "#3e6ae1", strokeOpacity: 0.7, strokeWeight: 4, zIndex: 11 }),
     ];
     S.routeLines.push(...S.selLines);
     S.trimSeg = -1;
