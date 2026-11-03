@@ -169,6 +169,11 @@
     return out;
   }
 
+  /** Google sometimes leaves a road-shield placeholder in the text ("... და დარჩით {1/}-ზე"): drop it, and the "stay on" clause it belongs to (v3.10.99). */
+  function cleanInstr(t) {
+    return String(t || "").replace(/,?\s*(და\s+)?დარჩით\s*\{[^}]*\}\S*/g, "").replace(/\{[^}]*\}\S*/g, "").replace(/\s{2,}/g, " ").trim();
+  }
+
   const secs = (d) => { const m = /^(\d+(?:\.\d+)?)s$/.exec(String(d || "")); return m ? parseFloat(m[1]) : 0; };
 
   /** Routes API computeRoutes response -> our route objects (alternatives, traffic ETA, steps with maneuver text). */
@@ -179,7 +184,7 @@
       ((r.legs && r.legs) || []).forEach((leg) => (leg.steps || []).forEach((st) => {
         const ni = st.navigationInstruction;
         const ll = st.startLocation && st.startLocation.latLng;
-        if (ni && ni.instructions && ll) steps.push({ text: ni.instructions, maneuver: ni.maneuver || "", distanceM: st.distanceMeters || 0, loc: { lat: ll.latitude, lng: ll.longitude } });
+        if (ni && ni.instructions && ll) steps.push({ text: cleanInstr(ni.instructions), maneuver: ni.maneuver || "", distanceM: st.distanceMeters || 0, loc: { lat: ll.latitude, lng: ll.longitude } });
       }));
       const durationSec = secs(r.duration), staticSec = secs(r.staticDuration) || durationSec;
       return { coords: decodePolyline(r.polyline.encodedPolyline), durationSec, staticSec, delaySec: Math.max(0, durationSec - staticSec), distanceM: r.distanceMeters || 0, steps, label: (r.routeLabels || []).join(",") };
@@ -681,6 +686,7 @@
         let nr = nearestOnPolyline(pos, rt.coords, S.segIdx - 20, S.segIdx + 200);
         if (nr.d > OFF_ROUTE_M) nr = nearestOnPolyline(pos, rt.coords);
         if (nr.i >= 0) S.segIdx = nr.i;
+        if (nr.i >= 0 && nr.d <= OFF_ROUTE_M) trimPassed(pos, rt.coords, nr.i);
         if (S.offRouteTracker.update(nr.d)) reroute();
       }
       updateNavBanner();
@@ -788,7 +794,19 @@
     }
   }
 
-  function clearRoute() { S.routeLines.forEach((l) => l.setMap(null)); S.routeLines = []; }
+  function clearRoute() { S.routeLines.forEach((l) => l.setMap(null)); S.routeLines = []; S.selLines = null; }
+
+  /** v3.10.99: the driven part of the chosen route disappears (the line starts at the car, snapped onto the route).
+   *  setPath re-tessellates the whole line, so only on a new segment or every 3 s. */
+  function trimPassed(pos, coords, i) {
+    if (!S.selLines || !coords[i + 1]) return;
+    const now = Date.now();
+    if (i === S.trimSeg && now - (S.trimAt || 0) < 3000) return;
+    S.trimSeg = i; S.trimAt = now;
+    const a = coords[i], b = coords[i + 1], t = Math.max(0, Math.min(1, segT(a, b, pos)));
+    const path = [{ lat: a.lat + t * (b.lat - a.lat), lng: a.lng + t * (b.lng - a.lng) }].concat(coords.slice(i + 1));
+    S.selLines.forEach((l) => l.setPath(path));
+  }
   function resetRoutes() { clearRoute(); S.routes = []; stopNavigation(); const b = $("gmap-card-routes"); if (b) b.textContent = ""; const st = $("gmap-card-start"); if (st) st.hidden = true; }
 
   function showPlace(p) {
@@ -888,8 +906,13 @@
       S.routeLines.push(l);
     });
     const sel = S.routes[S.routeIdx];
-    S.routeLines.push(new Polyline({ path: sel.coords, map: S.map, strokeColor: "#ffffff", strokeOpacity: 1, strokeWeight: 10, zIndex: 10 }));
-    S.routeLines.push(new Polyline({ path: sel.coords, map: S.map, strokeColor: "#3e6ae1", strokeOpacity: 1, strokeWeight: 6, zIndex: 11 }));
+    S.selLines = [
+      new Polyline({ path: sel.coords, map: S.map, strokeColor: "#ffffff", strokeOpacity: 1, strokeWeight: 10, zIndex: 10 }),
+      new Polyline({ path: sel.coords, map: S.map, strokeColor: "#3e6ae1", strokeOpacity: 1, strokeWeight: 6, zIndex: 11 }),
+    ];
+    S.routeLines.push(...S.selLines);
+    S.trimSeg = -1;
+    if (S.navigating && S.carPos) { const nr = nearestOnPolyline(S.carPos, sel.coords); if (nr.i >= 0 && nr.d <= OFF_ROUTE_M) trimPassed(S.carPos, sel.coords, nr.i); }
   }
 
   function renderRouteOptions() {

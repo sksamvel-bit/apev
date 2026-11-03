@@ -225,3 +225,13 @@ ok(/GOOGLE_MAPS_KEY/.test(srv) && !/PUBLIC_AUTH_PATHS[^;]*gmaps-config/.test(srv
   const appSrc2 = fs.readFileSync(__dirname + "/../app.js", "utf8"), html2 = fs.readFileSync(__dirname + "/../index.html", "utf8");
   ok(html2.includes('id="input-main-map"') && appSrc2.includes('localStorage.setItem("tesla_nav_main_map"'), "v3.10.77: the main map is chosen in the settings");
 }
+
+// v3.10.99: Google's road-shield placeholder is removed from the turn text; the driven part of the route is cut off
+{
+  const r = G.parseRoutesResponse({ routes: [{ polyline: { encodedPolyline: '_p~iF~ps|U' }, legs: [{ steps: [
+    { navigationInstruction: { instructions: 'გააგრძელეთ პირდაპირ ვაჟა-ფშაველას გამზირი-ით და დარჩით {1/}-ზე' }, startLocation: { latLng: { latitude: 1, longitude: 2 } } },
+    { navigationInstruction: { instructions: 'მოუხვიეთ მარჯვნივ {2/}' }, startLocation: { latLng: { latitude: 1, longitude: 2 } } }] }] }] });
+  ok(r[0].steps[0].text === 'გააგრძელეთ პირდაპირ ვაჟა-ფშაველას გამზირი-ით' && r[0].steps[1].text === 'მოუხვიეთ მარჯვნივ', 'v3.10.99: "{1/}" placeholder removed from Google turn text');
+  ok(/function trimPassed\([\s\S]*?setPath\(path\)/.test(src) && /nr\.d <= OFF_ROUTE_M\) trimPassed\(pos, rt\.coords, nr\.i\)/.test(src), 'v3.10.99: chosen route line starts at the car (driven part hidden), only while on the route');
+  ok(/i === S\.trimSeg && now - \(S\.trimAt \|\| 0\) < 3000/.test(src), 'v3.10.99: setPath throttled (new segment or every 3 s)');
+}
