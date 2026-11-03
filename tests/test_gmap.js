@@ -385,3 +385,17 @@ ok(/strokeColor: "#3e6ae1", strokeOpacity: 0\.7, strokeWeight: 4/.test(src) && !
   const srv5 = fs.readFileSync(__dirname + '/../server.js', 'utf8');
   ok(/pathname === '\/api\/reverse'/.test(srv5) && /reverse\?format=json&zoom=14/.test(srv5) && !/PUBLIC_AUTH_PATHS[^;]*reverse/.test(srv5), 'v3.10.116: /api/reverse (Nominatim zoom 14, behind the PIN gate, 1 request a second)');
 }
+
+// v3.10.117: a trip planned on the phone waits on the server (Upstash) and opens in the car near its time
+{
+  const now = new Date(2026, 10, 3, 20, 0).getTime();
+  ok(G.whenText(new Date(2026, 10, 3, 21, 5).getTime(), now) === 'დღეს 21:05' && G.whenText(new Date(2026, 10, 4, 9, 0).getTime(), now) === 'ხვალ 09:00' && G.whenText(new Date(2026, 10, 6, 9, 0).getTime(), now) === '6 ნოემბერს 09:00', 'v3.10.117: today / tomorrow / date text');
+  ok(G.planState(now + 3 * 3600e3, now) === 'later' && G.planState(now + 60 * 60e3, now) === 'now' && G.planState(now - 60 * 60e3, now) === 'now' && G.planState(now - 4 * 3600e3, now) === 'gone', 'v3.10.117: used from 90 min before until 3 h after');
+  ok(/setTimeout\(checkPlannedTrip, 4000\)/.test(src) && /method: "DELETE"/.test(src) && /routeToPlace\(Math\.max\(0, Math\.round\(\(p\.departAt - Date\.now\(\)\) \/ 60000\)\)\)/.test(src), 'v3.10.117: checked on open, route with the departure forecast, then cleared');
+  const srv6 = fs.readFileSync(__dirname + '/../server.js', 'utf8');
+  ok(/pathname === '\/api\/session\/plan'/.test(srv6) && /_plans', timeoutMs: 6000/.test(srv6) && /departAt > now \+ PLAN_AHEAD_MS/.test(srv6) && /MAX_PLANS/.test(srv6), 'v3.10.117: server keeps one plan per code in Upstash, up to 7 days ahead, capped');
+  const rem = fs.readFileSync(__dirname + '/../remote.html', 'utf8');
+  ok(/id="phone-depart"/.test(rem) && /async function deliver\(dest, label\)/.test(rem) && (rem.match(/await deliver\(/g) || []).length === 3, 'v3.10.117: phone: "now" or a chosen time for all three kinds of result');
+  ok(/if \(b\.textContent !== want\) b\.textContent = want;/.test(rem), 'v3.10.117: the label observer changes text only on a change (no endless loop)');
+  ok(fs.readFileSync(__dirname + '/../.gitignore', 'utf8').includes('trip-plans.json'), 'v3.10.117: the local plans file stays out of git');
+}

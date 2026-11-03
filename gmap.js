@@ -495,6 +495,23 @@
     return icon + " " + where + " " + h.text + ", " + Math.round(tempC) + "° (≈ " + hm + ")";
   }
 
+  /** v3.10.117: "დღეს 21:00" / "ხვალ 09:00" / "5 ნოემბერს 09:00" for a planned departure. */
+  function whenText(ms, now = Date.now()) {
+    const d = new Date(ms), n = new Date(now);
+    const hm = String(d.getHours()).padStart(2, "0") + ":" + String(d.getMinutes()).padStart(2, "0");
+    const day0 = new Date(n.getFullYear(), n.getMonth(), n.getDate()).getTime();
+    const days = Math.floor((new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime() - day0) / 864e5);
+    if (days === 0) return "დღეს " + hm;
+    if (days === 1) return "ხვალ " + hm;
+    const months = ["იანვარს", "თებერვალს", "მარტს", "აპრილს", "მაისს", "ივნისს", "ივლისს", "აგვისტოს", "სექტემბერს", "ოქტომბერს", "ნოემბერს", "დეკემბერს"];
+    return d.getDate() + " " + months[d.getMonth()] + " " + hm;
+  }
+  /** A plan is used from 90 min before its time until 3 h after it; earlier it is only mentioned. */
+  function planState(departAt, now) {
+    const m = (departAt - now) / 60000;
+    return m > 90 ? "later" : m >= -180 ? "now" : "gone";
+  }
+
   /** v3.10.115: recent places (newest first, max 5, the same place only once: same name or within 60 m). */
   function addRecent(list, p, max = 5) {
     const out = [p].concat((list || []).filter((r) => r && r.name !== p.name && meters(r, p) > 60));
@@ -1470,14 +1487,36 @@
     } catch (e) { console.warn("[GMap] route weather:", e && e.message); }
   }
 
-  async function routeToPlace() {
+  /** v3.10.117: a trip planned on the phone. Checked when the Google map opens and every 10 min: within 90 min of its time the
+   *  place card opens with the traffic forecast for the departure, and the plan is cleared on the server (used once). */
+  async function checkPlannedTrip() {
+    const code = window.__remoteCode;
+    if (!code || !S.open || S.navigating) return;
+    let p = null;
+    try { const r = await fetch("/api/session/plan?code=" + encodeURIComponent(code), { cache: "no-store", credentials: "same-origin" }); if (r.ok) p = ((await r.json()) || {}).plan; } catch (_) { return; }
+    if (!p || !isFinite(p.lat)) return;
+    const st = planState(p.departAt, Date.now());
+    if (st === "later") {
+      if (S.planNoticed !== p.t) { S.planNoticed = p.t; setStatus("📅 დაგეგმილია: " + p.name + ", " + whenText(p.departAt), 7000); }
+      return;
+    }
+    if (st !== "now" || S.place || S.planShown === p.t) return;
+    S.planShown = p.t;
+    showPlace({ name: p.name, address: p.fullName || "", loc: { lat: p.lat, lng: p.lng } });
+    await routeToPlace(Math.max(0, Math.round((p.departAt - Date.now()) / 60000)));
+    setStatus("📅 დაგეგმილი მგზავრობა: " + p.name + ", " + whenText(p.departAt), 9000);
+    speak("დაგეგმილი მგზავრობა: " + p.name);
+    fetch("/api/session/plan?code=" + encodeURIComponent(code), { method: "DELETE", credentials: "same-origin" }).catch(() => {});
+  }
+
+  async function routeToPlace(departOverride) {
     if (!S.place) return;
     const btn = $("gmap-card-go"), info = $("gmap-card-route");
     btn.disabled = true;
     info.textContent = "ითვლება...";
     const from = S.carPos || currentCenter();
     const sel = $("gmap-depart");
-    const depart = sel ? parseInt(sel.value, 10) || 0 : 0;
+    const depart = typeof departOverride === "number" ? departOverride : (sel ? parseInt(sel.value, 10) || 0 : 0);   // v3.10.117: a planned trip
     try {
       let routes, note = "";
       try {
@@ -1591,6 +1630,8 @@
       startDebugMeter();
       S.timers.push(setInterval(syncCar, 250));
       resumeSavedNav();
+      setTimeout(checkPlannedTrip, 4000);   // v3.10.117: after a possible resumed navigation
+      S.timers.push(setInterval(checkPlannedTrip, 600000));
       setSideOpen(true);
       S.timers.push(setInterval(sideTick, 1000));
     } catch (e) {
@@ -1774,7 +1815,7 @@
     if (S.enabled && mainMapIsGoogle(q)) autoOpen();
   }
 
-  const api = { init, open, close, isOpen: () => S.open, isEnabled: () => S.enabled, camMoves: () => S.camCount, isVector: () => !!S.vector, tilt: () => (S.map && S.map.getTilt ? Math.round(S.map.getTilt() || 0) : 0), renderType: () => (S.map && S.map.getRenderingType ? String(S.map.getRenderingType() || "") : ""), gpuOn: () => !!S.gpuOn, mainMapIsGoogle, MAIN_MAP_KEY, selectMap, shownMap, currentMainMap, MAP_KINDS, gpuPlan, openWithQuery, openWithDestination, focusPlace, SIDE_PROXIES, mapKey, distToPolylineM, nearestOnPolyline, createOffRouteTracker, createVoiceCues, nearestChargers, createCarGlide, aheadPoint, mapOptions, cameraNeedsUpdate, createFpsMeter, scaledBoxStyle, capText, warnText, decodePolyline, parseRoutesResponse, routesRequestBody, nextStepIndex, fmtDist, nearForm, routeWeatherPoints, weatherHazard, hazardText, addRecent, thenPhrase, thenIsClose, autoZoom, sideShouldHide, maneuverIcon, routeCum, remainingOnRoute, etaInfo, stepAlongs, nextStepAlong, distToStep, hasArrived, parseSavedNav, buildLoaderUrl, createDebouncer, osrmUrl, summarizeRoute, mapStyles, bearing, meters, CATEGORIES };
+  const api = { init, open, close, isOpen: () => S.open, isEnabled: () => S.enabled, camMoves: () => S.camCount, isVector: () => !!S.vector, tilt: () => (S.map && S.map.getTilt ? Math.round(S.map.getTilt() || 0) : 0), renderType: () => (S.map && S.map.getRenderingType ? String(S.map.getRenderingType() || "") : ""), gpuOn: () => !!S.gpuOn, mainMapIsGoogle, MAIN_MAP_KEY, selectMap, shownMap, currentMainMap, MAP_KINDS, gpuPlan, openWithQuery, openWithDestination, focusPlace, SIDE_PROXIES, mapKey, distToPolylineM, nearestOnPolyline, createOffRouteTracker, createVoiceCues, nearestChargers, createCarGlide, aheadPoint, mapOptions, cameraNeedsUpdate, createFpsMeter, scaledBoxStyle, capText, warnText, decodePolyline, parseRoutesResponse, routesRequestBody, nextStepIndex, fmtDist, whenText, planState, nearForm, routeWeatherPoints, weatherHazard, hazardText, addRecent, thenPhrase, thenIsClose, autoZoom, sideShouldHide, maneuverIcon, routeCum, remainingOnRoute, etaInfo, stepAlongs, nextStepAlong, distToStep, hasArrived, parseSavedNav, buildLoaderUrl, createDebouncer, osrmUrl, summarizeRoute, mapStyles, bearing, meters, CATEGORIES };
   if (typeof document !== "undefined") {
     if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", () => init());
     else init();

@@ -1092,6 +1092,41 @@ function reverseNominatimProxy(lat, lon) {
   });
 }
 
+/**
+ * v3.10.117: trips planned on the phone for later ("tomorrow 9:00, airport"). The car is usually asleep then, so the plan waits
+ * here, keyed by the pairing code, until the car's Google map opens and asks for it. One plan per code, from 10 min ago up to
+ * 7 days ahead, dropped 3 h after its departure time. Kept in Upstash (<UPSTASH_REDIS_KEY>_plans) because Render's disk and
+ * memory do not survive a restart; a local file without Upstash.
+ */
+const PLANS_STORE = quotaAdapter
+  ? createUpstashRedisAdapter({ url: process.env.UPSTASH_REDIS_REST_URL, token: process.env.UPSTASH_REDIS_REST_TOKEN, key: (process.env.UPSTASH_REDIS_KEY || 'routes_usage_quota') + '_plans', timeoutMs: 6000 })
+  : null;
+const PLANS_FILE = path.join(process.env.DATA_DIR || PUBLIC_DIR, 'trip-plans.json');
+const PLAN_KEEP_MS = 3 * 3600 * 1000, PLAN_AHEAD_MS = 7 * 864e5, MAX_PLANS = 1000;
+let tripPlans = null;
+function cleanPlan(d, now) {
+  if (!d || typeof d !== 'object') return null;
+  const lat = Number(d.lat), lng = Number(d.lng), departAt = Number(d.departAt);
+  if (!(Math.abs(lat) <= 90 && Math.abs(lng) <= 180) || !isFinite(departAt)) return null;
+  if (departAt < now - 10 * 60000 || departAt > now + PLAN_AHEAD_MS) return null;
+  return { name: String(d.name || 'დანიშნულება').slice(0, 80), fullName: String(d.fullName || '').slice(0, 200), lat, lng, departAt, t: now };
+}
+async function loadPlans() {
+  if (tripPlans) return tripPlans;
+  let v = null;
+  try { v = PLANS_STORE ? await PLANS_STORE.load() : JSON.parse(fs.readFileSync(PLANS_FILE, 'utf8')); } catch (_) {}
+  tripPlans = v && typeof v === 'object' && !Array.isArray(v) ? v : {};
+  return tripPlans;
+}
+function prunePlans(now) {
+  for (const k of Object.keys(tripPlans)) { const p = tripPlans[k]; if (!p || !(p.departAt + PLAN_KEEP_MS > now)) delete tripPlans[k]; }
+}
+function savePlans() {
+  if (PLANS_STORE) return PLANS_STORE.save(tripPlans).catch(() => false);
+  try { fs.writeFileSync(PLANS_FILE, JSON.stringify(tripPlans)); } catch (_) {}
+  return Promise.resolve(true);
+}
+
 const PIN_LOGIN_HTML = `<!DOCTYPE html>
 <html lang="ka">
 <head>
@@ -1659,6 +1694,41 @@ const server = http.createServer((req, res) => {
       if (clientSet.size === 0) {
         sessions.delete(code);
       }
+    });
+    return;
+  }
+
+  // API Endpoint: /api/session/plan?code= (v3.10.117) - GET the waiting plan, POST {code, data} a new one (phone), DELETE when
+  // the car has used it. Public like the other /api/session/* paths: the 64-bit pairing code is the key.
+  if (pathname === '/api/session/plan') {
+    const send = (code, obj) => { res.writeHead(code, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' }); res.end(JSON.stringify(obj)); };
+    const now = Date.now();
+    if (req.method === 'POST') {
+      if (searchRateLimited(clientIp(req))) return send(429, { error: 'rate' });
+      let body = '';
+      req.setEncoding('utf8');
+      req.on('data', (c) => { body += c; if (body.length > MAX_BODY) req.destroy(); });
+      req.on('end', async () => {
+        let p = null;
+        try { p = JSON.parse(body || '{}'); } catch (_) {}
+        const code = String((p && p.code) || '').toUpperCase().trim();
+        const plan = cleanPlan(p && p.data, now);
+        if (!CODE_RE.test(code) || !plan) return send(400, { error: 'bad-plan' });
+        await loadPlans();
+        prunePlans(now);
+        if (!tripPlans[code] && Object.keys(tripPlans).length >= MAX_PLANS) return send(503, { error: 'full' });
+        tripPlans[code] = plan;
+        await savePlans();
+        send(200, { success: true, plan });
+      });
+      return;
+    }
+    const code = (urlObj.searchParams.get('code') || '').toUpperCase().trim();
+    if (!CODE_RE.test(code)) return send(400, { error: 'bad-code' });
+    loadPlans().then(async () => {
+      prunePlans(now);
+      if (req.method === 'DELETE') { delete tripPlans[code]; await savePlans(); return send(200, { success: true }); }
+      send(200, { plan: tripPlans[code] || null });
     });
     return;
   }

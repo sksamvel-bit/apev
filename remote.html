@@ -366,6 +366,19 @@
       <span class="voice-pulse-dot"></span>
       <span id="dest-voice-banner-text">🎙️ გისმენთ... თქვით მისამართი</span>
     </div>
+    <!-- v3.10.117: departure now (sent to the car at once) or later (planned: the car shows it when it starts) -->
+    <div class="plan-row" style="display:flex;align-items:center;gap:8px;margin:0 0 10px;font-size:0.95rem;color:#cbd5e1;flex-wrap:wrap;">
+      <span>⏰ გამგზავრება:</span>
+      <select id="phone-depart" style="flex:1;min-width:120px;background:#0b0e14;color:#fff;border:1px solid rgba(255,255,255,0.15);border-radius:10px;padding:8px;font-size:0.95rem;">
+        <option value="now">ახლავე</option>
+        <option value="at">დროის არჩევა…</option>
+      </select>
+      <input type="datetime-local" id="phone-depart-at" hidden style="flex:1;min-width:180px;background:#0b0e14;color:#fff;border:1px solid rgba(255,255,255,0.15);border-radius:10px;padding:8px;font-size:0.95rem;">
+    </div>
+    <div id="phone-plan-status" hidden style="margin:0 0 10px;padding:10px 12px;border-radius:12px;background:rgba(56,189,248,0.12);border:1px solid rgba(56,189,248,0.35);color:#bae6fd;font-size:0.92rem;display:flex;align-items:center;gap:8px;">
+      <span id="phone-plan-text" style="flex:1;"></span>
+      <button id="phone-plan-cancel" type="button" style="background:transparent;border:1px solid rgba(255,255,255,0.25);color:#fff;border-radius:8px;padding:6px 10px;">გაუქმება</button>
+    </div>
     <div class="search-wrapper">
       <input type="text" id="phone-search-input" class="search-input" placeholder="ჩაწერეთ ან უკარნახეთ ხმით..." autocomplete="off">
       <button id="phone-clear-btn" class="clear-btn">✕</button>
@@ -463,6 +476,61 @@
     setInterval(checkSessionStatus, 8000);
 
     // Send payload to car
+    // v3.10.117: trip planning. "now" = the old instant send; a chosen time = a plan the server keeps until the car starts.
+    function whenTextPhone(ms) {
+      const d = new Date(ms), n = new Date();
+      const hm = String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0');
+      const days = Math.floor((new Date(d.getFullYear(), d.getMonth(), d.getDate()) - new Date(n.getFullYear(), n.getMonth(), n.getDate())) / 864e5);
+      return days === 0 ? 'დღეს ' + hm : days === 1 ? 'ხვალ ' + hm : d.toLocaleDateString('ka-GE') + ' ' + hm;
+    }
+    async function refreshPlanStatus() {
+      const box = document.getElementById('phone-plan-status');
+      if (!box || !sessionCode) return;
+      try {
+        const r = await fetch('/api/session/plan?code=' + encodeURIComponent(sessionCode), { cache: 'no-store' });
+        const p = r.ok ? ((await r.json()) || {}).plan : null;
+        box.hidden = !p;
+        if (p) document.getElementById('phone-plan-text').textContent = '📅 დაგეგმილია: ' + p.name + ', ' + whenTextPhone(p.departAt);
+      } catch (_) {}
+    }
+    /** The result buttons say "დაგეგმვა" while a later time is chosen. */
+    function setSendLabels() {
+      const plan = document.getElementById('phone-depart').value === 'at';
+      const want = plan ? 'დაგეგმვა' : 'გაგზავნა';
+      document.querySelectorAll('.btn-send-res').forEach((b) => { if (b.textContent !== want) b.textContent = want; });   // only on a change: the observer below sees this too
+    }
+    new MutationObserver(setSendLabels).observe(document.getElementById('phone-results-list') || document.body, { childList: true, subtree: true });
+    async function deliver(dest, label) {
+      const mode = document.getElementById('phone-depart').value;
+      if (mode !== 'at') {
+        const ok = await sendToCar('destination', dest);
+        if (ok) showToast(`🚀 ${label} გაგზავნილია Tesla-ში!`);
+        return ok;
+      }
+      const v = document.getElementById('phone-depart-at').value;
+      const t = v ? new Date(v).getTime() : NaN;
+      if (!(t > Date.now())) { showToast('⏰ აირჩიეთ მომავალი დრო'); return false; }
+      try {
+        const r = await fetch('/api/session/plan', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ code: sessionCode, data: Object.assign({}, dest, { departAt: t }) }) });
+        if (!r.ok) { showToast('⚠️ დაგეგმვა ვერ მოხერხდა'); return false; }
+        showToast(`📅 დაგეგმილია: ${whenTextPhone(t)}`);
+        refreshPlanStatus();
+        return true;
+      } catch (_) { showToast('⚠️ დაგეგმვა ვერ მოხერხდა'); return false; }
+    }
+    document.getElementById('phone-depart').addEventListener('change', (e) => {
+      const at = document.getElementById('phone-depart-at');
+      at.hidden = e.target.value !== 'at';
+      setSendLabels();
+      if (!at.hidden && !at.value) { const d = new Date(Date.now() + 864e5); d.setHours(9, 0, 0, 0); at.value = new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 16); }
+    });
+    document.getElementById('phone-plan-cancel').addEventListener('click', async () => {
+      try { await fetch('/api/session/plan?code=' + encodeURIComponent(sessionCode), { method: 'DELETE' }); } catch (_) {}
+      showToast('დაგეგმვა გაუქმდა');
+      refreshPlanStatus();
+    });
+    refreshPlanStatus();
+
     async function sendToCar(type, data) {
       if (!sessionCode) {
         showToast('❌ სესიის კოდი არასწორია');
@@ -528,8 +596,7 @@
           <button class="btn-send-res">გაგზავნა</button>
         `;
         el.addEventListener('click', async () => {
-          const ok = await sendToCar('destination', { name: d.name, fullName: d.address || d.name, lat: d.lat, lng: d.lng, source: 'gmaps' });
-          if (ok) showToast(`🚀 ${d.name} გაგზავნილია Tesla-ში!`);
+          await deliver({ name: d.name, fullName: d.address || d.name, lat: d.lat, lng: d.lng, source: 'gmaps' }, d.name);
         });
         resultsList.appendChild(el);
       } catch (_) {
@@ -613,8 +680,7 @@
               let p = null;
               try { p = await googlePlace(item.id); } catch (_) {}
               if (!p) { showToast('⚠️ ადგილის მისამართი ვერ ჩაიტვირთა'); return; }
-              const ok = await sendToCar('destination', { name: item.name, fullName: p.address || item.name, lat: p.lat, lng: p.lng, source: 'gmaps' });
-              if (ok) showToast(`🚀 ${item.name} გაგზავნილია Tesla-ში!`);
+              await deliver({ name: item.name, fullName: p.address || item.name, lat: p.lat, lng: p.lng, source: 'gmaps' }, item.name);
             });
             resultsList.appendChild(el);
           });
@@ -651,15 +717,7 @@
             <button class="btn-send-res">გაგზავნა</button>
           `;
           el.addEventListener('click', async () => {
-            const ok = await sendToCar('destination', {
-              name: mainName,
-              fullName: item.display_name,
-              lat: parseFloat(item.lat),
-              lng: parseFloat(item.lon)
-            });
-            if (ok) {
-              showToast(`🚀 ${mainName} გაგზავნილია Tesla-ში!`);
-            }
+            await deliver({ name: mainName, fullName: item.display_name, lat: parseFloat(item.lat), lng: parseFloat(item.lon) }, mainName);
           });
           resultsList.appendChild(el);
         });
