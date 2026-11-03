@@ -109,6 +109,8 @@ Google რეჟიმი იმავე ეკრანზე იხსნე�
 | `/api/overpass?data=` | Overpass-ის ქეში ლიმიტის და შუქნიშნის ფილებისთვის. მხოლოდ ეს ორი მოთხოვნა, პატარა ზონა, რეგიონში |
 | `/api/gmaps-config`, `/api/google-permit`, `/api/route-permit`, `/api/google-usage` | Google რეჟიმი და ლიმიტები. `gmaps-config` და `google-permit` ტელეფონის სესიის კოდითაც მუშაობს; PIN-ის გარეშე მხოლოდ `autocomplete` და `details` (v3.10.103) |
 | `/api/session/listen\|send\|status` | ტელეფონი ↔ მანქანა (SSE). ტიპები მხოლოდ `destination` და `gps` |
+| `/api/session/plan` | დაგეგმილი მგზავრობა ტელეფონიდან (v3.10.117): POST / GET / DELETE კოდით; Upstash-ში, ≤ 7 დღე წინ, 3 სთ შემდეგ იშლება |
+| `/api/reverse` | ადგილის სახელი ამინდისთვის მარშრუტზე (v3.10.116), Nominatim, PIN-ით |
 | `/api/info`, `/api/telemetry/error`, `/healthz` | სერვისული |
 
 **ბრაუზერი** (`index.html` ტვირთავს ფიქსირებული რიგით, `app.js` ბოლოს):
