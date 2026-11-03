@@ -8,6 +8,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 **`PROJECT_DOCS.md` is the current, complete project description (Georgian): read it first.** Other docs in this folder: `README.md` (older feature overview, v3.10.29), `TEAM_NOTES.md` (**the source of truth for file ownership, priorities and the changelog**), `docs/archive/` (AGENT_HANDOVER_GUIDE.md, MASTER_HISTORY_AND_ARCHITECTURE.md: old v3.8–v3.9 history, out of date), `../TODO_FOR_AGENT.md` (things to check in the real car). `FULL_CONVERSATION_TRANSCRIPT.md` (4 MB) and `conversation-logs/` are git-ignored archives. Don't read them unless the user asks.
 
+**`docs/NAV_STANDARDS.md`**: the screen and behaviour rules (NHTSA, SAE J2364, ISO 15008/16951, EU ISA 2021/1958, Android for Cars) with measurements. Check every visible change against it at 773x601. `tests/test_html_scripts.js` parses the inline scripts of every page (`node --check` does not see them).
+
 ## Commands
 
 No build step and no npm dependencies. It's plain Node (>=18) and browser JS.
@@ -40,8 +42,8 @@ Env vars (`.env` / Render): `PORT`, `HOST`, `ACCESS_PIN` (comma list; the first 
 - `map-gl.js`: the MapLibre GL abstraction. FollowCamera does dead reckoning between 1 Hz GPS fixes and shortest-arc bearing smoothing. The LayerRegistry (`ensureCustomLayers()`) re-adds custom layers after a style switch, so add new map layers through it. It also has the LiteGovernor (auto-Lite / auto-flatten when fps is low, stored in `sessionStorage`) and the house-number speed governor.
 - `tesla-style.js`: map looks. `mono` (flat, gray, pitch 0) is the default. `?style=classic` gives the colored 3D map, `?style=tesla` the Tesla palette. Day/night switching uses `diff()` + `setPaintProperty` and never a full `setStyle` (that froze the car browser).
 - `routing.js`: OSRM with two servers (`router.project-osrm.org`, `routing.openstreetmap.de`). Alternatives appear only in preview. It keeps the old route when the network fails. `speech.js` reads Georgian TTS only (no English fallback) and plays Web Audio chimes.
-- `speed-limit.js`: tier 0 is the OSM Overpass `maxspeed` on about 0.5 km tiles. It has three confidence levels: confirmed `60` (alarm allowed), estimate `~60` (dashed badge, **never** an alarm), unknown `—`.
-- `gmap.js`: a separate "Google mode" overlay (`#gmap-layer`) with Google raster, Traffic, Places and Routes (called from the browser after a `/api/route-permit` / `/api/google-permit`), plus off-route rerouting. **Google data (Places/Traffic/Routes) must never be shown on the MapLibre map** (Google ToS); `tests/test_gmap.js` checks this.
+- `speed-limit.js`: tier 0 is the OSM Overpass `maxspeed` on about 0.5 km tiles. It has three confidence levels: confirmed `60` (alarm allowed), estimate `60?` (dashed badge, **never** an alarm; was `~60` before v3.10.107), unknown `—`.
+- `gmap.js`: the Google map (`#gmap-layer`), **the start map since v3.10.93** (vector 3D heading-up by default, classic raster as an option; our MapLibre map is only the automatic fallback), with Traffic, Places, Routes, turn banner, ETA strip and navigation that survives a reload (called from the browser after a `/api/route-permit` / `/api/google-permit`), plus off-route rerouting. **Google data (Places/Traffic/Routes) must never be shown on the MapLibre map** (Google ToS); `tests/test_gmap.js` checks this.
 - `sw.js`: the service worker. `CACHE_NAME` includes the version. It lets the page reload instantly after the car's browser reloads on shifting into R. The route state is restored from `localStorage`.
 
 **Tests**: plain Node scripts with no framework. Most load a browser file with `vm.runInThisContext` against small `window`/map stubs and print `PASS`/`FAIL`, setting `process.exitCode = 1` on any failure. Some tests cut part of `server.js` out and run it in `vm`, so code order inside `server.js` can matter.
