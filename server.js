@@ -301,7 +301,10 @@ function isPublicAuthPath(p) {
 // v3.10.64 (audit H1/M3): the phone page (remote.html, opened by QR without a PIN) may search and read a Google Maps link
 // while ITS car is connected: the request carries the session code, and that code must have a listening car screen.
 // Without a PIN or an active code these answer 401, so the search proxy is no longer open to anyone.
-const SESSION_GATED_PATHS = new Set(['/api/search', '/api/maps-link']);
+// v3.10.103: the phone also searches with Google Places (the car's browser key + the same caps), so it may read the key and ask a permit;
+// a phone without a PIN gets only the search SKUs (autocomplete, details), see /api/google-permit.
+const SESSION_GATED_PATHS = new Set(['/api/search', '/api/maps-link', '/api/gmaps-config', '/api/google-permit']);
+const PHONE_SKUS = new Set(['autocomplete', 'details']);
 function hasActiveSession(urlObj) {
   const code = String(urlObj.searchParams.get('code') || '').toUpperCase().trim();
   return CODE_RE.test(code) && sessions.has(code) && sessions.get(code).size > 0;
@@ -1379,6 +1382,7 @@ const server = http.createServer((req, res) => {
     const sku = pathname === '/api/route-permit' ? 'routes' : new URL(req.url, 'http://x').searchParams.get('sku');
     const quota = Object.prototype.hasOwnProperty.call(GOOGLE_QUOTAS, sku) ? GOOGLE_QUOTAS[sku] : null;
     if (!quota) return sendJson(400, { error: 'bad-sku' });
+    if (RAW_PINS.length > 0 && !isAuthenticated(req) && !PHONE_SKUS.has(sku)) return sendJson(401, { error: 'pin' });
     const gate = quota.tryConsume();
     const snap = quota.snapshot();
     const resets = quotaResetDates(Date.now());

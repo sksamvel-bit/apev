@@ -166,3 +166,13 @@ ok(!/PUBLIC_AUTH_PATHS[^;]*google-(permit|usage)/.test(srv), '/api/google-permit
     ok(q2.status().lastError === '' && !!q2.status().lastSavedAt, 'a successful write clears the error and records the time');
   }
 })();
+
+// v3.10.103: the phone (session code, no PIN) searches with Google Places too, under the same caps, search SKUs only
+{
+  const srv3 = fs.readFileSync(__dirname + '/../server.js', 'utf8');
+  ok(/SESSION_GATED_PATHS = new Set\(\[[^\]]*'\/api\/gmaps-config'[^\]]*'\/api\/google-permit'/.test(srv3), 'v3.10.103: key + permit reachable with an active session code');
+  ok(/PHONE_SKUS = new Set\(\['autocomplete', 'details'\]\)/.test(srv3) && /!isAuthenticated\(req\) && !PHONE_SKUS\.has\(sku\)\) return sendJson\(401/.test(srv3), 'v3.10.103: without a PIN only autocomplete/details permits (no routes, map loads, nearby)');
+  const rem = fs.readFileSync(__dirname + '/../remote.html', 'utf8');
+  ok(/googlePermit\('autocomplete'\)[\s\S]*?places:autocomplete/.test(rem) && /googlePermit\('details'\)[\s\S]*?'X-Goog-FieldMask': 'formattedAddress,location'/.test(rem), 'v3.10.103: phone asks a permit before each Google call; details with Essentials fields only');
+  ok(/source: 'gmaps'/.test(rem) && /\/api\/search\?q=/.test(rem) && /textContent = 'Google Maps'/.test(rem), 'v3.10.103: Google place goes to the car Google mode; OSM search stays as fallback; Google attribution shown');
+}

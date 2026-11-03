@@ -498,7 +498,7 @@
         return;
       }
       if (MAPS_LINK_RE.test(val)) { debounceTimer = setTimeout(() => resolveMapsLink(val), 150); return; }
-      debounceTimer = setTimeout(() => executeSearch(val), 350);
+      debounceTimer = setTimeout(() => executeSearch(val), 450);
     });
 
     // A shared Google Maps link (v3.10.53): our server reads the coordinates out of it; the car opens it in Google mode
@@ -551,8 +551,81 @@
       resultsList.innerHTML = '';
     });
 
+    // v3.10.103: Google Places search, the same as in the car (browser key from /api/gmaps-config, every call under the server caps).
+    // Only Essentials fields (address, location): the name comes from the suggestion. Without Google (no key, cap, error) the OSM search below.
+    let gKey = null, gToken = null;
+    const code = () => encodeURIComponent(sessionCode);
+    async function googleKey() {
+      if (gKey !== null) return gKey;
+      try { const r = await fetch('/api/gmaps-config?code=' + code()); const j = r.ok ? await r.json() : null; gKey = j && j.enabled && j.key ? j.key : ''; } catch (_) { gKey = ''; }
+      return gKey;
+    }
+    async function googlePermit(sku) {
+      try { const r = await fetch('/api/google-permit?sku=' + sku + '&code=' + code()); return r.ok; } catch (_) { return false; }
+    }
+    async function googleSuggest(query) {
+      const key = await googleKey();
+      if (!key || !(await googlePermit('autocomplete'))) return null;
+      if (!gToken) gToken = (crypto.randomUUID ? crypto.randomUUID() : Date.now() + '-' + Math.random().toString(16).slice(2));
+      const r = await fetch('https://places.googleapis.com/v1/places:autocomplete', {
+        method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Goog-Api-Key': key },
+        body: JSON.stringify({ input: query, sessionToken: gToken, languageCode: 'ka', includedRegionCodes: ['ge'] })
+      });
+      if (!r.ok) { console.warn('[phone] Google autocomplete', r.status); return null; }
+      const j = await r.json();
+      return (j.suggestions || []).map(s => s.placePrediction).filter(p => p && p.placeId).map(p => {
+        const sf = p.structuredFormat || {};
+        return { id: p.placeId, name: (sf.mainText && sf.mainText.text) || (p.text && p.text.text) || '', sub: (sf.secondaryText && sf.secondaryText.text) || '' };
+      });
+    }
+    async function googlePlace(id) {
+      const key = await googleKey();
+      if (!key || !(await googlePermit('details'))) return null;
+      const tok = gToken; gToken = null; // a session ends with the selection (billing: autocomplete calls + one details call)
+      const r = await fetch('https://places.googleapis.com/v1/places/' + encodeURIComponent(id) + '?languageCode=ka' + (tok ? '&sessionToken=' + encodeURIComponent(tok) : ''),
+        { headers: { 'X-Goog-Api-Key': key, 'X-Goog-FieldMask': 'formattedAddress,location' } });
+      if (!r.ok) { console.warn('[phone] Google details', r.status); return null; }
+      const p = await r.json();
+      return p && p.location ? { address: p.formattedAddress || '', lat: p.location.latitude, lng: p.location.longitude } : null;
+    }
+    const escHtml = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+
+    let searchSeq = 0;
     async function executeSearch(query) {
+      const seq = ++searchSeq;
       resultsList.innerHTML = '<div style="padding:10px;text-align:center;color:#94a3b8;font-size:0.85rem;">იძებნება...</div>';
+      if (query.length >= 3) {
+        let list = null;
+        try { list = await googleSuggest(query); } catch (e) { console.warn('[phone] Google search', e && e.message); }
+        if (seq !== searchSeq) return; // the driver kept typing: a newer search already started
+        if (list && list.length) {
+          resultsList.innerHTML = '';
+          list.forEach(item => {
+            const el = document.createElement('div');
+            el.className = 'result-item';
+            el.innerHTML = `
+              <div class="result-info">
+                <div class="result-name">📍 ${escHtml(item.name)}</div>
+                <div class="result-sub">${escHtml(item.sub)}</div>
+              </div>
+              <button class="btn-send-res">გაგზავნა</button>
+            `;
+            el.addEventListener('click', async () => {
+              let p = null;
+              try { p = await googlePlace(item.id); } catch (_) {}
+              if (!p) { showToast('⚠️ ადგილის მისამართი ვერ ჩაიტვირთა'); return; }
+              const ok = await sendToCar('destination', { name: item.name, fullName: p.address || item.name, lat: p.lat, lng: p.lng, source: 'gmaps' });
+              if (ok) showToast(`🚀 ${item.name} გაგზავნილია Tesla-ში!`);
+            });
+            resultsList.appendChild(el);
+          });
+          const by = document.createElement('div');
+          by.style.cssText = 'padding:6px 10px;text-align:right;color:#94a3b8;font-size:0.75rem;';
+          by.textContent = 'Google Maps';
+          resultsList.appendChild(by);
+          return;
+        }
+      }
       try {
         const url = `/api/search?q=${encodeURIComponent(query)}&code=${encodeURIComponent(sessionCode)}`;
         const res = await fetch(url);
