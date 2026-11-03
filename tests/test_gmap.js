@@ -408,3 +408,14 @@ ok(/strokeColor: "#3e6ae1", strokeOpacity: 0\.7, strokeWeight: 4/.test(src) && !
   const srv7 = fs.readFileSync(__dirname + '/../server.js', 'utf8');
   ok(/OVERPASS_HAZ_RE\.exec/.test(srv7), 'v3.10.118: the server accepts the combined traffic light + hazards tile');
 }
+
+// v3.10.119 (live test 2026-11-03): no two voice prompts for the same turn a second apart
+{
+  const v = G.createVoiceCues();
+  const st = { text: 'მოუხვიეთ მარცხნივ' };
+  ok(v.update(3, st, 210, 50) === null && /^200 მეტრში/.test(v.update(3, st, 200, 50) || ''), 'v3.10.119: at 210 m silent, at 200 m "200 მეტრში …" (was both)');
+  const v2 = G.createVoiceCues();
+  ok(v2.update(4, st, 52, 50) === null && v2.update(4, st, 48, 50) === 'მოუხვიეთ მარცხნივ', 'v3.10.119: at 52 m silent, then only the bare instruction');
+  const v3 = G.createVoiceCues();
+  ok(/^480 მეტრში/.test(v3.update(5, st, 480, 50) || ''), 'v3.10.119: far from the next tier the prompt is still said');
+}

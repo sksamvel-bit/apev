@@ -78,7 +78,7 @@ class TrafficSignalsEngine {
   requestTile(i, j) {
     const key = this.tileKey(i, j);
     const hit = this.tiles.get(key);
-    if (hit && Date.now() - hit.t < this.ttlMs) return Promise.resolve(hit);
+    if (hit && Date.now() - hit.t < this.ttlMs && hit.haz) return Promise.resolve(hit);   // v3.10.119: a tile without hazards is fetched again (its lights stay meanwhile)
     if (this.pending.has(key)) return this.pending.get(key);
     if (Date.now() < this.failUntil) return Promise.resolve(null); // back-off after failures
     if (this.pending.size >= 2) return Promise.resolve(null);      // polite to the public API
@@ -118,7 +118,9 @@ class TrafficSignalsEngine {
     let lastErr = null;
     for (const ep of this.endpoints) {
       const ctrl = typeof AbortController !== "undefined" ? new AbortController() : null;
-      const timer = ctrl ? setTimeout(() => ctrl.abort(), 20000) : null;
+      // v3.10.119 (live test: our server got the combined tile from a busy Overpass after 94 s, the car had given up at 20 s):
+      // our server waits up to 100 s for Overpass and caches the answer, so it is given 105 s; the public mirrors keep 20 s
+      const timer = ctrl ? setTimeout(() => ctrl.abort(), ep.charAt(0) === "/" ? 105000 : 20000) : null;
       try {
         const res = await this.fetchFn(ep + "?data=" + encodeURIComponent(q), ctrl ? { signal: ctrl.signal } : undefined);
         if (!res.ok) throw new Error("Overpass HTTP " + res.status);
@@ -217,10 +219,11 @@ class TrafficSignalsEngine {
       const o = JSON.parse(raw), now = Date.now();
       for (const k of Object.keys(o)) {
         const v = o[k];
-        // v3.10.118: tiles saved before the hazards existed (no 3rd part) are fetched again
-        if (now - v[0] < this.ttlMs && Array.isArray(v[2])) {
+        // v3.10.118/119: a tile saved before the hazards existed (no 3rd part) keeps its traffic lights (haz: null) and is
+        // fetched again in the background (requestTile), so a slow Overpass never leaves the car without the lights it had
+        if (now - v[0] < this.ttlMs) {
           this.tiles.set(k, { t: v[0], sigs: v[1].map(a => ({ lat: a[0], lon: a[1], name: a[2] || "შუქნიშანი" })),
-            haz: v[2].map(a => ({ lat: a[0], lon: a[1], kind: a[2] === "b" ? "bump" : a[2] === "r" ? "rail" : "school" })) });
+            haz: Array.isArray(v[2]) ? v[2].map(a => ({ lat: a[0], lon: a[1], kind: a[2] === "b" ? "bump" : a[2] === "r" ? "rail" : "school" })) : null });
         }
       }
     } catch (e) { /* ignore corrupt storage */ }
@@ -236,7 +239,8 @@ class TrafficSignalsEngine {
     try {
       if (typeof localStorage === "undefined") return;
       const o = {};
-      for (const [k, v] of this.tiles) o[k] = [v.t, v.sigs.map(s => [s.lat, s.lon, s.name === "შუქნიშანი" ? 0 : s.name]), (v.haz || []).map(h => [h.lat, h.lon, h.kind[0]])];
+      for (const [k, v] of this.tiles) o[k] = v.haz ? [v.t, v.sigs.map(s => [s.lat, s.lon, s.name === "შუქნიშანი" ? 0 : s.name]), v.haz.map(h => [h.lat, h.lon, h.kind[0]])]
+        : [v.t, v.sigs.map(s => [s.lat, s.lon, s.name === "შუქნიშანი" ? 0 : s.name])];
       localStorage.setItem(SIGNALS_STORAGE_KEY, JSON.stringify(o));
     } catch (e) { /* storage full / disabled: ignore */ }
   }

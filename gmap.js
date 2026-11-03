@@ -257,6 +257,9 @@
         let crossed = -1;
         tiers.forEach((t, k) => { if (distM <= t && !said.has(k)) { said.add(k); crossed = k; } });
         if (crossed < 0) return null;
+        // v3.10.119 (live test): a tier crossed only just before the next one ("210 მეტრში" and a second later "200 მეტრში",
+        // "50 მეტრში" and then the bare instruction) is skipped: the next tier says it a moment later
+        if (crossed < tiers.length - 1 && distM - tiers[crossed + 1] < 40) return null;
         if (crossed === tiers.length - 1) return step.text;
         return Math.max(10, Math.round(distM / 10) * 10) + " მეტრში, " + step.text;
       },
