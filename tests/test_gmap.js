@@ -238,3 +238,20 @@ ok(/GOOGLE_MAPS_KEY/.test(srv) && !/PUBLIC_AUTH_PATHS[^;]*gmaps-config/.test(srv
 
 // v3.10.100: speed / limit badges do not overlap the Google route card
 ok(/body\.gmap-open:has\(#gmap-card\.show\) \.car-hud-stats \{ visibility: hidden; \}/.test(fs.readFileSync(__dirname + '/../style.css', 'utf8')), 'v3.10.100: speed HUD hidden while the Google route card is open');
+
+// v3.10.101: turn arrow in the banner + arrival strip (time · min · km)
+{
+  const tl = G.maneuverIcon('TURN_LEFT'), trr = G.maneuverIcon('TURN_RIGHT');
+  ok(tl.left === true && trr.left === false && tl.d === trr.d && /^M/.test(trr.d), 'v3.10.101: left turn = mirrored right arrow');
+  ok(G.maneuverIcon('UTURN_LEFT').left === true && G.maneuverIcon('ROUNDABOUT_LEFT').left === false, 'v3.10.101: U-turn left mirrored; roundabout one shape (counter-clockwise traffic)');
+  ok(G.maneuverIcon('MANEUVER_UNSPECIFIED') === null && G.maneuverIcon('') === null, 'v3.10.101: unknown maneuver -> no icon');
+  const L = [{ lat: 0, lng: 0 }, { lat: 0, lng: 0.01 }, { lat: 0, lng: 0.02 }], c = G.routeCum(L);
+  ok(Math.abs(c[2] - 2226) < 5 && Math.abs(G.remainingOnRoute(L, c, { lat: 0.0001, lng: 0.015 }, 1) - 556) < 5, 'v3.10.101: metres left along the route from the car');
+  ok(G.remainingOnRoute(L, c, { lat: 0, lng: 0 }, -1) === c[2], 'v3.10.101: no match yet -> whole route');
+  const e = G.etaInfo(1113, 2226, 1200, new Date(2026, 10, 3, 10, 0).getTime());
+  ok(e.arrive === '10:10' && e.dur === '10 წთ' && e.dist === '1.1 კმ', 'v3.10.101: half the route left -> half the traffic ETA');
+  ok(G.etaInfo(10, 10, 4500, 0).dur === '1 სთ 15 წთ', 'v3.10.101: hours shown above 60 min');
+  const html = fs.readFileSync(__dirname + '/../index.html', 'utf8');
+  ok(html.includes('id="gmap-nav-icon"') && html.includes('id="gmap-eta-time"') && html.includes('id="gmap-eta-rest"'), 'v3.10.101: banner icon + arrival strip markup');
+  ok(/if \(eta\) eta\.classList\.remove\("show"\)/.test(src), 'v3.10.101: arrival strip hidden when navigation stops');
+}

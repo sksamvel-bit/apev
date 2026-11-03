@@ -335,6 +335,47 @@
     return out.slice(0, n).map((x) => x.st);
   }
 
+  /** v3.10.101: turn arrow for a Routes API maneuver: { d: SVG path (24x24), left: mirror it } or null. Left/right share one shape. */
+  const MANEUVER_PATHS = {
+    straight: "M12 21V4M6 10l6-6 6 6",
+    turn: "M7 21v-7a5 5 0 0 1 5-5h8M15 4l5 5-5 5",
+    slight: "M8 21v-6l8-8M10 7h6v6",
+    sharp: "M8 21V6l10 10M18 9v7h-7",
+    uturn: "M8 21V10a5 5 0 0 1 10 0v6M14 12l4 4 4-4",
+    roundabout: "M12 21v-6M12 15a5 5 0 1 1 5-5h4M18 7l3 3-3 3",
+    merge: "M7 21c0-6 10-8 10-15M12 6l5-3 2 5",
+  };
+  function maneuverIcon(m) {
+    m = String(m || "");
+    let key = "", left = /LEFT/.test(m);
+    if (/^UTURN/.test(m)) { key = "uturn"; left = !/RIGHT/.test(m); }
+    else if (/^ROUNDABOUT/.test(m)) { key = "roundabout"; left = false; }
+    else if (/SHARP/.test(m)) key = "sharp";
+    else if (/SLIGHT|RAMP|FORK/.test(m)) key = "slight";
+    else if (/^TURN_(LEFT|RIGHT)$/.test(m)) key = "turn";
+    else if (m === "MERGE") key = "merge";
+    else if (/STRAIGHT|DEPART|NAME_CHANGE/.test(m)) key = "straight";
+    return key ? { d: MANEUVER_PATHS[key], left } : null;
+  }
+
+  /** v3.10.101: metres left along the route from the car (on segment i) to the end; cum = cumulative metres per vertex. */
+  function routeCum(coords) { const c = [0]; for (let k = 1; k < coords.length; k++) c.push(c[k - 1] + meters(coords[k - 1], coords[k])); return c; }
+  function remainingOnRoute(coords, cum, pos, i) {
+    const total = cum[cum.length - 1] || 0;
+    if (!(i >= 0) || !coords[i + 1]) return total;
+    const t = Math.max(0, Math.min(1, segT(coords[i], coords[i + 1], pos)));
+    return Math.max(0, total - (cum[i] + t * (cum[i + 1] - cum[i])));
+  }
+  /** Arrival strip text: traffic ETA of the route scaled by the share still to drive. */
+  function etaInfo(remainM, totalM, durationSec, nowMs) {
+    const sec = totalM > 0 ? durationSec * Math.min(1, remainM / totalM) : durationSec;
+    const min = Math.max(0, Math.round(sec / 60));
+    const at = new Date(nowMs + sec * 1000);
+    const hhmm = String(at.getHours()).padStart(2, "0") + ":" + String(at.getMinutes()).padStart(2, "0");
+    const dur = min >= 60 ? Math.floor(min / 60) + " სთ " + (min % 60) + " წთ" : min + " წთ";
+    return { arrive: hhmm, dur, dist: fmtDist(remainM) };
+  }
+
   function fmtDist(m) { return m >= 1000 ? (m / 1000).toFixed(m >= 10000 ? 0 : 1) + " კმ" : Math.round(m / 10) * 10 + " მ"; }
 
   // ---------- the mode ----------
@@ -942,9 +983,23 @@
     drawRoutes(); renderRouteOptions(); updateNavBanner();
   }
 
+  function updateEta() {
+    const el = $("gmap-eta");
+    if (!el) return;
+    const rt = S.routes[S.routeIdx];
+    if (!S.navigating || !rt || !rt.coords || rt.coords.length < 2) { el.classList.remove("show"); return; }
+    if (!rt.cum) rt.cum = routeCum(rt.coords);
+    const remain = S.carPos ? remainingOnRoute(rt.coords, rt.cum, S.carPos, S.segIdx) : rt.cum[rt.cum.length - 1];
+    const e = etaInfo(remain, rt.cum[rt.cum.length - 1], rt.durationSec || 0, Date.now());
+    $("gmap-eta-time").textContent = e.arrive;
+    $("gmap-eta-rest").textContent = e.dur + " · " + e.dist;
+    el.classList.add("show");
+  }
+
   function updateNavBanner() {
     const nav = $("gmap-nav");
     if (!nav) return;
+    updateEta();
     const rt = S.routes[S.routeIdx];
     if (!S.navigating || !rt || !rt.steps.length) { nav.classList.remove("show"); return; }
     if (S.carPos) S.stepIdx = nextStepIndex(rt.steps, S.carPos, S.stepIdx);
@@ -952,6 +1007,13 @@
     const d = S.carPos ? meters(S.carPos, st.loc) : st.distanceM;
     $("gmap-nav-dist").textContent = fmtDist(d);
     $("gmap-nav-text").textContent = st.text;
+    const icon = $("gmap-nav-icon");
+    if (icon && icon.getAttribute("data-m") !== st.maneuver) {
+      icon.setAttribute("data-m", st.maneuver);
+      const mi = maneuverIcon(st.maneuver);
+      icon.classList.toggle("show", !!mi);
+      if (mi) { $("gmap-nav-icon-path").setAttribute("d", mi.d); $("gmap-nav-icon-g").setAttribute("transform", mi.left ? "translate(24,0) scale(-1,1)" : ""); }
+    }
     if (S.voice) { const t = S.voice.update(S.stepIdx, st, d, window.currentSpeedKmhForLock || 0); if (t) speak(t); }
     nav.classList.add("show");
   }
@@ -985,6 +1047,8 @@
     if (typeof document !== "undefined") document.body.classList.remove("gmap-navigating");
     const nav = $("gmap-nav");
     if (nav) nav.classList.remove("show");
+    const eta = $("gmap-eta");
+    if (eta) eta.classList.remove("show");
   }
 
   async function reroute() {
@@ -1306,7 +1370,7 @@
     if (S.enabled && mainMapIsGoogle(q)) autoOpen();
   }
 
-  const api = { init, open, close, isOpen: () => S.open, isEnabled: () => S.enabled, camMoves: () => S.camCount, isVector: () => !!S.vector, tilt: () => (S.map && S.map.getTilt ? Math.round(S.map.getTilt() || 0) : 0), renderType: () => (S.map && S.map.getRenderingType ? String(S.map.getRenderingType() || "") : ""), gpuOn: () => !!S.gpuOn, mainMapIsGoogle, MAIN_MAP_KEY, selectMap, shownMap, currentMainMap, MAP_KINDS, gpuPlan, openWithQuery, openWithDestination, focusPlace, SIDE_PROXIES, mapKey, distToPolylineM, nearestOnPolyline, createOffRouteTracker, createVoiceCues, nearestChargers, createCarGlide, aheadPoint, mapOptions, cameraNeedsUpdate, createFpsMeter, scaledBoxStyle, capText, warnText, decodePolyline, parseRoutesResponse, routesRequestBody, nextStepIndex, fmtDist, buildLoaderUrl, createDebouncer, osrmUrl, summarizeRoute, mapStyles, bearing, meters, CATEGORIES };
+  const api = { init, open, close, isOpen: () => S.open, isEnabled: () => S.enabled, camMoves: () => S.camCount, isVector: () => !!S.vector, tilt: () => (S.map && S.map.getTilt ? Math.round(S.map.getTilt() || 0) : 0), renderType: () => (S.map && S.map.getRenderingType ? String(S.map.getRenderingType() || "") : ""), gpuOn: () => !!S.gpuOn, mainMapIsGoogle, MAIN_MAP_KEY, selectMap, shownMap, currentMainMap, MAP_KINDS, gpuPlan, openWithQuery, openWithDestination, focusPlace, SIDE_PROXIES, mapKey, distToPolylineM, nearestOnPolyline, createOffRouteTracker, createVoiceCues, nearestChargers, createCarGlide, aheadPoint, mapOptions, cameraNeedsUpdate, createFpsMeter, scaledBoxStyle, capText, warnText, decodePolyline, parseRoutesResponse, routesRequestBody, nextStepIndex, fmtDist, maneuverIcon, routeCum, remainingOnRoute, etaInfo, buildLoaderUrl, createDebouncer, osrmUrl, summarizeRoute, mapStyles, bearing, meters, CATEGORIES };
   if (typeof document !== "undefined") {
     if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", () => init());
     else init();
