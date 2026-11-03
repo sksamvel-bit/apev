@@ -350,3 +350,10 @@ ok(/strokeColor: "#3e6ae1", strokeOpacity: 0\.7, strokeWeight: 4/.test(src) && !
   for (const k of ['traffic', 'night', 'map', 'locate', 'plus', 'minus', 'bolt', 'list', 'camera', 'volume', 'volumeOff', 'phone', 'settings', 'close']) ok(new RegExp('\\n\\s+' + k + ': "M').test(src), 'v3.10.113: icon ' + k);
   ok(/data-tone="green"\] \{ color: #22c55e; \}/.test(css) && /\.gmap-side \.gmap-btn\.active \{ background: color-mix\(in srgb, currentColor 18%, transparent\);/.test(css), 'v3.10.113: colour per category, active = soft tint of its own colour');
 }
+
+// v3.10.114: compass on top of the panel column (same place open or hidden); panel below it still fits 601 px
+{
+  const css = fs.readFileSync(__dirname + '/../style.css', 'utf8');
+  ok(/\.gmap-compass \{ position: absolute; top: 72px; right: 25px;/.test(css) && !/side-closed \.gmap-compass \{/.test(css), 'v3.10.114: compass above the panel, never beside it');
+  ok(/\.gmap-side \{ top: 128px; right: 10px; gap: 2px;[^}]*max-height: calc\(100vh - 140px\)/.test(css) && /\.gmap-side \.gmap-btn \{ width: 70px; height: 42px; min-height: 32px;/.test(css), 'v3.10.114: panel under the compass, 70x32 buttons (area of 47x47)');
+}
