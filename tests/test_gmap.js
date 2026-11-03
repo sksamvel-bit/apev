@@ -311,7 +311,7 @@ ok(/strokeColor: "#3e6ae1", strokeOpacity: 0\.7, strokeWeight: 4/.test(src) && !
 // v3.10.109: the rest of NAV_STANDARDS S2/S4 (side panels, charger list, top chips, QR window)
 {
   const css = fs.readFileSync(__dirname + '/../style.css', 'utf8');
-  ok(/\.gmap-side \.gmap-btn \{ width: 64px;/.test(css) && /width: 62px;\s*height: 36px;\s*min-width: 62px;/.test(css), 'v3.10.109: side panel buttons have the area of 47x47 px (Google 64x35, ours 62x36)');
+  ok(/\.gmap-side \.gmap-btn \{ width: 70px;/.test(css) && /width: 62px;\s*height: 36px;\s*min-width: 62px;/.test(css), 'v3.10.109/114: side panel buttons have the area of 47x47 px (Google 70x32, ours 62x36)');
   ok(/\.cd-meta \{ font-size: 0\.95rem;/.test(css) && /\.cd-dist \{ font-size: 0\.95rem;/.test(css) && /\.weather-chip \{[^}]*font-size: 0\.95rem;/.test(css) && /\.battery-chip \{[^}]*font-size: 0\.95rem;/.test(css), 'v3.10.109: charger list and top chips >= 3.8 mm');
   const appSrc = fs.readFileSync(__dirname + '/../app.js', 'utf8');
   ok(/width: 170,[^\n]*\n\s*height: 170,/.test(appSrc), 'v3.10.109: the pairing QR fits the 601 px screen');
