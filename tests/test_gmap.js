@@ -235,3 +235,6 @@ ok(/GOOGLE_MAPS_KEY/.test(srv) && !/PUBLIC_AUTH_PATHS[^;]*gmaps-config/.test(srv
   ok(/function trimPassed\([\s\S]*?setPath\(path\)/.test(src) && /nr\.d <= OFF_ROUTE_M\) trimPassed\(pos, rt\.coords, nr\.i\)/.test(src), 'v3.10.99: chosen route line starts at the car (driven part hidden), only while on the route');
   ok(/i === S\.trimSeg && now - \(S\.trimAt \|\| 0\) < 3000/.test(src), 'v3.10.99: setPath throttled (new segment or every 3 s)');
 }
+
+// v3.10.100: speed / limit badges do not overlap the Google route card
+ok(/body\.gmap-open:has\(#gmap-card\.show\) \.car-hud-stats \{ visibility: hidden; \}/.test(fs.readFileSync(__dirname + '/../style.css', 'utf8')), 'v3.10.100: speed HUD hidden while the Google route card is open');

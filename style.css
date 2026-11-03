@@ -2158,6 +2158,8 @@ body.gmap-open #chargers-drawer { z-index: 950; }   /* v3.10.56: the list works 
 /* v3.10.51: speed + speed-limit badge (our OSM data, same engines as the main map) stay visible above the Google map,
    lifted clear of the Google logo in the bottom-left corner (Google's terms: the logo must not be covered) */
 body.gmap-open .car-hud-stats { z-index: 950; bottom: 72px; }
+/* v3.10.100: the place / route card sits in the same bottom-left corner: speed + limit step aside while it is open */
+body.gmap-open:has(#gmap-card.show) .car-hud-stats { visibility: hidden; }
 .gmap-nav-signal { display: none; margin-top: 5px; padding: 3px 8px; border-radius: 8px; background: rgba(0,0,0,0.25); color: #fde68a; font-size: 0.85rem; font-weight: 700; }
 .gmap-nav-signal.show { display: block; }
 body.gmap-open .dock-controls { display: none; } /* the Google layer has its own side panel (same look, see v3.10.55 below) */
