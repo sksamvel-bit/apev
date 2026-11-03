@@ -23,6 +23,11 @@ class SpeechAssistant {
     this.lastPrompt = "";
     this.lastPromptTime = 0;
     this.minIntervalMs = 3500;
+    // v3.10.107 (ISO 16951): what is being said now and what waits behind it
+    this.busyPrio = 9;
+    this.busyUntil = 0;
+    this.pending = null;
+    this.pendingTimer = null;
 
     this.initVoices();
   }
@@ -154,17 +159,68 @@ class SpeechAssistant {
   }
 
   /**
+   * v3.10.107 (ISO 16951): 1 = safety (speed camera, speed, ice, rain, traffic light, "ყურადღება"), 2 = a maneuver right now
+   * (no distance in the text) or the arrival, 3 = everything else (early "500 მეტრში ...", route recalculated, ...).
+   */
+  static priorityOf(text) {
+    const t = String(text || "");
+    if (/ყურადღება|კამერ|სიჩქარ|ყინულ|წვიმ|თოვ|შუქნიშან/.test(t)) return 1;
+    if (/მიხვედით/.test(t)) return 2;
+    if (!/მეტრში|კილომეტრში/.test(t) && /მოუხვიეთ|შეუხვიეთ|შემობრუნდით|გადაუხვიეთ|წრეზე|წრიდან|გამოდით|დარჩით/.test(t)) return 2;
+    return 3;
+  }
+
+  /** Rough length of a prompt (Georgian TTS ~13 characters a second) when the end event does not come. */
+  static estimateMs(text) { return 1200 + String(text || "").length * 75; }
+
+  /**
    * Speaks prompt in Georgian and plays contextual directional chime.
    * Strictly Georgian locale (ka-GE) - NEVER falls back to English TTS!
+   * v3.10.107: a new prompt never cuts off a more important one that is still being said (a turn prompt used to stop a
+   * speed-camera warning half-way); it waits and follows it, or is dropped when it is 6 s old by then.
    * @param {string} text
+   * @param {number} [prio] 1..3, see priorityOf
    */
-  speak(text) {
+  speak(text, prio) {
     if (this.isMuted || !text) return;
 
     const now = Date.now();
     if (text === this.lastPrompt && (now - this.lastPromptTime) < this.minIntervalMs) {
       return;
     }
+    const p = prio || SpeechAssistant.priorityOf(text);
+    if (this.busyUntil > now && this.busyPrio < p) {
+      if (!this.pending || p <= this.pending.prio) this.pending = { text, prio: p, t: now };
+      this.schedulePending(this.busyUntil - now);
+      return;
+    }
+    this.sayNow(text, p, now);
+  }
+
+  schedulePending(ms) {
+    clearTimeout(this.pendingTimer);
+    this.pendingTimer = setTimeout(() => this.flushPending(), Math.max(50, ms));
+  }
+
+  flushPending() {
+    const now = Date.now();
+    if (this.busyUntil > now) { this.schedulePending(this.busyUntil - now); return; }
+    const q = this.pending;
+    this.pending = null;
+    if (q && !this.isMuted && now - q.t <= 6000) this.sayNow(q.text, q.prio, now);
+  }
+
+  /** The prompt is over (audio clip or TTS end event): the next one may start at once. */
+  doneSpeaking(token) {
+    if (token !== this.speakToken) return;
+    this.busyUntil = 0;
+    if (this.pending) this.schedulePending(50);
+  }
+
+  sayNow(text, prio, now) {
+    const token = this.speakToken = (this.speakToken || 0) + 1;
+    this.busyPrio = prio;
+    this.busyUntil = now + SpeechAssistant.estimateMs(text);
 
     // 1. Play directional chime cue
     const lower = text.toLowerCase();
@@ -184,7 +240,7 @@ class SpeechAssistant {
     let audioPlayed = false;
     if (this.turnAudio && typeof this.turnAudio.play === "function") {
       try {
-        audioPlayed = this.turnAudio.play(text);
+        audioPlayed = this.turnAudio.play(text, () => this.doneSpeaking(token));
       } catch (e) {
         console.warn("SpeechAssistant turnAudio notice:", e.message);
       }
@@ -209,6 +265,8 @@ class SpeechAssistant {
 
           if (kaVoice) {
             utterance.voice = kaVoice;
+            utterance.onend = () => this.doneSpeaking(token);
+            utterance.onerror = () => this.doneSpeaking(token);
             this.synth.speak(utterance);
           }
           // Intentionally NO English fallback: if Georgian voice is not installed in OS,
@@ -230,6 +288,7 @@ class SpeechAssistant {
     if (this.turnAudio && typeof this.turnAudio.setMuted === "function") {
       this.turnAudio.setMuted(this.isMuted);
     }
+    if (this.isMuted) { this.pending = null; this.busyUntil = 0; clearTimeout(this.pendingTimer); }
     if (this.isMuted && this.synth) {
       try {
         this.synth.cancel();

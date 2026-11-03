@@ -136,7 +136,7 @@ function initClock() {
 const OFM_STYLE_URL = "https://tiles.openfreemap.org/styles/liberty";
 const OFM_STYLE_CACHE_KEY = "tesla_nav_ofm_style_v1";
 const MAP_STYLE_KEYS = ["openfreemap", "google-roads"];
-const APP_VERSION = "3.10.106";
+const APP_VERSION = "3.10.107";
 const MAP_DEFAULT_ZOOM = 16;      // MapLibre zoom (Leaflet-equivalent 17)
 // Performance experiments (all default to the normal behaviour): ?labels=0 hides the base-map labels/icons, ?markers=0 skips the
 // charger DOM markers, ?pitch=N sets the heading-up tilt (0-60). Used to find what makes the car's browser slow.
@@ -1019,9 +1019,11 @@ function initGeolocation() {
     // v3.10.82: every GPS fix handler is timed (window.__prof.gpsMs) to see how much of the busy time it is
     return orig.call(navigator.geolocation, function (pos) { const t0 = performance.now(); try { return ok(pos); } finally { window.__prof.gpsMs += performance.now() - t0; window.__prof.gpsN++; } }, err, opts);
   })(navigator.geolocation.watchPosition);
+  watchSystemStatus(gpsBadge);
   navigator.geolocation.watchPosition(
     (position) => {
       gpsBadge.classList.remove("simulated");
+      window.__lastGpsAt = Date.now();
       const coords = position.coords;
       const lat = coords.latitude;
       const lng = coords.longitude;
@@ -1306,6 +1308,35 @@ function updateVehicleMarker(lat, lng, headingDeg, speedKmh, accuracyMeters = nu
     updateGpsStatusQuality(accuracyMeters);
   }
 
+}
+
+/**
+ * v3.10.107 (EU HMI principles, ESoP: the driver sees when the system is not working): a GPS that stopped while the car was
+ * moving (tunnel, garage, the browser lost the permission) turns the dot red with a toast; no internet shows 📵 with a toast.
+ * Only after a real fix and at > 5 km/h, because a parked car may get no new fixes at all.
+ */
+const GPS_LOST_MS = 15000;
+function gpsLost(lastFixAt, now, lastSpeedKmh, simulated) {
+  return !!lastFixAt && !simulated && lastSpeedKmh > 5 && now - lastFixAt > GPS_LOST_MS;
+}
+function watchSystemStatus(dot) {
+  let lostShown = false;
+  setInterval(() => {
+    const lost = gpsLost(window.__lastGpsAt, Date.now(), window.currentSpeedKmhForLock || 0, dot.classList.contains("simulated"));
+    if (lost === lostShown) return;
+    lostShown = lost;
+    dot.classList.toggle("gps-lost", lost);
+    if (lost) { dot.title = "GPS სიგნალი დაკარგულია"; showToast("📡 GPS სიგნალი დაიკარგა: მდებარეობა არ ახლდება", "warning", 6000); }
+    else showToast("📡 GPS სიგნალი აღდგა", "info", 2500);
+  }, 2000);
+  const net = (on) => {
+    const el = document.getElementById("net-offline");
+    if (el) el.hidden = on;
+    showToast(on ? "🌐 ინტერნეტი აღდგა" : "📵 ინტერნეტი გაითიშა: რუკა და მარშრუტი არ განახლდება", on ? "info" : "warning", on ? 2500 : 6000);
+  };
+  window.addEventListener("offline", () => net(false));
+  window.addEventListener("online", () => net(true));
+  if (navigator.onLine === false) { const el = document.getElementById("net-offline"); if (el) el.hidden = false; }
 }
 
 function updateGpsStatusQuality(accuracyMeters) {
@@ -2276,6 +2307,8 @@ function initEventListeners() {
     // v3.10.77: which map opens with the app (gmap.js reads it on the next start)
     const mm = document.getElementById("input-main-map");
     if (mm) { try { localStorage.setItem("tesla_nav_main_map", ["google3d", "google", "ours"].includes(mm.value) ? mm.value : "google3d"); } catch (_) {} }
+    const lc = document.getElementById("input-limit-chime");   // v3.10.107: read by speed-limit.js limitChangeChime
+    if (lc) { try { localStorage.setItem("limit_chime", lc.value === "0" ? "0" : "1"); } catch (_) {} }
     localStorage.setItem("saved_home", document.getElementById("input-home-addr").value.trim());
     localStorage.setItem("saved_work", document.getElementById("input-work-addr").value.trim());
     modal.classList.remove("open");
@@ -2284,6 +2317,7 @@ function initEventListeners() {
   });
 
   // Populate settings inputs
+  { const lc = document.getElementById("input-limit-chime"); if (lc) { let v = "1"; try { if (localStorage.getItem("limit_chime") === "0") v = "0"; } catch (_) {} lc.value = v; } }
   { const mm = document.getElementById("input-main-map"); if (mm) { let v = "google3d"; try { const s = localStorage.getItem("tesla_nav_main_map"); if (["google3d", "google", "ours"].includes(s)) v = s; } catch (_) {} mm.value = v; } }
   document.getElementById("input-home-addr").value = localStorage.getItem("saved_home") || "";
   document.getElementById("input-work-addr").value = localStorage.getItem("saved_work") || "";

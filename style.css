@@ -454,6 +454,11 @@ html, body {
   box-shadow: 0 0 8px #ffab00;
 }
 
+/* v3.10.107: GPS stopped while driving (red, no pulse) and no internet (📵) */
+.gps-dot.gps-lost { background: #ef4444; box-shadow: 0 0 8px #ef4444; animation: none; }
+.net-offline { font-size: 0.95rem; line-height: 1; }
+.net-offline[hidden] { display: none; }
+
 @keyframes pulse-dot {
   0%, 100% { opacity: 1; transform: scale(1); }
   50% { opacity: 0.5; transform: scale(0.85); }

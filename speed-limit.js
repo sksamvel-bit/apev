@@ -194,6 +194,7 @@ class SpeedLimitEngine {
 
   applyDetection(lat, lng, currentSpeedKmh = 0) {
     const detected = this.detectSpeedLimit(lat, lng);
+    this.limitChangeChime(detected.limit, currentSpeedKmh);
     this.currentLimit = detected.limit;
     this.currentRoadName = detected.name;
     this.currentConfidence = detected.confidence || (detected.limit == null ? "unknown" : "estimate");
@@ -286,7 +287,7 @@ class SpeedLimitEngine {
 
     const hasNum = typeof this.currentLimit === "number" && this.currentLimit > 0;
     const displayStr = hasNum
-      ? (this.currentConfidence === "confirmed" ? String(this.currentLimit) : "~" + this.currentLimit)
+      ? (this.currentConfidence === "confirmed" ? String(this.currentLimit) : this.currentLimit + "?")   // v3.10.107: EU ISA marks an assumed limit with "?"
       : "—";
     if (this.badgeEl) this.badgeEl.classList.toggle("estimated", hasNum && this.currentConfidence !== "confirmed");
 
@@ -317,20 +318,52 @@ class SpeedLimitEngine {
       currentSpeedKmh > (this.currentLimit + 5);
 
     this.badgeEl.classList.toggle("speeding", isOverspeeding);
-    this.overspeedChime(isOverspeeding);
+    this.overspeedChime(isOverspeeding, Date.now(), currentSpeedKmh, this.currentLimit);
+  }
+
+  /**
+   * v3.10.107 (EU ISA 2021/1958, Annex I 3.5.2.1.4): how long an overspeed has to last before the sound, by how far over:
+   * 130 % of the limit 3 s, 120 % 4 s, 110 % 5 s, just over 6 s. The red badge still comes at once (3.5.2.1.1: within 1.5 s).
+   */
+  static isaDelayMs(speedKmh, limitKmh) {
+    const r = limitKmh > 0 ? speedKmh / limitKmh : 1;
+    return r >= 1.3 ? 3000 : r >= 1.2 ? 4000 : r >= 1.1 ? 5000 : 6000;
+  }
+
+  /**
+   * v3.10.107 (EU ISA 3.4.1.4): a soft ping when the shown limit changes (60 -> 40), only while driving (> 5 km/h), at most
+   * once in 10 s (two roads side by side must not ping back and forth). The driver can switch it off in the settings
+   * (localStorage limit_chime = "0"); the voice mute button silences it too.
+   */
+  limitChangeChime(nextLimit, speedKmh = 0, now = Date.now()) {
+    if (typeof nextLimit !== "number" || !(nextLimit > 0)) return false;
+    const prev = this._pingLimit;
+    this._pingLimit = nextLimit;
+    if (prev == null || prev === nextLimit || speedKmh <= 5) return false;
+    let off = false;
+    try { off = typeof localStorage !== "undefined" && localStorage.getItem("limit_chime") === "0"; } catch (_) {}
+    if (off || (this._pingAt != null && now - this._pingAt < 10000)) return false;
+    this._pingAt = now;
+    const sa = typeof window !== "undefined" ? window.speechAssistant : null;
+    if (sa && typeof sa.playChime === "function") { try { sa.playChime("default"); } catch (_) {} }
+    return true;
   }
 
   /**
    * v3.10.72 (audit M5): one short alert chime when the driver goes over a CONFIRMED limit (+5 km/h), not a continuous alarm.
    * It sounds again only after the car was back under the limit for 10 s. Follows the voice mute button (speech.js).
+   * v3.10.107: only when the overspeed lasts (isaDelayMs), so a short overtake stays silent.
    */
-  overspeedChime(isOverspeeding, now = Date.now()) {
+  overspeedChime(isOverspeeding, now = Date.now(), speedKmh = 0, limitKmh = 0) {
     if (!isOverspeeding) {
+      this._overStart = null;
       if (this._overSince != null) { this._underSince = this._underSince || now; if (now - this._underSince >= 10000) { this._overSince = null; this._underSince = null; } }
       return false;
     }
     this._underSince = null;
     if (this._overSince != null) return false;
+    if (this._overStart == null) this._overStart = now;
+    if (now - this._overStart < SpeedLimitEngine.isaDelayMs(speedKmh, limitKmh)) return false;
     this._overSince = now;
     const sa = typeof window !== "undefined" ? window.speechAssistant : null;
     if (sa && typeof sa.playChime === "function") { try { sa.playChime("alert"); } catch (_) {} }

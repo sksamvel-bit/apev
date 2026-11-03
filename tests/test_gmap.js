@@ -294,3 +294,16 @@ ok(/strokeColor: "#3e6ae1", strokeOpacity: 0\.7, strokeWeight: 4/.test(src) && !
   ok(/#gmap-nav-stop \{[^}]*width: 48px; height: 48px;/.test(css) && /\.gmap-card-x \{[^}]*width: 48px; height: 48px;/.test(css), 'v3.10.106: close buttons 12x12 mm (S4)');
   ok(fs.existsSync(__dirname + '/../docs/NAV_STANDARDS.md'), 'docs/NAV_STANDARDS.md exists (the rules every version is checked against)');
 }
+
+// v3.10.107 (EU HMI principles: system status): GPS stopped while driving -> red dot + toast; no internet -> 📵
+{
+  const appSrc = fs.readFileSync(__dirname + '/../app.js', 'utf8');
+  const m = /const GPS_LOST_MS = \d+;\s*function gpsLost\([^)]*\) \{[^}]*\}/.exec(appSrc);
+  ok(!!m, 'v3.10.107: gpsLost() is in app.js');
+  const gpsLost = m && new Function(m[0] + '; return gpsLost;')();
+  ok(gpsLost && gpsLost(1000, 20000, 40, false) && !gpsLost(1000, 10000, 40, false), 'v3.10.107: no new fix for 15 s at 40 km/h = GPS lost');
+  ok(gpsLost && !gpsLost(1000, 60000, 3, false) && !gpsLost(0, 60000, 40, false) && !gpsLost(1000, 60000, 40, true), 'v3.10.107: not when standing, before the first fix, or in the test drive');
+  const html = fs.readFileSync(__dirname + '/../index.html', 'utf8');
+  ok(/id="net-offline"[^>]*hidden/.test(html) && /addEventListener\("offline"/.test(appSrc) && /addEventListener\("online"/.test(appSrc), 'v3.10.107: 📵 shown while offline');
+  ok(/id="input-limit-chime"/.test(html) && /localStorage\.setItem\("limit_chime"/.test(appSrc), 'v3.10.107: the limit-change ping can be switched off in the settings');
+}

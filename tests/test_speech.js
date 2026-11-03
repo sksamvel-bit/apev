@@ -194,4 +194,44 @@ test("toggleMute propagates mute state to TurnAudioEngine", () => {
   assert.strictEqual(engineMuted, false);
 });
 
+// v3.10.107 (ISO 16951): a prompt never cuts off a more important one
+test("priorityOf: safety 1, maneuver now / arrival 2, the rest 3", () => {
+  assert.strictEqual(SpeechAssistant.priorityOf("ყურადღება, სიჩქარის კამერა 300 მეტრში"), 1);
+  assert.strictEqual(SpeechAssistant.priorityOf("მოუხვიეთ მარჯვნივ"), 2);
+  assert.strictEqual(SpeechAssistant.priorityOf("დანიშნულების ადგილზე მიხვედით"), 2);
+  assert.strictEqual(SpeechAssistant.priorityOf("500 მეტრში, მოუხვიეთ მარჯვნივ"), 3);
+  assert.strictEqual(SpeechAssistant.priorityOf("მარშრუტი გადაითვალა"), 3);
+});
+
+test("a turn prompt waits until the speed-camera warning is over, then follows it", () => {
+  const { spokenUtterances, mockSynth } = setupMocks();
+  mockSynth.getVoices = () => [{ name: "Georgian", lang: "ka-GE" }];
+  const a = new SpeechAssistant();
+  a.speak("ყურადღება, სიჩქარის კამერა 300 მეტრში");
+  a.speak("მოუხვიეთ მარჯვნივ");
+  assert.strictEqual(spokenUtterances.length, 1, "the camera warning is not cut off");
+  assert.strictEqual(a.pending && a.pending.text, "მოუხვიეთ მარჯვნივ");
+  a.doneSpeaking(a.speakToken);
+  a.flushPending();
+  clearTimeout(a.pendingTimer);
+  assert.strictEqual(spokenUtterances.length, 2, "the turn follows right after");
+  assert.strictEqual(spokenUtterances[1].text, "მოუხვიეთ მარჯვნივ");
+});
+
+test("a safety warning interrupts a less important prompt; a stale waiting prompt is dropped", () => {
+  const { spokenUtterances, mockSynth } = setupMocks();
+  mockSynth.getVoices = () => [{ name: "Georgian", lang: "ka-GE" }];
+  const a = new SpeechAssistant();
+  a.speak("500 მეტრში, მოუხვიეთ მარცხნივ");
+  a.speak("ყურადღება, სიჩქარის კამერა 200 მეტრში");
+  assert.strictEqual(spokenUtterances.length, 2, "the camera warning starts at once");
+  a.speak("მარშრუტი გადაითვალა");
+  assert.ok(a.pending, "the info prompt waits");
+  a.pending.t -= 7000;
+  a.doneSpeaking(a.speakToken);
+  a.flushPending();
+  clearTimeout(a.pendingTimer);
+  assert.strictEqual(spokenUtterances.length, 2, "older than 6 s: dropped");
+});
+
 console.log("\n" + passed + " speech tests passed");

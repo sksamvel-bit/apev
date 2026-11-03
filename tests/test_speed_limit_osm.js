@@ -82,7 +82,7 @@ const okRes = (data) => ({ ok: true, json: async () => data });
 
   // 5. display
   e.currentLimit = 60; e.currentConfidence = 'estimate'; e.renderUI(0);
-  ok(e.valEl.textContent === '~60' && e.cls.estimated === true, 'estimate is shown as "~60" with the dashed style');
+  ok(e.valEl.textContent === '60?' && e.cls.estimated === true, 'v3.10.107: estimate is shown as "60?" (EU ISA) with the dashed style');
   e.currentConfidence = 'confirmed'; e.renderUI(0);
   ok(e.valEl.textContent === '60' && e.cls.estimated === false, 'confirmed is shown as "60"');
   e.currentLimit = null; e.currentConfidence = 'unknown'; e.renderUI(0);
@@ -129,14 +129,32 @@ const okRes = (data) => ({ ok: true, json: async () => data });
   const chimes = [];
   window.speechAssistant = { playChime: (t) => chimes.push(t) };
   const oc = new SLE();
-  ok(oc.overspeedChime(true, 0) === true && chimes.join() === 'alert', 'going over the limit: one alert chime');
-  ok(oc.overspeedChime(true, 2000) === false && chimes.length === 1, 'still over: no second chime');
-  oc.overspeedChime(false, 3000); oc.overspeedChime(false, 8000);
-  ok(oc.overspeedChime(true, 9000) === false && chimes.length === 1, 'under the limit for only 6 s, then over again: silent');
-  oc.overspeedChime(false, 10000); oc.overspeedChime(false, 21000);
-  ok(oc.overspeedChime(true, 22000) === true && chimes.length === 2, 'after 11 s under the limit the next overspeed chimes again');
+  // v3.10.107 (EU ISA): 80 in a 60 zone (133 %) chimes after 3 s; the old rules (once, again after 10 s under) still hold
+  ok(oc.overspeedChime(true, 0, 80, 60) === false && oc.overspeedChime(true, 2000, 80, 60) === false && chimes.length === 0, 'v3.10.107: no sound for the first 3 s at 133 %');
+  ok(oc.overspeedChime(true, 3000, 80, 60) === true && chimes.join() === 'alert', 'going over the limit for 3 s: one alert chime');
+  ok(oc.overspeedChime(true, 5000, 80, 60) === false && chimes.length === 1, 'still over: no second chime');
+  oc.overspeedChime(false, 6000); oc.overspeedChime(false, 11000);
+  ok(oc.overspeedChime(true, 12000, 80, 60) === false && oc.overspeedChime(true, 16000, 80, 60) === false && chimes.length === 1, 'under the limit for only 5 s, then over again: silent');
+  oc.overspeedChime(false, 17000); oc.overspeedChime(false, 28000);
+  oc.overspeedChime(true, 29000, 80, 60);
+  ok(oc.overspeedChime(true, 32000, 80, 60) === true && chimes.length === 2, 'after 11 s under the limit the next lasting overspeed chimes again');
+  const oc2 = new SLE();
+  oc2.overspeedChime(true, 0, 67, 60); oc2.overspeedChime(true, 4000, 67, 60);
+  ok(oc2.overspeedChime(true, 4900, 67, 60) === false && chimes.length === 2, 'v3.10.107: 112 % for 4.9 s: silent (a short overtake)');
+  oc2.overspeedChime(false, 6000);
+  oc2.overspeedChime(true, 7000, 67, 60);
+  ok(oc2.overspeedChime(true, 12000, 67, 60) === true, 'v3.10.107: 112 % lasting 5 s: chime');
+  ok(SLE.isaDelayMs(80, 60) === 3000 && SLE.isaDelayMs(72, 60) === 4000 && SLE.isaDelayMs(66, 60) === 5000 && SLE.isaDelayMs(64, 60) === 6000, 'v3.10.107: ISA cascade 130/120/110/100 % -> 3/4/5/6 s');
+  // v3.10.107 (EU ISA 3.4.1.4): soft ping on a limit change, while driving, at most once in 10 s
+  const lc = new SLE(); chimes.length = 0;
+  ok(lc.limitChangeChime(60, 40, 0) === false && lc.limitChangeChime(40, 40, 1000) === true && chimes.join() === 'default', 'v3.10.107: first limit silent, 60 -> 40 pings');
+  ok(lc.limitChangeChime(60, 40, 5000) === false && chimes.length === 1, 'v3.10.107: no second ping within 10 s');
+  ok(lc.limitChangeChime(40, 3, 20000) === false && chimes.length === 1, 'v3.10.107: no ping when standing (<= 5 km/h)');
+  global.localStorage = { getItem: (k) => (k === 'limit_chime' ? '0' : null) };
+  ok(lc.limitChangeChime(80, 40, 40000) === false && chimes.length === 1, 'v3.10.107: switched off in the settings -> silent');
+  delete global.localStorage;
   const src = fs.readFileSync(__dirname + '/../speed-limit.js', 'utf8');
-  ok(/this\.overspeedChime\(isOverspeeding\)/.test(src) && /alarmAllowed = this\.currentConfidence === "confirmed"/.test(src), 'the chime follows the badge: confirmed limits only');
+  ok(/this\.overspeedChime\(isOverspeeding, /.test(src) && /alarmAllowed = this\.currentConfidence === "confirmed"/.test(src), 'the chime follows the badge: confirmed limits only');
   const srv = fs.readFileSync(__dirname + '/../server.js', 'utf8');
   ok(/Content-Security-Policy', "object-src 'none'; base-uri 'self'; frame-ancestors 'self'/.test(srv), 'a safe CSP header is sent (v3.10.72, audit L5)');
   delete window.speechAssistant;
