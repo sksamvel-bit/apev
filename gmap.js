@@ -1044,16 +1044,20 @@
   }
   function updateSignalMarkers(pos, force) {
     const eng = window.trafficSignalsEngine;
-    if (!S.map || !S.g || !eng || !pos) return;
+    if (!S.map || !S.g || !eng || !pos || S.noSigMarkers) return;   // v3.10.120: ?gsig=0 (full test) = no markers at all
     const now = Date.now();
-    if (!force && S.sigAt && now - S.sigAt < 8000 && S.sigPos && meters(S.sigPos, pos) < 120) return;
+    if (!force && S.sigAt && now - S.sigAt < 12000 && S.sigPos && meters(S.sigPos, pos) < 150) return;
     S.sigAt = now; S.sigPos = pos;
     if (!S.sigMarkers) S.sigMarkers = new Map();
     let want = [];
     if (eng.isEnabled !== false && (S.map.getZoom() || 0) >= 15) {
       try { eng.ensureAround(pos.lat, pos.lng, S.carHeading); } catch (_) {}
-      want = (eng.signals || []).map((s) => ({ s, d: meters(pos, { lat: s.lat, lng: s.lon }) })).filter((o) => o.d < 900)
-        .sort((a, b) => a.d - b.d).slice(0, 30).map((o) => o.s);
+      // v3.10.120 (car test: the v3.10.119 full test fell to 3-11 fps, CPU 70-99 %): the vector map moves every marker on every
+      // camera step, so only the 8 nearest lights within 500 m in front of the car (all around while standing)
+      const hd = S.lastKmh > 5 ? S.carHeading : null;
+      want = (eng.signals || []).map((s) => ({ s, d: meters(pos, { lat: s.lat, lng: s.lon }) }))
+        .filter((o) => o.d < 500 && (hd == null || Math.abs(((bearing(pos, { lat: o.s.lat, lng: o.s.lon }) - hd) % 360 + 540) % 360 - 180) < 70))
+        .sort((a, b) => a.d - b.d).slice(0, 8).map((o) => o.s);
     }
     const keys = new Set(want.map((s) => s.lat.toFixed(5) + "," + s.lon.toFixed(5)));
     for (const [k, m] of S.sigMarkers) if (!keys.has(k)) { m.setMap(null); S.sigMarkers.delete(k); }
@@ -1871,6 +1875,7 @@
     if (gt) S.gtilt = Math.min(60, Math.max(0, parseInt(gt[1], 10)));
     S.noTraffic = /[?&]gtraffic=0(&|$)/.test(q);
     S.noAutoZoom = /[?&]gzoom=0(&|$)/.test(q);
+    S.noSigMarkers = /[?&]gsig=0(&|$)/.test(q);   // v3.10.120: no traffic light markers (full test)
     S.sideFixed = /[?&]gside=fixed/.test(q);   // v3.10.112: the side panel never hides itself   // v3.10.110: no speed zoom (e.g. for the fps suite)
     // v3.10.79 ?gcam=gpu: GPU camera on the 3D (vector) map; ?gcamms=N ms between real camera moves (default 250)
     S.gpuOn = /[?&]gcam=gpu/.test(q);

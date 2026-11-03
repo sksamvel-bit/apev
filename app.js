@@ -136,7 +136,7 @@ function initClock() {
 const OFM_STYLE_URL = "https://tiles.openfreemap.org/styles/liberty";
 const OFM_STYLE_CACHE_KEY = "tesla_nav_ofm_style_v1";
 const MAP_STYLE_KEYS = ["openfreemap", "google-roads"];
-const APP_VERSION = "3.10.119";
+const APP_VERSION = "3.10.120";
 const MAP_DEFAULT_ZOOM = 16;      // MapLibre zoom (Leaflet-equivalent 17)
 // Performance experiments (all default to the normal behaviour): ?labels=0 hides the base-map labels/icons, ?markers=0 skips the
 // charger DOM markers, ?pitch=N sets the heading-up tilt (0-60). Used to find what makes the car's browser slow.
@@ -2657,12 +2657,13 @@ function initRemoteSession() {
   const SUITE = [
     { name: "Google 3D, უძრავი (ბრუნვის გარეშე)", q: "gmap3d=1&gzoom=0", google: true, idle: true },
     { name: "Google 3D ახლანდელი (20°, 20/წმ, საცობებით)", q: "gmap3d=1&gzoom=0", google: true },
-    { name: "დახრა 45°", q: "gmap3d=1&gzoom=0&gtilt=45", google: true },
-    { name: "დახრა 30°", q: "gmap3d=1&gzoom=0&gtilt=30", google: true },
-    { name: "ბრტყელი (0°)", q: "gmap3d=1&gzoom=0&gtilt=0", google: true },
-    { name: "20°, 70% გარჩევადობა", q: "gmap3d=1&gzoom=0&gscale=0.7", google: true },
-    { name: "20°, კამერა 10/წმ", q: "gmap3d=1&gzoom=0&gfps=10", google: true },
-    { name: "ბრტყელი, 10/წმ (v3.10.93)", q: "gmap3d=1&gzoom=0&gtilt=0&gfps=10", google: true }
+    // v3.10.120: the v3.10.119 run fell to 3-11 fps; these rows tell the traffic light markers (v3.10.118) from the rest
+    { name: "უძრავი, შუქნიშნების გარეშე", q: "gmap3d=1&gzoom=0&gsig=0", google: true, idle: true },
+    { name: "შუქნიშნების მარკერების გარეშე", q: "gmap3d=1&gzoom=0&gsig=0", google: true },
+    { name: "მარკერების გარეშე, ბრტყელი 0°", q: "gmap3d=1&gzoom=0&gsig=0&gtilt=0", google: true },
+    { name: "მარკერების და საცობების გარეშე", q: "gmap3d=1&gzoom=0&gsig=0&gtraffic=0", google: true },
+    { name: "ბრტყელი 0° (მარკერებით)", q: "gmap3d=1&gzoom=0&gtilt=0", google: true },
+    { name: "მარკერების გარეშე, 70% გარჩევადობა", q: "gmap3d=1&gzoom=0&gsig=0&gscale=0.7", google: true }
   ];
   const suiteUrl = (i) => "/?suite=" + i + "&debug=1&" + SUITE[i].q;
   function readSuite() { try { return JSON.parse(localStorage.getItem(SUITE_KEY) || "null"); } catch (_) { return null; } }
