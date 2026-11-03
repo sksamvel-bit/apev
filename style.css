@@ -2203,6 +2203,10 @@ body.gmap-open .dock-controls { display: none; } /* the Google layer has its own
 .gmap-eta-time { font-size: 1.15rem; font-weight: 800; color: #4ade80; margin-right: 10px; }
 .gmap-eta-rest { font-size: 0.95rem; font-weight: 700; color: #e2e8f0; }
 #gmap-layer.navigating #gmap-status { bottom: 64px; }
+/* v3.10.111: compass left of the side panel, at its top (48 px touch target, S4) */
+.gmap-compass { position: absolute; top: 76px; right: 90px; z-index: 4; width: 48px; height: 48px; padding: 0; border-radius: 50%; background: #fff; border: 2px solid #6b7fd7; box-shadow: 0 2px 8px rgba(0,0,0,0.35); display: flex; align-items: center; justify-content: center; cursor: pointer; }
+.gmap-compass svg { pointer-events: none; will-change: transform; }
+.gmap-compass.north-up { border-color: #ef4444; }
 .gmap-nav-dist, .gmap-nav-text { display: block; }
 #gmap-layer.navigating .gmap-top { display: none; }
 

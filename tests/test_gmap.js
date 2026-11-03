@@ -325,3 +325,11 @@ ok(/strokeColor: "#3e6ae1", strokeOpacity: 0\.7, strokeWeight: 4/.test(src) && !
   const appSrc = fs.readFileSync(__dirname + '/../app.js', 'utf8');
   ok(/S\.noAutoZoom = \/\[\?&\]gzoom=0/.test(src) && !/q: "gmap3d=1"/.test(appSrc), 'v3.10.110: ?gzoom=0; the fps suite rows keep a fixed zoom');
 }
+
+// v3.10.111: compass on the Google map (turns with the map; a tap = north up / heading up)
+{
+  const html = fs.readFileSync(__dirname + '/../index.html', 'utf8'), css = fs.readFileSync(__dirname + '/../style.css', 'utf8');
+  ok(/id="gmap-compass"[\s\S]*?id="gmap-compass-rose"/.test(html) && /\.gmap-compass \{[^}]*width: 48px; height: 48px;/.test(css), 'v3.10.111: compass markup, 48 px touch target');
+  ok(/updateCompass\(headingUp \? f\.heading : mapHeading\)/.test(src) && /if \(a === S\.compassDeg\) return;/.test(src), 'v3.10.111: compass follows the map heading, only on a 1 degree change');
+  ok(/const headingUp = S\.vector && S\.follow && !S\.northUp;/.test(src) && /localStorage\.setItem\("gmapNorthUp"/.test(src), 'v3.10.111: north-up mode stops the map turning, remembered');
+}

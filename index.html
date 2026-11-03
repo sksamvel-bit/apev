@@ -14,9 +14,9 @@
   <link rel="apple-touch-icon" href="icon-192.png">
   
   <!-- MapLibre GL CSS (Local Offline) -->
-  <link rel="stylesheet" href="maplibre-gl.css?v=3.10.110">
+  <link rel="stylesheet" href="maplibre-gl.css?v=3.10.111">
   <!-- Custom Stylesheet -->
-  <link rel="stylesheet" href="style.css?v=3.10.110">
+  <link rel="stylesheet" href="style.css?v=3.10.111">
 </head>
 <body>
 
@@ -198,6 +198,16 @@
       </div>
       <button id="gmap-nav-stop" type="button" class="gmap-nav-stop" title="შეწყვეტა">✕</button>
     </div>
+    <!-- v3.10.111: compass, turns with the map; a tap = north up / heading up -->
+    <button id="gmap-compass" type="button" class="gmap-compass" title="კომპასი: დააჭირეთ, რომ ჩრდილოეთი ზემოთ იყოს">
+      <svg id="gmap-compass-rose" viewBox="0 0 48 48" width="40" height="40">
+        <path d="M24 5 L27.5 15 L20.5 15 Z" fill="#ef4444"/>
+        <text x="24" y="20" text-anchor="middle" font-size="9" font-weight="800" fill="#ef4444">N</text>
+        <text x="40" y="27.5" text-anchor="middle" font-size="8.5" font-weight="700" fill="#475569">E</text>
+        <text x="24" y="43" text-anchor="middle" font-size="8.5" font-weight="700" fill="#475569">S</text>
+        <text x="8" y="27.5" text-anchor="middle" font-size="8.5" font-weight="700" fill="#475569">W</text>
+      </svg>
+    </button>
     <div id="gmap-eta" class="gmap-eta"><span id="gmap-eta-time" class="gmap-eta-time"></span><span id="gmap-eta-rest" class="gmap-eta-rest"></span></div>
     <div class="gmap-top">
       <div class="gmap-search">
@@ -529,7 +539,7 @@
         </div>
       </div>
       <div class="modal-footer">
-        <span class="settings-version-tag" style="margin-right: auto; font-size: 0.8rem; color: var(--text-secondary); opacity: 0.8;">ვერსია: v3.10.110</span>
+        <span class="settings-version-tag" style="margin-right: auto; font-size: 0.8rem; color: var(--text-secondary); opacity: 0.8;">ვერსია: v3.10.111</span>
         <button id="modal-cancel-btn" class="btn-secondary">გაუქმება</button>
         <button id="modal-save-btn" class="btn-primary">შენახვა</button>
       </div>
@@ -537,27 +547,27 @@
   </div>
 
   <!-- MapLibre GL JS (Local Offline - Hardware Accelerated WebGL Engine) -->
-  <script src="maplibre-gl.js?v=3.10.110"></script>
-  <script src="map-gl.js?v=3.10.110"></script>
+  <script src="maplibre-gl.js?v=3.10.111"></script>
+  <script src="map-gl.js?v=3.10.111"></script>
   <!-- QR Code Generator -->
   <script src="qrcode.min.js"></script>
   <!-- Application Engines -->
-  <script src="turn-audio.js?v=3.10.110"></script>
-  <script src="speech.js?v=3.10.110"></script>
-  <script src="weather.js?v=3.10.110"></script>
-  <script src="devices-panel.js?v=3.10.110"></script>
-  <script src="battery.js?v=3.10.110"></script>
-  <script src="chargers.js?v=3.10.110"></script>
-  <script src="charger-list.js?v=3.10.110"></script>
-  <script src="search.js?v=3.10.110"></script>
-  <script src="tesla-style.js?v=3.10.110"></script>
-  <script src="traffic-signals.js?v=3.10.110"></script>
-  <script src="traffic.js?v=3.10.110"></script>
-  <script src="routing.js?v=3.10.110"></script>
-  <script src="speed-limit.js?v=3.10.110"></script>
-  <script src="speed-cameras.js?v=3.10.110"></script>
-  <script src="sim-drive.js?v=3.10.110"></script>
-  <script src="gmap.js?v=3.10.110"></script>
-  <script src="app.js?v=3.10.110"></script>
+  <script src="turn-audio.js?v=3.10.111"></script>
+  <script src="speech.js?v=3.10.111"></script>
+  <script src="weather.js?v=3.10.111"></script>
+  <script src="devices-panel.js?v=3.10.111"></script>
+  <script src="battery.js?v=3.10.111"></script>
+  <script src="chargers.js?v=3.10.111"></script>
+  <script src="charger-list.js?v=3.10.111"></script>
+  <script src="search.js?v=3.10.111"></script>
+  <script src="tesla-style.js?v=3.10.111"></script>
+  <script src="traffic-signals.js?v=3.10.111"></script>
+  <script src="traffic.js?v=3.10.111"></script>
+  <script src="routing.js?v=3.10.111"></script>
+  <script src="speed-limit.js?v=3.10.111"></script>
+  <script src="speed-cameras.js?v=3.10.111"></script>
+  <script src="sim-drive.js?v=3.10.111"></script>
+  <script src="gmap.js?v=3.10.111"></script>
+  <script src="app.js?v=3.10.111"></script>
 </body>
 </html>

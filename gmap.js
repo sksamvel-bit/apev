@@ -634,10 +634,11 @@
   function drawCar(f) {
     S.carHeading = f.heading;
     const pos = { lat: f.lat, lng: f.lng };
-    const headingUp = S.vector && S.follow;
+    const headingUp = S.vector && S.follow && !S.northUp;
     // the marker is drawn upright on the screen, so on a rotated map its rotation is relative to the map heading
     const mapHeading = S.vector && S.map.getHeading ? (S.map.getHeading() || 0) : 0;
     const rot = Math.round(headingUp ? 0 : ((f.heading - mapHeading) % 360 + 360) % 360);
+    updateCompass(headingUp ? f.heading : mapHeading);
     if (!S.carMarker) { S.carMarker = new S.g.core.Marker({ position: pos, map: S.map, icon: markerIcon(rot), zIndex: 999, clickable: false }); S.carRot = rot; S.lastMarker = pos; }
     else {
       if (!S.lastMarker || meters(S.lastMarker, pos) >= 0.3) { S.carMarker.setPosition(pos); S.lastMarker = pos; }
@@ -673,6 +674,30 @@
     S.lastCam = cam; S.camCount++;
     if (headingUp && S.map.moveCamera) S.map.moveCamera({ center, heading: f.heading });
     else S.map.setCenter(center);
+  }
+
+  /** v3.10.111 (Samvel): the compass turns with the map, so "N" always points north. Only a CSS rotation of a small SVG,
+   *  and only when the angle changed by a degree or more. */
+  function updateCompass(mapHeading) {
+    const r = $("gmap-compass-rose");
+    if (!r) return;
+    const a = Math.round(-(mapHeading || 0));
+    if (a === S.compassDeg) return;
+    S.compassDeg = a;
+    r.style.transform = "rotate(" + a + "deg)";
+  }
+
+  /** A tap on the compass: north up (the map stops turning) or back to heading up. Kept in localStorage. */
+  function toggleNorthUp() {
+    S.northUp = !S.northUp;
+    try { localStorage.setItem("gmapNorthUp", S.northUp ? "1" : "0"); } catch (_) {}
+    const c = $("gmap-compass");
+    if (c) c.classList.toggle("north-up", S.northUp);
+    if (S.northUp && S.map && S.vector && S.map.setHeading) S.map.setHeading(0);
+    if (S.northUp) updateCompass(0);
+    S.lastCam = null;
+    say(S.northUp ? "რუკა: ჩრდილოეთი ზემოთ" : "რუკა: მოძრაობის მიმართულებით");
+    wakeCar();
   }
 
   // ---- v3.10.79 GPU camera helpers (?gcam=gpu) ----
@@ -1407,6 +1432,7 @@
     const on = (id, ev, fn) => { const el = $(id); if (el) el.addEventListener(ev, fn); };
     on("btn-google-mode", "click", () => (S.open ? close() : open()));
     on("gmap-btn-close", "click", close);
+    on("gmap-compass", "click", (e) => { e.stopPropagation(); toggleNorthUp(); });
     on("gmap-btn-zoom-in", "click", () => { if (!S.map) return; S.manualZoomAt = Date.now(); S.map.setZoom(S.map.getZoom() + 1); });
     on("gmap-btn-zoom-out", "click", () => { if (!S.map) return; S.manualZoomAt = Date.now(); S.map.setZoom(S.map.getZoom() - 1); });
     on("gmap-btn-me", "click", () => {
@@ -1485,6 +1511,8 @@
     S.noAutoZoom = /[?&]gzoom=0(&|$)/.test(q);   // v3.10.110: no speed zoom (e.g. for the fps suite)
     // v3.10.79 ?gcam=gpu: GPU camera on the 3D (vector) map; ?gcamms=N ms between real camera moves (default 250)
     S.gpuOn = /[?&]gcam=gpu/.test(q);
+    try { S.northUp = localStorage.getItem("gmapNorthUp") === "1"; } catch (_) { S.northUp = false; }   // v3.10.111
+    if ($("gmap-compass")) $("gmap-compass").classList.toggle("north-up", !!S.northUp);
     const gm = /[?&]gcamms=(\d+)/.exec(q);
     S.gpuMs = gm ? Math.min(2000, Math.max(50, parseInt(gm[1], 10))) : 250;
     if (S.gpuOn) document.body.classList.add("gcam-gpu");
