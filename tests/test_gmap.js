@@ -232,7 +232,7 @@ ok(/GOOGLE_MAPS_KEY/.test(srv) && !/PUBLIC_AUTH_PATHS[^;]*gmaps-config/.test(srv
     { navigationInstruction: { instructions: 'გააგრძელეთ პირდაპირ ვაჟა-ფშაველას გამზირი-ით და დარჩით {1/}-ზე' }, startLocation: { latLng: { latitude: 1, longitude: 2 } } },
     { navigationInstruction: { instructions: 'მოუხვიეთ მარჯვნივ {2/}' }, startLocation: { latLng: { latitude: 1, longitude: 2 } } }] }] }] });
   ok(r[0].steps[0].text === 'გააგრძელეთ პირდაპირ ვაჟა-ფშაველას გამზირი-ით' && r[0].steps[1].text === 'მოუხვიეთ მარჯვნივ', 'v3.10.99: "{1/}" placeholder removed from Google turn text');
-  ok(/function trimPassed\([\s\S]*?setPath\(path\)/.test(src) && /nr\.d <= OFF_ROUTE_M\) trimPassed\(pos, rt\.coords, nr\.i\)/.test(src), 'v3.10.99: chosen route line starts at the car (driven part hidden), only while on the route');
+  ok(/function trimPassed\([\s\S]*?setPath\(path\)/.test(src) && /nr\.d <= OFF_ROUTE_M\) \{\s*trimPassed\(pos, rt\.coords, nr\.i\)/.test(src), 'v3.10.99: chosen route line starts at the car (driven part hidden), only while on the route');
   ok(/i === S\.trimSeg && now - \(S\.trimAt \|\| 0\) < 3000/.test(src), 'v3.10.99: setPath throttled (new segment or every 3 s)');
 }
 
@@ -258,3 +258,18 @@ ok(/body\.gmap-open:has\(#gmap-card\.show\) \.car-hud-stats \{ visibility: hidde
 
 // v3.10.102: Google route line thin + see-through, no white casing, so the traffic colours under it stay visible
 ok(/strokeColor: "#3e6ae1", strokeOpacity: 0\.7, strokeWeight: 4/.test(src) && !/strokeColor: "#ffffff", strokeOpacity: 1, strokeWeight: 10/.test(src), 'v3.10.102: route line does not hide Google traffic');
+
+// v3.10.104: navigation survives a reload, OSRM fallback drivable, turn distance along the route, arrival by route left
+{
+  const L = [{ lat: 0, lng: 0 }, { lat: 0, lng: 0.01 }, { lat: 0.01, lng: 0.01 }]; // east ~1113 m, then north ~1113 m
+  const c = G.routeCum(L);
+  const al = G.stepAlongs(L, c, [{ loc: { lat: 0, lng: 0 } }, { loc: { lat: 0, lng: 0.01 } }, { loc: { lat: 0.005, lng: 0.01 } }]);
+  ok(Math.abs(al[0]) < 1 && Math.abs(al[1] - c[1]) < 2 && Math.abs(al[2] - (c[1] + 556)) < 5, 'v3.10.104: maneuver points measured along the route');
+  ok(G.distToStep(800, 1700, 500) === 1200 && G.distToStep(800, 1700, null) === 800, 'v3.10.104: turn distance along the route when on it, straight line otherwise');
+  ok(G.distToStep(800, 900, 500) === 800, 'v3.10.104: along shorter than straight line (wrong match on a loop) -> straight line');
+  ok(G.hasArrived(25, null) && G.hasArrived(120, 20) && !G.hasArrived(120, 80) && !G.hasArrived(120, null), 'v3.10.104: arrival by 30 m to the place or 30 m of route left');
+  const now = 1e12, saved = JSON.stringify({ name: 'X', address: 'A', lat: 41.7, lng: 44.8, t: now - 60000 });
+  ok(G.parseSavedNav(saved, now).lat === 41.7 && G.parseSavedNav(saved, now + 4 * 3600e3) === null && G.parseSavedNav('{bad', now) === null && G.parseSavedNav(null, now) === null, 'v3.10.104: saved navigation fresh for 3 h, junk ignored');
+  ok(/localStorage\.setItem\(NAV_KEY/.test(src) && /if \(S\.navigating\) \{ try \{ localStorage\.removeItem\(NAV_KEY\)/.test(src) && /setInterval\(syncCar, 250\)\);\s*resumeSavedNav\(\);/.test(src), 'v3.10.104: saved on start, cleared on stop, resumed when the Google map opens');
+  ok(/\$\("gmap-card-start"\)\.hidden = false;/.test(src), 'v3.10.104: start button also for the OSRM fallback route');
+}

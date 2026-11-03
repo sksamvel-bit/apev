@@ -366,6 +366,40 @@
     const t = Math.max(0, Math.min(1, segT(coords[i], coords[i + 1], pos)));
     return Math.max(0, total - (cum[i] + t * (cum[i + 1] - cum[i])));
   }
+  /** v3.10.104: metres from the route start to each step's maneuver point (projected onto the line, in route order), or null. */
+  function stepAlongs(coords, cum, steps) {
+    let from = 0;
+    return steps.map((st) => {
+      const nr = nearestOnPolyline(st.loc, coords, from);
+      if (nr.i < 0) return null;
+      from = nr.i;
+      const a = coords[nr.i], b = coords[nr.i + 1];
+      if (!b) return cum[nr.i];
+      const t = Math.max(0, Math.min(1, segT(a, b, st.loc)));
+      return cum[nr.i] + t * (cum[nr.i + 1] - cum[nr.i]);
+    });
+  }
+  /** Distance to the next maneuver: along the route when the car is on it; straight line otherwise, or when the along value is
+   *  impossible (shorter than the straight line: the maneuver matched a wrong part of a looping route). */
+  function distToStep(straightM, alongStepM, carAlongM) {
+    if (alongStepM == null || carAlongM == null) return straightM;
+    const d = Math.max(0, alongStepM - carAlongM);
+    return d + 20 < straightM ? straightM : d;
+  }
+  /** v3.10.104: arrived when within 30 m of the place, or less than 30 m of route is left (a place far from the road). */
+  function hasArrived(distToPlaceM, remainOnRouteM) {
+    return distToPlaceM < 30 || (remainOnRouteM != null && remainOnRouteM < 30);
+  }
+  /** v3.10.104: the saved Google navigation (localStorage gmapNav) if it is fresh (3 h): { name, address, lat, lng } or null. */
+  const NAV_KEY = "gmapNav", NAV_MAX_AGE_MS = 3 * 3600 * 1000;
+  function parseSavedNav(str, now) {
+    try {
+      const n = JSON.parse(str || "null");
+      if (!n || !isFinite(n.lat) || !isFinite(n.lng) || !(now - n.t >= 0 && now - n.t < NAV_MAX_AGE_MS)) return null;
+      return { name: String(n.name || "დანიშნულების ადგილი"), address: String(n.address || ""), lat: +n.lat, lng: +n.lng };
+    } catch (_) { return null; }
+  }
+
   /** Arrival strip text: traffic ETA of the route scaled by the share still to drive. */
   function etaInfo(remainM, totalM, durationSec, nowMs) {
     const sec = totalM > 0 ? durationSec * Math.min(1, remainM / totalM) : durationSec;
@@ -715,20 +749,28 @@
     if (S.glide) { S.glide.setFix(fix, performance.now()); wakeCar(); }
     const pos = { lat: fix.lat, lng: fix.lng };
     S.carPos = pos;
-    if (S.navigating && S.place && S.place.loc && meters(pos, S.place.loc) < 30) {
-      stopNavigation();
-      setStatus("დანიშნულების ადგილზე ხართ");
-      speak("დანიშნულების ადგილზე მიხვედით");
-      setTimeout(() => setStatus(""), 5000);
-    } else if (S.navigating) {
+    if (S.navigating) {
       const rt = S.routes[S.routeIdx];
+      S.carAlong = null;   // metres driven along the route; null while off it
       if (rt && rt.coords && rt.coords.length && S.offRouteTracker && !S.rerouting) {
         // look near the last match first (cheap on long routes); scan the whole line only when the car seems off it there
         let nr = nearestOnPolyline(pos, rt.coords, S.segIdx - 20, S.segIdx + 200);
         if (nr.d > OFF_ROUTE_M) nr = nearestOnPolyline(pos, rt.coords);
         if (nr.i >= 0) S.segIdx = nr.i;
-        if (nr.i >= 0 && nr.d <= OFF_ROUTE_M) trimPassed(pos, rt.coords, nr.i);
+        if (nr.i >= 0 && nr.d <= OFF_ROUTE_M) {
+          trimPassed(pos, rt.coords, nr.i);
+          if (!rt.cum) rt.cum = routeCum(rt.coords);
+          S.carAlong = rt.cum[rt.cum.length - 1] - remainingOnRoute(rt.coords, rt.cum, pos, nr.i);
+        }
         if (S.offRouteTracker.update(nr.d)) reroute();
+      }
+      const left = S.carAlong != null && rt && rt.cum ? rt.cum[rt.cum.length - 1] - S.carAlong : null;
+      if (S.place && S.place.loc && hasArrived(meters(pos, S.place.loc), left)) {
+        stopNavigation();
+        setStatus("დანიშნულების ადგილზე ხართ");
+        speak("დანიშნულების ადგილზე მიხვედით");
+        setTimeout(() => setStatus(""), 5000);
+        return;
       }
       updateNavBanner();
       updateSignal(pos, fix.headingDeg);
@@ -1004,7 +1046,12 @@
     if (!S.navigating || !rt || !rt.steps.length) { nav.classList.remove("show"); return; }
     if (S.carPos) S.stepIdx = nextStepIndex(rt.steps, S.carPos, S.stepIdx);
     const st = rt.steps[S.stepIdx];
-    const d = S.carPos ? meters(S.carPos, st.loc) : st.distanceM;
+    let d = S.carPos ? meters(S.carPos, st.loc) : st.distanceM;
+    if (S.carPos && S.carAlong != null) {
+      if (!rt.cum) rt.cum = routeCum(rt.coords);
+      if (!rt.stepAlong) rt.stepAlong = stepAlongs(rt.coords, rt.cum, rt.steps);
+      d = distToStep(d, rt.stepAlong[S.stepIdx], S.carAlong);
+    }
     $("gmap-nav-dist").textContent = fmtDist(d);
     $("gmap-nav-text").textContent = st.text;
     const icon = $("gmap-nav-icon");
@@ -1020,7 +1067,9 @@
 
   function startNavigation() {
     if (!S.routes.length) return;
-    S.navigating = true; S.follow = true; S.stepIdx = 0; S.segIdx = 0;
+    S.navigating = true; S.follow = true; S.stepIdx = 0; S.segIdx = 0; S.carAlong = null;
+    // v3.10.104: remembered, so a page reload (the car browser reloads on shifting into R) carries on with the same destination
+    try { if (S.place && S.place.loc) localStorage.setItem(NAV_KEY, JSON.stringify({ name: S.place.name, address: S.place.address, lat: S.place.loc.lat, lng: S.place.loc.lng, t: Date.now() })); } catch (_) {}
     S.offRouteTracker = createOffRouteTracker({ thresholdM: OFF_ROUTE_M, ticks: 4, cooldownMs: 20000, maxReroutes: 12 });
     S.voice = createVoiceCues();
     prefetchSignals();
@@ -1038,7 +1087,9 @@
   }
 
   function stopNavigation() {
+    if (S.navigating) { try { localStorage.removeItem(NAV_KEY); } catch (_) {} }
     S.navigating = false;
+    S.carAlong = null;
     S.offRouteTracker = null;
     S.voice = null;
     if (typeof window !== "undefined") window.__gmapNavigating = false;
@@ -1085,6 +1136,22 @@
     }
   }
 
+  /** v3.10.104: after a page reload, the saved navigation goes on: the car's position (up to 10 s for the GPS), a fresh Google
+   *  route to the same place, navigation started. One Routes call per reload. */
+  async function resumeSavedNav() {
+    let saved = null;
+    try { saved = parseSavedNav(localStorage.getItem(NAV_KEY), Date.now()); } catch (_) {}
+    if (!saved || S.navigating) return;
+    for (let k = 0; k < 20 && !S.carPos && S.open; k++) await new Promise((r) => setTimeout(r, 500));
+    if (!S.open || S.navigating) return;
+    showPlace({ name: saved.name, address: saved.address, loc: { lat: saved.lat, lng: saved.lng } });
+    await routeToPlace();
+    if (!S.open || !S.place || !S.routes.length || S.navigating) return;
+    startNavigation();
+    setStatus("ნავიგაცია გაგრძელდა: " + saved.name);
+    setTimeout(() => setStatus(""), 4000);
+  }
+
   async function routeToPlace() {
     if (!S.place) return;
     const btn = $("gmap-card-go"), info = $("gmap-card-route");
@@ -1110,7 +1177,7 @@
       S.follow = false;
       S.map.fitBounds(bounds, 90);
       info.textContent = note || (depart > 0 ? "პროგნოზი გასვლისთვის +" + depart + " წთ-ში" : "");
-      $("gmap-card-start").hidden = !routes[0].steps.length;
+      $("gmap-card-start").hidden = false;   // v3.10.104: the OSRM fallback (no turn list) can be driven too: line, ETA, rerouting
     } catch (e) {
       info.textContent = "მარშრუტი ვერ დაითვალა: " + (e && e.message);
     } finally { btn.disabled = false; }
@@ -1204,6 +1271,7 @@
       updatePanelButtons();
       startDebugMeter();
       S.timers.push(setInterval(syncCar, 250));
+      resumeSavedNav();
     } catch (e) {
       // v3.10.77: no Google map (no network, the free-tier cap, a key problem): back to our map instead of an empty layer
       const msg = (e && e.message) || "Google რუკა მიუწვდომელია";
@@ -1370,7 +1438,7 @@
     if (S.enabled && mainMapIsGoogle(q)) autoOpen();
   }
 
-  const api = { init, open, close, isOpen: () => S.open, isEnabled: () => S.enabled, camMoves: () => S.camCount, isVector: () => !!S.vector, tilt: () => (S.map && S.map.getTilt ? Math.round(S.map.getTilt() || 0) : 0), renderType: () => (S.map && S.map.getRenderingType ? String(S.map.getRenderingType() || "") : ""), gpuOn: () => !!S.gpuOn, mainMapIsGoogle, MAIN_MAP_KEY, selectMap, shownMap, currentMainMap, MAP_KINDS, gpuPlan, openWithQuery, openWithDestination, focusPlace, SIDE_PROXIES, mapKey, distToPolylineM, nearestOnPolyline, createOffRouteTracker, createVoiceCues, nearestChargers, createCarGlide, aheadPoint, mapOptions, cameraNeedsUpdate, createFpsMeter, scaledBoxStyle, capText, warnText, decodePolyline, parseRoutesResponse, routesRequestBody, nextStepIndex, fmtDist, maneuverIcon, routeCum, remainingOnRoute, etaInfo, buildLoaderUrl, createDebouncer, osrmUrl, summarizeRoute, mapStyles, bearing, meters, CATEGORIES };
+  const api = { init, open, close, isOpen: () => S.open, isEnabled: () => S.enabled, camMoves: () => S.camCount, isVector: () => !!S.vector, tilt: () => (S.map && S.map.getTilt ? Math.round(S.map.getTilt() || 0) : 0), renderType: () => (S.map && S.map.getRenderingType ? String(S.map.getRenderingType() || "") : ""), gpuOn: () => !!S.gpuOn, mainMapIsGoogle, MAIN_MAP_KEY, selectMap, shownMap, currentMainMap, MAP_KINDS, gpuPlan, openWithQuery, openWithDestination, focusPlace, SIDE_PROXIES, mapKey, distToPolylineM, nearestOnPolyline, createOffRouteTracker, createVoiceCues, nearestChargers, createCarGlide, aheadPoint, mapOptions, cameraNeedsUpdate, createFpsMeter, scaledBoxStyle, capText, warnText, decodePolyline, parseRoutesResponse, routesRequestBody, nextStepIndex, fmtDist, maneuverIcon, routeCum, remainingOnRoute, etaInfo, stepAlongs, distToStep, hasArrived, parseSavedNav, buildLoaderUrl, createDebouncer, osrmUrl, summarizeRoute, mapStyles, bearing, meters, CATEGORIES };
   if (typeof document !== "undefined") {
     if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", () => init());
     else init();
