@@ -588,7 +588,6 @@
       const p = await r.json();
       return p && p.location ? { address: p.formattedAddress || '', lat: p.location.latitude, lng: p.location.longitude } : null;
     }
-    const escHtml = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 
     let searchSeq = 0;
     async function executeSearch(query) {
