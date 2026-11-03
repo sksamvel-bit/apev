@@ -49,7 +49,7 @@ const M = 1 / 111140, ML = 1 / (111320 * Math.cos(A * Math.PI / 180));
   let e = mkEngine(() => okRes({ elements: [] }));
   await e.requestTile(...e.tileIndex(A, B));
   const q = e.calls[0];
-  ok(/node\[highway=traffic_signals\]/.test(q) && /out 500;/.test(q) && !/out 50;/.test(q), 'query asks for traffic_signals nodes with out 500 (old code: out 50)');
+  ok(/node\[highway=traffic_signals\]/.test(q) && /node\[railway=level_crossing\]/.test(q) && /nwr\[amenity=school\]/.test(q) && /out center 600;/.test(q), 'v3.10.118: one tile query: traffic lights + bumps + rail crossings + schools, out center 600');
   const m = q.match(/\(([\d.]+),([\d.]+),([\d.]+),([\d.]+)\)/);
   ok(m && +m[1] <= A && +m[3] >= A && +m[2] <= B && +m[4] >= B, 'bbox of the request contains the car position');
 
@@ -137,4 +137,32 @@ const M = 1 / 111140, ML = 1 / (111320 * Math.cos(A * Math.PI / 180));
   map.handlers.moveend(); map.handlers.moveend(); map.handlers.moveend();
   ok(!!e._viewTimer, 'moveend (fires every frame while following) arms ONE throttle timer');
   clearTimeout(e._viewTimer); e._viewTimer = null;
+})();
+
+// v3.10.118: the same tile answer also carries road hazards (speed bumps, railway level crossings, schools)
+(() => {
+  const e = new TSE(null, true);
+  const tile = e.buildTile({ elements: [
+    node(1, 41.7000, 44.8000, { highway: 'traffic_signals' }),
+    node(2, 41.7009, 44.8000, { traffic_calming: 'bump' }),
+    node(3, 41.7027, 44.8000, { railway: 'level_crossing' }),
+    { type: 'way', id: 4, center: { lat: 41.7018, lon: 44.8008 }, tags: { amenity: 'school' } },
+    node(5, 41.6991, 44.8000, { traffic_calming: 'bump' })   // behind the car
+  ] });
+  ok(tile.sigs.length === 1 && tile.haz.length === 4 && tile.haz.filter((h) => h.kind === 'bump').length === 2, 'v3.10.118: signals and hazards are kept apart (a way is placed at its center)');
+  const [i, j] = e.tileIndex(41.7, 44.8);
+  e.tiles.set(e.tileKey(i, j), tile);
+  e.ensureAround = () => {};
+  const route = [[41.6990, 44.8000], [41.7100, 44.8000]];   // straight north
+  const hz = e.findUpcomingHazards({ lat: 41.6995, lng: 44.8000 }, 0, route);
+  const by = Object.fromEntries(hz.map((h) => [h.kind, h]));
+  ok(by.bump && by.bump.distanceMeters > 140 && by.bump.distanceMeters < 170, 'v3.10.118: the bump ahead (not the one behind) at ~155 m');
+  ok(by.rail && by.rail.distanceMeters > 300 && by.rail.distanceMeters < 400, 'v3.10.118: the railway crossing ahead at ~355 m');
+  ok(by.school && by.school.distanceMeters < 350, 'v3.10.118: a school beside the route (70 m off the line) counts');
+  ok(e.findUpcomingHazards({ lat: 41.6995, lng: 44.8000 }, 180, route).every((h) => h.kind !== 'rail'), 'v3.10.118: nothing behind the car when driving the other way');
+  e.savePersisted();
+  const e2 = new TSE(null, true);
+  ok(e2.tiles.get(e.tileKey(i, j)) && e2.tiles.get(e.tileKey(i, j)).haz.length === 4, 'v3.10.118: hazards survive a reload (localStorage)');
+  store['sig_tiles_v1'] = JSON.stringify({ '1,1': [Date.now(), [[41, 44, 0]]] });
+  ok(!new TSE(null, true).tiles.has('1,1'), 'v3.10.118: an old saved tile without hazards is fetched again');
 })();

@@ -104,10 +104,17 @@ class TrafficSignalsEngine {
     return p;
   }
 
+  /** v3.10.118: one tile request brings the traffic lights and the road hazards (speed bumps, railway level crossings,
+   *  schools) together; the server accepts exactly this text (OVERPASS_HAZ_RE in server.js). */
+  static tileQuery(b) {
+    const bb = "(" + b.s.toFixed(5) + "," + b.w.toFixed(5) + "," + b.n.toFixed(5) + "," + b.e.toFixed(5) + ")";
+    return "[out:json][timeout:20];(node[highway=traffic_signals]" + bb + ";node[traffic_calming~\"^(bump|hump|table|cushion)$\"]" + bb +
+      ";node[railway=level_crossing]" + bb + ";nwr[amenity=school]" + bb + ";);out center 600;";
+  }
+
   async fetchTile(i, j) {
     const b = this.tileBounds(i, j);
-    const q = "[out:json][timeout:20];node[highway=traffic_signals](" +
-      b.s.toFixed(5) + "," + b.w.toFixed(5) + "," + b.n.toFixed(5) + "," + b.e.toFixed(5) + ");out 500;";
+    const q = TrafficSignalsEngine.tileQuery(b);
     let lastErr = null;
     for (const ep of this.endpoints) {
       const ctrl = typeof AbortController !== "undefined" ? new AbortController() : null;
@@ -126,16 +133,34 @@ class TrafficSignalsEngine {
   }
 
   buildTile(data) {
-    const sigs = [];
+    const sigs = [], haz = [];
     const seen = new Set();
     for (const el of (data && data.elements) || []) {
-      if (typeof el.lat !== "number" || typeof el.lon !== "number") continue;
-      const key = el.lat.toFixed(5) + "," + el.lon.toFixed(5);
+      const lat = typeof el.lat === "number" ? el.lat : el.center && el.center.lat;
+      const lon = typeof el.lon === "number" ? el.lon : el.center && el.center.lon;
+      if (typeof lat !== "number" || typeof lon !== "number") continue;
+      const tg = el.tags || {};
+      // v3.10.118: road hazards from the same answer (old answers have only traffic lights: everything is a signal there)
+      const kind = tg.traffic_calming ? "bump" : tg.railway === "level_crossing" ? "rail" : tg.amenity === "school" ? "school" : "signal";
+      const key = kind + lat.toFixed(5) + "," + lon.toFixed(5);
       if (seen.has(key)) continue;
       seen.add(key);
-      sigs.push({ lat: el.lat, lon: el.lon, name: (el.tags && el.tags.name) || "შუქნიშანი" });
+      if (kind === "signal") sigs.push({ lat, lon, name: tg.name || "შუქნიშანი" });
+      else haz.push({ lat, lon, kind });
     }
-    return { t: Date.now(), sigs };
+    return { t: Date.now(), sigs, haz };
+  }
+
+  /** v3.10.118: all known hazards, de-duplicated like the signals. */
+  get hazards() {
+    const seen = new Set(), out = [];
+    for (const t of this.tiles.values()) {
+      for (const h of t.haz || []) {
+        const k = h.kind + h.lat.toFixed(5) + "," + h.lon.toFixed(5);
+        if (!seen.has(k)) { seen.add(k); out.push(h); }
+      }
+    }
+    return out;
   }
 
   /** Runs the given tile list with at most 2 requests in flight. */
@@ -192,8 +217,10 @@ class TrafficSignalsEngine {
       const o = JSON.parse(raw), now = Date.now();
       for (const k of Object.keys(o)) {
         const v = o[k];
-        if (now - v[0] < this.ttlMs) {
-          this.tiles.set(k, { t: v[0], sigs: v[1].map(a => ({ lat: a[0], lon: a[1], name: a[2] || "შუქნიშანი" })) });
+        // v3.10.118: tiles saved before the hazards existed (no 3rd part) are fetched again
+        if (now - v[0] < this.ttlMs && Array.isArray(v[2])) {
+          this.tiles.set(k, { t: v[0], sigs: v[1].map(a => ({ lat: a[0], lon: a[1], name: a[2] || "შუქნიშანი" })),
+            haz: v[2].map(a => ({ lat: a[0], lon: a[1], kind: a[2] === "b" ? "bump" : a[2] === "r" ? "rail" : "school" })) });
         }
       }
     } catch (e) { /* ignore corrupt storage */ }
@@ -209,7 +236,7 @@ class TrafficSignalsEngine {
     try {
       if (typeof localStorage === "undefined") return;
       const o = {};
-      for (const [k, v] of this.tiles) o[k] = [v.t, v.sigs.map(s => [s.lat, s.lon, s.name === "შუქნიშანი" ? 0 : s.name])];
+      for (const [k, v] of this.tiles) o[k] = [v.t, v.sigs.map(s => [s.lat, s.lon, s.name === "შუქნიშანი" ? 0 : s.name]), (v.haz || []).map(h => [h.lat, h.lon, h.kind[0]])];
       localStorage.setItem(SIGNALS_STORAGE_KEY, JSON.stringify(o));
     } catch (e) { /* storage full / disabled: ignore */ }
   }
@@ -427,6 +454,60 @@ class TrafficSignalsEngine {
       if (dist < minDistance) { minDistance = dist; nearest = { ...sig, distanceMeters: Math.round(dist) }; }
     }
     return nearest;
+  }
+
+  /**
+   * v3.10.118: the nearest speed bump, railway level crossing and school ahead, one of each: [{ kind, lat, lon,
+   * distanceMeters }]. Same idea as findUpcomingSignal (in front of the car, on the route when there is one); a school is a
+   * building beside the road, so its corridor is wider.
+   */
+  findUpcomingHazards(currentPos, headingDeg, routeCoordinates) {
+    if (!currentPos) return [];
+    const RULES = { bump: { max: 200, corridor: 20, cone: 40 }, rail: { max: 400, corridor: 25, cone: 45 }, school: { max: 350, corridor: 120, cone: 60 } };
+    const [ci, cj] = this.tileIndex(currentPos.lat, currentPos.lng);
+    const cand = [];
+    for (let di = -1; di <= 1; di++) for (let dj = -1; dj <= 1; dj++) {
+      const t = this.tiles.get(this.tileKey(ci + di, cj + dj));
+      if (t && t.haz) cand.push(...t.haz);
+    }
+    if (!cand.length) return [];
+    const cosLat = Math.cos(currentPos.lat * Math.PI / 180), kx = 111320 * cosLat, ky = 110540;
+    let segs = null;
+    if (routeCoordinates && routeCoordinates.length > 1) {
+      segs = [];
+      for (let k = 0; k < routeCoordinates.length - 1; k++) {
+        const a = routeCoordinates[k];
+        if (Math.abs(a[0] - currentPos.lat) < 0.008 && Math.abs(a[1] - currentPos.lng) < 0.011) segs.push(k);
+      }
+      if (!segs.length) segs = null;
+    }
+    const best = {};
+    for (const h of cand) {
+      const r = RULES[h.kind];
+      if (!r || Math.abs(h.lat - currentPos.lat) > 0.005 || Math.abs(h.lon - currentPos.lng) > 0.007) continue;
+      const dist = this.haversineMeters(currentPos.lat, currentPos.lng, h.lat, h.lon);
+      if (!(dist <= r.max && dist > 8)) continue;
+      if (typeof headingDeg === "number" && isFinite(headingDeg)) {
+        const t = Math.PI / 180;
+        const y = Math.sin((h.lon - currentPos.lng) * t) * Math.cos(h.lat * t);
+        const x = Math.cos(currentPos.lat * t) * Math.sin(h.lat * t) - Math.sin(currentPos.lat * t) * Math.cos(h.lat * t) * Math.cos((h.lon - currentPos.lng) * t);
+        let diff = Math.abs((Math.atan2(y, x) / t + 360) % 360 - headingDeg) % 360; if (diff > 180) diff = 360 - diff;
+        if (diff > r.cone) continue;
+      }
+      if (segs) {
+        let on = false;
+        for (const k of segs) {
+          const a = routeCoordinates[k], b = routeCoordinates[k + 1];
+          const ax = (a[1] - h.lon) * kx, ay = (a[0] - h.lat) * ky, bx = (b[1] - h.lon) * kx, by = (b[0] - h.lat) * ky;
+          const dx = bx - ax, dy = by - ay, l2 = dx * dx + dy * dy;
+          const tt = l2 ? Math.max(0, Math.min(1, -(ax * dx + ay * dy) / l2)) : 0;
+          if (Math.hypot(ax + tt * dx, ay + tt * dy) <= r.corridor) { on = true; break; }
+        }
+        if (!on) continue;
+      }
+      if (!best[h.kind] || dist < best[h.kind].distanceMeters) best[h.kind] = { ...h, distanceMeters: Math.round(dist) };
+    }
+    return ["rail", "school", "bump"].map((k) => best[k]).filter(Boolean);
   }
 
   haversineMeters(lat1, lon1, lat2, lon2) {

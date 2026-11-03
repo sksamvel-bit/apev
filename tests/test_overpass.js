@@ -63,7 +63,7 @@ function capture(file, cls, call) {
   ok(c.status === 200 && calls === 1 && c.ms < 200, 'the next request comes from the cache (' + c.ms + ' ms, Overpass calls still ' + calls + ')');
   ok((await get('/api/overpass?data=' + encodeURIComponent('[out:json];node(1,1,2,2);out;'))).status === 400, 'a foreign query: 400');
   fake.close();
-  const other = '/api/overpass?data=' + encodeURIComponent(qTs.replace('41.', '42.').replace('41.', '42.'));
+  const other = '/api/overpass?data=' + encodeURIComponent(qTs.split('41.').join('42.'));
   const d = await get(other);
   ok(d.status === 502, 'Overpass down and nothing cached: 502 (the car then tries the public mirrors)');
   srvProc.kill();

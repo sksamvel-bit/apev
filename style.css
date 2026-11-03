@@ -2170,6 +2170,7 @@ body.gmap-open:has(#gmap-card.show) .car-hud-stats { visibility: hidden; }
 /* v3.10.115: "შემდეგ: მარცხნივ" when two maneuvers come close together; quick places under the Google search */
 .gmap-nav-then { display: none; margin-top: 4px; font-size: 0.95rem; font-weight: 700; color: #bbf7d0; }
 .gmap-nav-then.show { display: block; }
+.gmap-nav-haz { white-space: pre-line; color: #fecaca; }   /* v3.10.118: bumps, railway crossings, schools */
 .gmap-quick .gmap-result-main { font-size: 1.1rem; }
 /* v3.10.116: weather along the route on the route card */
 .gmap-card-weather { display: none; white-space: pre-line; margin: 0 0 10px; padding: 8px 10px; border-radius: 10px; background: rgba(251, 191, 36, 0.12); border: 1px solid rgba(251, 191, 36, 0.35); color: #fde68a; font-size: 0.95rem; font-weight: 600; line-height: 1.35; }

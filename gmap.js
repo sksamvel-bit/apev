@@ -495,6 +495,15 @@
     return icon + " " + where + " " + h.text + ", " + Math.round(tempC) + "° (≈ " + hm + ")";
   }
 
+  /** v3.10.118: the banner line for a hazard ahead (distance rounded to 10 m). */
+  function hazardLine(h) {
+    const d = Math.max(10, Math.round((h.distanceMeters || 0) / 10) * 10);
+    if (h.kind === "bump") return "🔺 ბარიერი " + d + " მეტრში";
+    if (h.kind === "rail") return "🚂 გადასასვლელი " + d + " მეტრში";
+    if (h.kind === "school") return "🏫 სკოლა მარშრუტზე, შეანელე";
+    return "";
+  }
+
   /** v3.10.117: "დღეს 21:00" / "ხვალ 09:00" / "5 ნოემბერს 09:00" for a planned departure. */
   function whenText(ms, now = Date.now()) {
     const d = new Date(ms), n = new Date(now);
@@ -718,6 +727,7 @@
     if (S.place && S.placeMarker) S.placeMarker.setMap(S.map);
     S.catMarkers.forEach((m) => m.setMap(S.map));
     if (S.routes.length) drawRoutes();
+    if (S.sigMarkers) S.sigMarkers.forEach((m) => m.setMap(S.map));   // v3.10.118: the traffic lights move to the new map
     updatePanelButtons();
     wakeCar();
   }
@@ -937,6 +947,7 @@
     if (!fix || fix === S.lastFix) return;
     S.lastFix = fix;
     S.lastKmh = (fix.speedMs || 0) * 3.6 || window.currentSpeedKmhForLock || 0;
+    updateSignalMarkers({ lat: fix.lat, lng: fix.lng });
     applyAutoZoom(fix);
     if (!S.glide && window.MapGL) S.glide = createCarGlide(window.MapGL);
     if (S.glide) { S.glide.setFix(fix, performance.now()); wakeCar(); }
@@ -967,6 +978,7 @@
       if (Date.now() - (S.navSavedAt || 0) > 30000) saveNav();
       updateNavBanner();
       updateSignal(pos, fix.headingDeg);
+      updateHazards(pos, fix.headingDeg);
     }
   }
 
@@ -991,6 +1003,61 @@
     }
     el.textContent = sig ? "🚦 შუქნიშანი " + sig.distanceMeters + " მეტრში" : "";
     el.classList.toggle("show", !!sig);
+  }
+
+  /** v3.10.118 (Samvel): speed bumps, railway level crossings and schools ahead on the route, from the same OSM tiles as the
+   *  traffic lights. Shown on the banner; a railway crossing and a school are said once, a bump gets a short chime at 120 m
+   *  (Georgian roads have many of them: a voice for each would be too much). */
+  function updateHazards(pos, headingDeg) {
+    const nav = $("gmap-nav");
+    if (!nav) return;
+    let el = $("gmap-nav-haz");
+    if (!el) { el = document.createElement("div"); el.id = "gmap-nav-haz"; el.className = "gmap-nav-signal gmap-nav-haz"; nav.appendChild(el); }
+    const eng = window.trafficSignalsEngine;
+    let list = [];
+    if (S.navigating && eng && typeof eng.findUpcomingHazards === "function") { try { list = eng.findUpcomingHazards(pos, headingDeg, routeLatLngs()) || []; } catch (_) { list = []; } }
+    el.textContent = list.map(hazardLine).join("\n");
+    el.classList.toggle("show", list.length > 0);
+    if (!S.hazSaid || S.hazSaid.size > 300) S.hazSaid = new Set();
+    for (const h of list) {
+      const k = h.kind + h.lat.toFixed(5) + "," + h.lon.toFixed(5);
+      if (S.hazSaid.has(k) || (h.kind === "bump" && h.distanceMeters > 120)) continue;
+      S.hazSaid.add(k);
+      if (h.kind === "bump") { try { if (window.speechAssistant) window.speechAssistant.playChime("alert"); } catch (_) {} }
+      else speak(h.kind === "rail" ? "ყურადღება, რკინიგზის გადასასვლელი" : "ყურადღება, სკოლის ზონა, შეანელეთ");
+    }
+  }
+
+  /** v3.10.118 (Samvel: "the traffic lights are not on the Google map"): our OSM traffic lights drawn on the Google map (our data
+   *  on the Google map is allowed; Google data on our map is not). Only around the car (900 m), at most 30, from zoom 15,
+   *  refreshed when the car moved 120 m or every 8 s, so the MCU2 does not draw hundreds of markers. */
+  function signalIcon() {
+    if (!S.sigIcon) {
+      const svg = "<svg xmlns='http://www.w3.org/2000/svg' width='14' height='30' viewBox='0 0 14 30'><rect x='1' y='1' width='12' height='28' rx='4' fill='#1f2937' stroke='#ffffff' stroke-width='1.5'/>" +
+        "<circle cx='7' cy='8' r='3' fill='#ef4444'/><circle cx='7' cy='15' r='3' fill='#f59e0b'/><circle cx='7' cy='22' r='3' fill='#22c55e'/></svg>";
+      S.sigIcon = { url: "data:image/svg+xml;charset=UTF-8," + encodeURIComponent(svg), scaledSize: new S.g.core.Size(14, 30), anchor: new S.g.core.Point(7, 15) };
+    }
+    return S.sigIcon;
+  }
+  function updateSignalMarkers(pos, force) {
+    const eng = window.trafficSignalsEngine;
+    if (!S.map || !S.g || !eng || !pos) return;
+    const now = Date.now();
+    if (!force && S.sigAt && now - S.sigAt < 8000 && S.sigPos && meters(S.sigPos, pos) < 120) return;
+    S.sigAt = now; S.sigPos = pos;
+    if (!S.sigMarkers) S.sigMarkers = new Map();
+    let want = [];
+    if (eng.isEnabled !== false && (S.map.getZoom() || 0) >= 15) {
+      try { eng.ensureAround(pos.lat, pos.lng, S.carHeading); } catch (_) {}
+      want = (eng.signals || []).map((s) => ({ s, d: meters(pos, { lat: s.lat, lng: s.lon }) })).filter((o) => o.d < 900)
+        .sort((a, b) => a.d - b.d).slice(0, 30).map((o) => o.s);
+    }
+    const keys = new Set(want.map((s) => s.lat.toFixed(5) + "," + s.lon.toFixed(5)));
+    for (const [k, m] of S.sigMarkers) if (!keys.has(k)) { m.setMap(null); S.sigMarkers.delete(k); }
+    for (const s of want) {
+      const k = s.lat.toFixed(5) + "," + s.lon.toFixed(5);
+      if (!S.sigMarkers.has(k)) S.sigMarkers.set(k, new S.g.core.Marker({ position: { lat: s.lat, lng: s.lon }, map: S.map, icon: signalIcon(), clickable: false, zIndex: 400, title: s.name || "შუქნიშანი" }));
+    }
   }
 
   /** Loads the traffic-light tiles along the whole route once, so the alerts are ready before the car gets there. */
@@ -1815,7 +1882,7 @@
     if (S.enabled && mainMapIsGoogle(q)) autoOpen();
   }
 
-  const api = { init, open, close, isOpen: () => S.open, isEnabled: () => S.enabled, camMoves: () => S.camCount, isVector: () => !!S.vector, tilt: () => (S.map && S.map.getTilt ? Math.round(S.map.getTilt() || 0) : 0), renderType: () => (S.map && S.map.getRenderingType ? String(S.map.getRenderingType() || "") : ""), gpuOn: () => !!S.gpuOn, mainMapIsGoogle, MAIN_MAP_KEY, selectMap, shownMap, currentMainMap, MAP_KINDS, gpuPlan, openWithQuery, openWithDestination, focusPlace, SIDE_PROXIES, mapKey, distToPolylineM, nearestOnPolyline, createOffRouteTracker, createVoiceCues, nearestChargers, createCarGlide, aheadPoint, mapOptions, cameraNeedsUpdate, createFpsMeter, scaledBoxStyle, capText, warnText, decodePolyline, parseRoutesResponse, routesRequestBody, nextStepIndex, fmtDist, whenText, planState, nearForm, routeWeatherPoints, weatherHazard, hazardText, addRecent, thenPhrase, thenIsClose, autoZoom, sideShouldHide, maneuverIcon, routeCum, remainingOnRoute, etaInfo, stepAlongs, nextStepAlong, distToStep, hasArrived, parseSavedNav, buildLoaderUrl, createDebouncer, osrmUrl, summarizeRoute, mapStyles, bearing, meters, CATEGORIES };
+  const api = { init, open, close, isOpen: () => S.open, isEnabled: () => S.enabled, camMoves: () => S.camCount, isVector: () => !!S.vector, tilt: () => (S.map && S.map.getTilt ? Math.round(S.map.getTilt() || 0) : 0), renderType: () => (S.map && S.map.getRenderingType ? String(S.map.getRenderingType() || "") : ""), gpuOn: () => !!S.gpuOn, mainMapIsGoogle, MAIN_MAP_KEY, selectMap, shownMap, currentMainMap, MAP_KINDS, gpuPlan, openWithQuery, openWithDestination, focusPlace, SIDE_PROXIES, mapKey, distToPolylineM, nearestOnPolyline, createOffRouteTracker, createVoiceCues, nearestChargers, createCarGlide, aheadPoint, mapOptions, cameraNeedsUpdate, createFpsMeter, scaledBoxStyle, capText, warnText, decodePolyline, parseRoutesResponse, routesRequestBody, nextStepIndex, fmtDist, hazardLine, whenText, planState, nearForm, routeWeatherPoints, weatherHazard, hazardText, addRecent, thenPhrase, thenIsClose, autoZoom, sideShouldHide, maneuverIcon, routeCum, remainingOnRoute, etaInfo, stepAlongs, nextStepAlong, distToStep, hasArrived, parseSavedNav, buildLoaderUrl, createDebouncer, osrmUrl, summarizeRoute, mapStyles, bearing, meters, CATEGORIES };
   if (typeof document !== "undefined") {
     if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", () => init());
     else init();

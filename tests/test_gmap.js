@@ -399,3 +399,12 @@ ok(/strokeColor: "#3e6ae1", strokeOpacity: 0\.7, strokeWeight: 4/.test(src) && !
   ok(/if \(b\.textContent !== want\) b\.textContent = want;/.test(rem), 'v3.10.117: the label observer changes text only on a change (no endless loop)');
   ok(fs.readFileSync(__dirname + '/../.gitignore', 'utf8').includes('trip-plans.json'), 'v3.10.117: the local plans file stays out of git');
 }
+
+// v3.10.118: hazards on the Google nav banner; our traffic lights drawn on the Google map
+{
+  ok(G.hazardLine({ kind: 'bump', distanceMeters: 96 }) === '🔺 ბარიერი 100 მეტრში' && G.hazardLine({ kind: 'rail', distanceMeters: 204 }) === '🚂 გადასასვლელი 200 მეტრში' && G.hazardLine({ kind: 'school', distanceMeters: 50 }) === '🏫 სკოლა მარშრუტზე, შეანელე', 'v3.10.118: banner lines for bump / railway crossing / school');
+  ok(/updateHazards\(pos, fix\.headingDeg\)/.test(src) && /h\.kind === "bump" && h\.distanceMeters > 120/.test(src), 'v3.10.118: hazards each fix while navigating; a bump chimes only near (120 m)');
+  ok(/function updateSignalMarkers\(pos, force\)/.test(src) && /\.slice\(0, 30\)/.test(src) && /o\.d < 900/.test(src) && /getZoom\(\) \|\| 0\) >= 15/.test(src), 'v3.10.118: at most 30 traffic lights within 900 m, from zoom 15');
+  const srv7 = fs.readFileSync(__dirname + '/../server.js', 'utf8');
+  ok(/OVERPASS_HAZ_RE\.exec/.test(srv7), 'v3.10.118: the server accepts the combined traffic light + hazards tile');
+}

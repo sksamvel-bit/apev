@@ -885,9 +885,13 @@ function refreshCameras() {
 const OVERPASS_TILE_RE = /^\[out:json\]\[timeout:\d{1,3}\];(way\[highway~"\^\(motorway\|trunk\|primary\|secondary\|tertiary\|unclassified\|residential\|living_street\)\(_link\)\?\$"\]|node\[highway=traffic_signals\])\((-?\d{1,3}\.\d{1,7}),(-?\d{1,3}\.\d{1,7}),(-?\d{1,3}\.\d{1,7}),(-?\d{1,3}\.\d{1,7})\);out (tags geom|500);$/;
 const OVERPASS_FRESH_MS = 7 * 24 * 3600 * 1000, OVERPASS_STALE_MS = 30 * 24 * 3600 * 1000, OVERPASS_CACHE_BYTES = 60 * 1024 * 1024;
 
+// v3.10.118: the traffic light tile also asks for speed bumps, railway level crossings and schools (TrafficSignalsEngine.tileQuery);
+// the same box four times, nothing else
+const OVERPASS_HAZ_RE = /^\[out:json\]\[timeout:\d{1,3}\];\(node\[highway=traffic_signals\](\((-?\d{1,3}\.\d{1,7}),(-?\d{1,3}\.\d{1,7}),(-?\d{1,3}\.\d{1,7}),(-?\d{1,3}\.\d{1,7})\));node\[traffic_calming~"\^\(bump\|hump\|table\|cushion\)\$"\]\1;node\[railway=level_crossing\]\1;nwr\[amenity=school\]\1;\);out center 600;$/;
+
 /** The cache key of an allowed tile query (the [timeout:N] part removed), or null for anything else. */
 function overpassTileKey(q) {
-  const m = OVERPASS_TILE_RE.exec(String(q || ''));
+  const m = OVERPASS_TILE_RE.exec(String(q || '')) || OVERPASS_HAZ_RE.exec(String(q || ''));
   if (!m) return null;
   const s = +m[2], w = +m[3], n = +m[4], e = +m[5];
   if (!(n > s && e > w && n - s <= 0.02 && e - w <= 0.03 && s >= 36 && n <= 46 && w >= 26 && e <= 51)) return null;
