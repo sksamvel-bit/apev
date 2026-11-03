@@ -452,6 +452,49 @@
     return { arrive: hhmm, dur, dist: fmtDist(remainM) };
   }
 
+  /** v3.10.116: weather along the route. Points every `everyM` along the line (and the end), each with the time the car is
+   *  expected there (the traffic ETA shared out by distance). Only for routes of 25 km or more, at most 8 points. */
+  function routeWeatherPoints(coords, cum, durationSec, everyM = 20000) {
+    const total = cum && cum.length ? cum[cum.length - 1] : 0;
+    if (!coords || coords.length < 2 || total < 25000) return [];
+    const step = Math.max(everyM, total / 8);
+    const pts = [];
+    let k = 0;
+    for (let d = step; d < total + 1; d = d + step > total && d < total ? total : d + step) {
+      while (k < cum.length - 2 && cum[k + 1] < d) k++;
+      const t = cum[k + 1] > cum[k] ? Math.min(1, (d - cum[k]) / (cum[k + 1] - cum[k])) : 0;
+      const a = coords[k], b = coords[k + 1];
+      pts.push({ lat: a.lat + t * (b.lat - a.lat), lng: a.lng + t * (b.lng - a.lng), alongM: d, etaSec: durationSec * d / total });
+      if (d >= total) break;
+    }
+    return pts.slice(0, 8);
+  }
+  /** Bad weather for driving at one point: snow, ice (0 °C or below with wet road), storm, heavy rain, fog. null = fine. */
+  function weatherHazard(code, tempC, precipMm) {
+    const c = +code, t = +tempC, p = +precipMm || 0;
+    if ((c >= 71 && c <= 77) || c === 85 || c === 86) return { sev: 5, text: "თოვლი" };
+    if (t <= 0 && (p > 0 || (c >= 51 && c <= 67) || (c >= 80 && c <= 82))) return { sev: 4, text: "მოყინვის საფრთხე" };
+    if (c >= 95) return { sev: 3, text: "ჭექა-ქუხილი" };
+    if (c === 65 || c === 82 || c === 67 || p >= 4) return { sev: 2, text: "ძლიერი წვიმა" };
+    if (c === 45 || c === 48) return { sev: 1, text: "ნისლი" };
+    if (t <= 1) return { sev: 1, text: "ყინვა" };
+    return null;
+  }
+  /** Georgian "near X": გუდაური -> გუდაურთან, ქუმლისციხე -> ქუმლისციხესთან, a non-Georgian name -> "X-თან". */
+  function nearForm(name) {
+    const n = String(name || "").trim();
+    if (/ი$/.test(n)) return n.slice(0, -1) + "თან";
+    if (/[აეოუ]$/.test(n)) return n + "სთან";
+    return /[ა-ჰ]$/.test(n) ? n + "თან" : n + "-თან";
+  }
+  /** "🌨️ ქუმლისციხესთან თოვლი, -3° (≈ 13:40)"; without a place name "~85 კმ-ში". */
+  function hazardText(h, name, tempC, alongM, atMs) {
+    const icon = h.sev === 5 ? "🌨️" : h.sev === 4 ? "🧊" : h.sev === 3 ? "⛈️" : h.sev === 2 ? "🌧️" : h.sev === 1 && h.text === "ნისლი" ? "🌫️" : "❄️";
+    const at = new Date(atMs), hm = String(at.getHours()).padStart(2, "0") + ":" + String(at.getMinutes()).padStart(2, "0");
+    const where = name ? nearForm(name) : "~" + Math.round(alongM / 1000) + " კმ-ში";
+    return icon + " " + where + " " + h.text + ", " + Math.round(tempC) + "° (≈ " + hm + ")";
+  }
+
   /** v3.10.115: recent places (newest first, max 5, the same place only once: same name or within 60 m). */
   function addRecent(list, p, max = 5) {
     const out = [p].concat((list || []).filter((r) => r && r.name !== p.name && meters(r, p) > 60));
@@ -1297,6 +1340,8 @@
     window.__gmapNavigating = true;   // routing.js stays quiet: one voice at a time
     const first = S.routes[S.routeIdx] && S.routes[S.routeIdx].steps[0];
     speak("მარშრუტი დაწყებულია." + (first && first.text ? " " + first.text : ""));
+    // v3.10.116: bad weather on the way, said once at the start (a safety prompt: "ყურადღება" = priority 1)
+    if (S.routeWeather && S.routeWeather.length) speak("ყურადღება, გზაზე " + S.routeWeather[0].replace(/^\S+\s/, "").replace(/\(≈ [^)]*\)/, "").trim());
     const layer = $("gmap-layer");
     if (layer) layer.classList.add("navigating");
     document.body.classList.add("gmap-navigating");
@@ -1381,6 +1426,50 @@
     setStatus("ნავიგაცია გაგრძელდა: " + saved.name, 4000);
   }
 
+  /** v3.10.116: weather along the chosen route (Open-Meteo, free, one request for all points; place names from our
+   *  /api/reverse for the bad spots only). The line shows on the route card; at the start it is said once. */
+  async function checkRouteWeather(rt) {
+    const box = $("gmap-card-weather");
+    S.routeWeather = null;
+    if (box) { box.textContent = ""; box.classList.remove("show"); }
+    if (!rt || !rt.coords) return;
+    if (!rt.cum) rt.cum = routeCum(rt.coords);
+    const pts = routeWeatherPoints(rt.coords, rt.cum, rt.durationSec || 0);
+    if (!pts.length) return;
+    const token = S.weatherToken = (S.weatherToken || 0) + 1;
+    try {
+      const hours = Math.min(48, Math.ceil((rt.durationSec || 0) / 3600) + 2);
+      const url = "https://api.open-meteo.com/v1/forecast?latitude=" + pts.map((p) => p.lat.toFixed(3)).join(",") + "&longitude=" + pts.map((p) => p.lng.toFixed(3)).join(",") +
+        "&hourly=temperature_2m,weather_code,precipitation&forecast_hours=" + hours + "&timeformat=unixtime&timezone=auto";
+      const r = await fetch(url, { cache: "no-store" });
+      if (!r.ok) return;
+      let j = await r.json();
+      if (!Array.isArray(j)) j = [j];
+      const now = Date.now(), found = [];
+      pts.forEach((p, i) => {
+        const h = j[i] && j[i].hourly;
+        if (!h || !h.time) return;
+        const at = now + p.etaSec * 1000;
+        let best = 0;
+        h.time.forEach((t, k) => { if (Math.abs(t * 1000 - at) < Math.abs(h.time[best] * 1000 - at)) best = k; });
+        const hz = weatherHazard(h.weather_code[best], h.temperature_2m[best], h.precipitation[best]);
+        if (hz) found.push({ hz, p, temp: h.temperature_2m[best], at });
+      });
+      if (token !== S.weatherToken || !found.length) return;
+      found.sort((a, b) => b.hz.sev - a.hz.sev || a.p.alongM - b.p.alongM);
+      const shown = found.slice(0, 2);
+      const lines = [];
+      for (const f of shown) {
+        let name = "";
+        try { const rr = await fetch("/api/reverse?lat=" + f.p.lat.toFixed(4) + "&lon=" + f.p.lng.toFixed(4), { credentials: "same-origin" }); if (rr.ok) name = ((await rr.json()) || {}).name || ""; } catch (_) {}
+        lines.push(hazardText(f.hz, name, f.temp, f.p.alongM, f.at));
+      }
+      if (token !== S.weatherToken) return;
+      S.routeWeather = lines;
+      if (box) { box.textContent = lines.join("\n"); box.classList.add("show"); }
+    } catch (e) { console.warn("[GMap] route weather:", e && e.message); }
+  }
+
   async function routeToPlace() {
     if (!S.place) return;
     const btn = $("gmap-card-go"), info = $("gmap-card-route");
@@ -1406,7 +1495,8 @@
       S.follow = false;
       S.map.fitBounds(bounds, 90);
       info.textContent = note || (depart > 0 ? "პროგნოზი გასვლისთვის +" + depart + " წთ-ში" : "");
-      $("gmap-card-start").hidden = false;   // v3.10.104: the OSRM fallback (no turn list) can be driven too: line, ETA, rerouting
+      $("gmap-card-start").hidden = false;
+      checkRouteWeather(routes[0]);   // v3.10.116, does not hold the card up   // v3.10.104: the OSRM fallback (no turn list) can be driven too: line, ETA, rerouting
     } catch (e) {
       info.textContent = "მარშრუტი ვერ დაითვალა: " + (e && e.message);
     } finally { btn.disabled = false; }
@@ -1684,7 +1774,7 @@
     if (S.enabled && mainMapIsGoogle(q)) autoOpen();
   }
 
-  const api = { init, open, close, isOpen: () => S.open, isEnabled: () => S.enabled, camMoves: () => S.camCount, isVector: () => !!S.vector, tilt: () => (S.map && S.map.getTilt ? Math.round(S.map.getTilt() || 0) : 0), renderType: () => (S.map && S.map.getRenderingType ? String(S.map.getRenderingType() || "") : ""), gpuOn: () => !!S.gpuOn, mainMapIsGoogle, MAIN_MAP_KEY, selectMap, shownMap, currentMainMap, MAP_KINDS, gpuPlan, openWithQuery, openWithDestination, focusPlace, SIDE_PROXIES, mapKey, distToPolylineM, nearestOnPolyline, createOffRouteTracker, createVoiceCues, nearestChargers, createCarGlide, aheadPoint, mapOptions, cameraNeedsUpdate, createFpsMeter, scaledBoxStyle, capText, warnText, decodePolyline, parseRoutesResponse, routesRequestBody, nextStepIndex, fmtDist, addRecent, thenPhrase, thenIsClose, autoZoom, sideShouldHide, maneuverIcon, routeCum, remainingOnRoute, etaInfo, stepAlongs, nextStepAlong, distToStep, hasArrived, parseSavedNav, buildLoaderUrl, createDebouncer, osrmUrl, summarizeRoute, mapStyles, bearing, meters, CATEGORIES };
+  const api = { init, open, close, isOpen: () => S.open, isEnabled: () => S.enabled, camMoves: () => S.camCount, isVector: () => !!S.vector, tilt: () => (S.map && S.map.getTilt ? Math.round(S.map.getTilt() || 0) : 0), renderType: () => (S.map && S.map.getRenderingType ? String(S.map.getRenderingType() || "") : ""), gpuOn: () => !!S.gpuOn, mainMapIsGoogle, MAIN_MAP_KEY, selectMap, shownMap, currentMainMap, MAP_KINDS, gpuPlan, openWithQuery, openWithDestination, focusPlace, SIDE_PROXIES, mapKey, distToPolylineM, nearestOnPolyline, createOffRouteTracker, createVoiceCues, nearestChargers, createCarGlide, aheadPoint, mapOptions, cameraNeedsUpdate, createFpsMeter, scaledBoxStyle, capText, warnText, decodePolyline, parseRoutesResponse, routesRequestBody, nextStepIndex, fmtDist, nearForm, routeWeatherPoints, weatherHazard, hazardText, addRecent, thenPhrase, thenIsClose, autoZoom, sideShouldHide, maneuverIcon, routeCum, remainingOnRoute, etaInfo, stepAlongs, nextStepAlong, distToStep, hasArrived, parseSavedNav, buildLoaderUrl, createDebouncer, osrmUrl, summarizeRoute, mapStyles, bearing, meters, CATEGORIES };
   if (typeof document !== "undefined") {
     if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", () => init());
     else init();

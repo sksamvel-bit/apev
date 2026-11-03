@@ -369,3 +369,19 @@ ok(/strokeColor: "#3e6ae1", strokeOpacity: 0\.7, strokeWeight: 4/.test(src) && !
   ok(G.thenIsClose(80) && !G.thenIsClose(200) && !G.thenIsClose(NaN), 'v3.10.115: "then" only when the next maneuver is < 150 m after this one');
   ok(/function showQuickList\(\)/.test(src) && /goFav\("home"\)/.test(src) && /S\.pendingFav = \{ kind, text \}/.test(src) && /speak\(thenTxt \? t \+ ", შემდეგ " \+ thenTxt : t\)/.test(src), 'v3.10.115: quick list wired, home/work coordinates learned once, "then" also spoken');
 }
+
+// v3.10.116: weather along the route (Open-Meteo for points along the line, place names from /api/reverse)
+{
+  const line = []; for (let i = 0; i <= 100; i++) line.push({ lat: 41.7 + i * 0.009, lng: 44.8 });   // ~100 km north
+  const cum = G.routeCum(line);
+  const pts = G.routeWeatherPoints(line, cum, 7200);
+  ok(pts.length >= 4 && pts.length <= 8 && Math.abs(pts[pts.length - 1].alongM - cum[cum.length - 1]) < 1 && Math.abs(pts[pts.length - 1].etaSec - 7200) < 1, 'v3.10.116: points along a 100 km route, the last one at the end with the full ETA');
+  ok(pts.every((p, i) => i === 0 || p.alongM > pts[i - 1].alongM), 'v3.10.116: points in route order');
+  const short = []; for (let i = 0; i <= 10; i++) short.push({ lat: 41.7 + i * 0.001, lng: 44.8 });
+  ok(G.routeWeatherPoints(short, G.routeCum(short), 600).length === 0, 'v3.10.116: no check for city trips under 25 km');
+  ok(G.weatherHazard(73, -3, 1).text === 'თოვლი' && G.weatherHazard(61, -1, 0.5).text === 'მოყინვის საფრთხე' && G.weatherHazard(95, 15, 2).sev === 3 && G.weatherHazard(45, 8, 0).text === 'ნისლი' && G.weatherHazard(0, 18, 0) === null, 'v3.10.116: snow, ice, storm, fog; fine weather -> null');
+  const t = G.hazardText(G.weatherHazard(73, -3, 1), 'ქუმლისციხე', -3.2, 120000, new Date(2026, 10, 3, 13, 40).getTime());
+  ok(t === '🌨️ ქუმლისციხესთან თოვლი, -3° (≈ 13:40)' && G.nearForm('გუდაური') === 'გუდაურთან' && G.nearForm('მცხეთა') === 'მცხეთასთან' && G.nearForm('Stepantsminda') === 'Stepantsminda-თან' && /~120 კმ-ში/.test(G.hazardText(G.weatherHazard(45, 5, 0), '', 5, 120000, 0)), 'v3.10.116: warning text with and without a place name');
+  const srv5 = fs.readFileSync(__dirname + '/../server.js', 'utf8');
+  ok(/pathname === '\/api\/reverse'/.test(srv5) && /reverse\?format=json&zoom=14/.test(srv5) && !/PUBLIC_AUTH_PATHS[^;]*reverse/.test(srv5), 'v3.10.116: /api/reverse (Nominatim zoom 14, behind the PIN gate, 1 request a second)');
+}

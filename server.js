@@ -1055,6 +1055,43 @@ function searchNominatimProxy(query, bias) {
   });
 }
 
+/** v3.10.116: the village / town name for a point (weather along the route: "near Gudauri"), Nominatim reverse at zoom 14,
+ *  the same 1 request a second as the search, cached per ~1 km for a day. Resolves to "" on any problem. */
+const reverseCache = new Map();
+function reverseName(json) {
+  const a = (json && json.address) || {};
+  return String(a.village || a.town || a.city || a.hamlet || a.suburb || a.municipality || a.county || (json && json.name) || '').slice(0, 60);
+}
+function reverseNominatimProxy(lat, lon) {
+  return new Promise((resolve) => {
+    const key = lat.toFixed(2) + ',' + lon.toFixed(2);
+    const cached = reverseCache.get(key);
+    if (cached && Date.now() - cached.t < SEARCH_CACHE_TTL) return resolve(cached.name);
+    const now = Date.now();
+    const waitMs = Math.max(0, 1000 - (now - lastNominatimRequestTime));
+    if (lastNominatimRequestTime - now > MAX_SEARCH_QUEUE_MS) return resolve('');
+    lastNominatimRequestTime = now + waitMs;
+    setTimeout(() => {
+      const url = 'https://nominatim.openstreetmap.org/reverse?format=json&zoom=14&accept-language=ka,en&lat=' + lat.toFixed(5) + '&lon=' + lon.toFixed(5);
+      const req = https.get(url, { headers: { 'User-Agent': 'TeslaNav/3.10 (+https://apev.onrender.com; automotive navigation client)' }, timeout: 8000 }, (res) => {
+        if (res.statusCode !== 200) { res.resume(); return resolve(''); }
+        let body = '';
+        res.setEncoding('utf8');
+        res.on('data', (c) => { body += c; });
+        res.on('end', () => {
+          let name = '';
+          try { name = reverseName(JSON.parse(body)); } catch (_) {}
+          reverseCache.set(key, { t: Date.now(), name });
+          if (reverseCache.size > 500) reverseCache.delete(reverseCache.keys().next().value);
+          resolve(name);
+        });
+      });
+      req.on('error', () => resolve(''));
+      req.on('timeout', () => { req.destroy(); resolve(''); });
+    }, waitMs);
+  });
+}
+
 const PIN_LOGIN_HTML = `<!DOCTYPE html>
 <html lang="ka">
 <head>
@@ -1517,6 +1554,16 @@ const server = http.createServer((req, res) => {
       res.writeHead(500, { 'Content-Type': 'application/json; charset=utf-8' });
       res.end(JSON.stringify([]));
     });
+    return;
+  }
+
+  // API Endpoint: /api/reverse?lat=&lon= (v3.10.116) - a place name for the weather along the route, behind the PIN gate
+  if (pathname === '/api/reverse') {
+    const lat = parseFloat(urlObj.searchParams.get('lat')), lon = parseFloat(urlObj.searchParams.get('lon'));
+    const send = (code, obj) => { res.writeHead(code, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'private, max-age=86400' }); res.end(JSON.stringify(obj)); };
+    if (!(Math.abs(lat) <= 90 && Math.abs(lon) <= 180)) return send(400, { name: '' });
+    if (searchRateLimited(clientIp(req))) return send(429, { name: '' });
+    reverseNominatimProxy(lat, lon).then((name) => send(200, { name }));
     return;
   }
 
