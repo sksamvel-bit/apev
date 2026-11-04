@@ -659,18 +659,31 @@
       s.onerror = () => { clearTimeout(timer); reject(new Error("Google რუკა ვერ ჩაიტვირთა")); };
       document.head.appendChild(s);
     }).then(async () => {
-      const [maps, places] = await Promise.all([window.google.maps.importLibrary("maps"), window.google.maps.importLibrary("places")]);
-      S.g = { maps, places, core: window.google.maps };
+      // v3.10.126: only "maps" before the first picture; "places" (search) loads after it (ensurePlaces)
+      const maps = await window.google.maps.importLibrary("maps");
+      S.g = { maps, places: null, core: window.google.maps };
     }).catch((e) => { S.loading = null; throw e; });
     return S.loading;
+  }
+
+  /** v3.10.126: the last config (the browser key and Map ID the page gets anyway) is kept on the device, so the next start
+   *  does not wait for /api/gmaps-config (~1 s on the car before the Maps script could even start). The server answer still
+   *  comes and replaces it for the next start. */
+  const CFG_KEY = "gmapCfg1";
+  function cachedConfig() {
+    try { const j = JSON.parse(localStorage.getItem(CFG_KEY) || "null"); return j && j.enabled && typeof j.key === "string" && j.key ? j : null; } catch (_) { return null; }
+  }
+  function storeConfig(c) {
+    try { if (c && c.enabled) localStorage.setItem(CFG_KEY, JSON.stringify(c)); else if (c && c.http) localStorage.removeItem(CFG_KEY); } catch (_) {}
+    return c;
   }
 
   async function fetchConfig() {
     try {
       const r = await fetch("/api/gmaps-config", { cache: "no-store", credentials: "same-origin" });
-      if (!r.ok) return { enabled: false };
+      if (!r.ok) return { enabled: false, http: r.status };
       const j = await r.json();
-      return j && j.enabled && typeof j.key === "string" && j.key ? { enabled: true, key: j.key, mapId: typeof j.mapId === "string" ? j.mapId : "" } : { enabled: false };
+      return j && j.enabled && typeof j.key === "string" && j.key ? { enabled: true, key: j.key, mapId: typeof j.mapId === "string" ? j.mapId : "" } : { enabled: false, http: 200 };
     } catch (_) { return { enabled: false }; }
   }
 
@@ -1124,6 +1137,15 @@
   }
 
   // ---------- search (Places API New) ----------
+  /** v3.10.126: the Places library is loaded after the map shows (or at the first search), not before the first picture. */
+  function ensurePlaces() {
+    if (S.g && S.g.places) return Promise.resolve(S.g.places);
+    if (!S.placesLoading) {
+      S.placesLoading = loadGoogle(S.key).then(() => window.google.maps.importLibrary("places")).then((p) => { S.g.places = p; return p; })
+        .catch((e) => { S.placesLoading = null; throw e; });
+    }
+    return S.placesLoading;
+  }
   function newToken() { S.sessionToken = new S.g.places.AutocompleteSessionToken(); }
 
   function clearResults() {
@@ -1159,6 +1181,7 @@
     const q = String(text || "").trim();
     if (q.length < 3) { clearResults(); return; }
     try {
+      await ensurePlaces();
       if (!S.sessionToken) newToken();
       const c = S.map ? S.map.getCenter() : null;
       const center = c ? { lat: c.lat(), lng: c.lng() } : currentCenter();
@@ -1763,9 +1786,13 @@
     if (window.__setMainMapPaused) window.__setMainMapPaused(true);   // one map rendering at a time on the MCU2
     setStatus("Google რუკა იტვირთება...");
     try {
-      await loadGoogle(S.key);
+      // v3.10.126: the map-load permit is asked while the Maps script loads (was one after the other); init() may have started both
+      const pm = S.map ? null : (S.earlyPermit || permit("mapload"));
+      S.earlyPermit = null;
+      await Promise.all([loadGoogle(S.key), pm]);
       if (!S.open) return;
-      if (!S.map) { await permit("mapload"); if (!S.open) return; createMap(); }
+      if (!S.map) createMap();
+      setTimeout(() => { ensurePlaces().catch(() => {}); }, 4000);   // search ready a few seconds after the first picture
       setStatus("");
       S.follow = true;
       $("gmap-btn-me") && $("gmap-btn-me").classList.add("active");
@@ -1805,9 +1832,9 @@
     S.vector = /[?&]gmap3d=1/.test(location.search) || currentMainMap() !== "google";   // ?gmap3d=1: the full test forces 3D (nothing saved)
     let tries = 0;
     const t = setInterval(() => {
-      if (S.open || ++tries > 30) { clearInterval(t); return; }
+      if (S.open || ++tries > 100) { clearInterval(t); return; }
       if (window.__setMainMapPaused && window.map) { clearInterval(t); open(); }
-    }, 500);
+    }, 150);   // v3.10.126: was 500 ms (up to half a second before the first picture even started)
   }
 
   // ---- v3.10.80 one map picker (Samvel): "google3d" (default, main), "google" (classic), "ours" (OSM). The choice is shown at
@@ -1932,7 +1959,8 @@
   async function init() {
     if (typeof document === "undefined") return;
     wireUi();
-    const cfg = await fetchConfig();
+    const fresh = fetchConfig().then(storeConfig);
+    const cfg = cachedConfig() || await fresh;
     S.enabled = cfg.enabled;
     S.key = cfg.key || "";
     S.mapId = cfg.mapId || "";
@@ -1972,7 +2000,13 @@
     try { S.vector = localStorage.getItem("gmapVector") === "1"; } catch (_) { S.vector = false; }
     const btn = $("btn-google-mode");
     if (btn) btn.hidden = !S.enabled;
-    if (S.enabled && mainMapIsGoogle(q)) autoOpen();
+    if (S.enabled && mainMapIsGoogle(q)) {
+      // v3.10.126: the Maps script and the map-load permit start now, while our map is still being set up (the first picture
+      // waited for both one after the other, 4-15 s on a slow CPU in the emulated car)
+      loadGoogle(S.key).catch(() => {});
+      S.earlyPermit = permit("mapload"); S.earlyPermit.catch(() => {});
+      autoOpen();
+    }
   }
 
   const api = { init, open, close, isOpen: () => S.open, isEnabled: () => S.enabled, camMoves: () => S.camCount, firstTilesMs: () => S.firstTilesMs || null, isVector: () => !!S.vector, tilt: () => (S.map && S.map.getTilt ? Math.round(S.map.getTilt() || 0) : 0), renderType: () => (S.map && S.map.getRenderingType ? String(S.map.getRenderingType() || "") : ""), gpuOn: () => !!S.gpuOn, mainMapIsGoogle, MAIN_MAP_KEY, selectMap, shownMap, currentMainMap, MAP_KINDS, gpuPlan, openWithQuery, openWithDestination, focusPlace, SIDE_PROXIES, mapKey, distToPolylineM, nearestOnPolyline, createOffRouteTracker, createVoiceCues, nearestChargers, createCarGlide, aheadPoint, mapOptions, cameraNeedsUpdate, createFpsMeter, createTrafficGovernor, scaledBoxStyle, capText, warnText, decodePolyline, parseRoutesResponse, routesRequestBody, nextStepIndex, fmtDist, hazardLine, whenText, planState, nearForm, routeWeatherPoints, weatherHazard, hazardText, addRecent, thenPhrase, thenIsClose, autoZoom, sideShouldHide, maneuverIcon, routeCum, remainingOnRoute, etaInfo, stepAlongs, nextStepAlong, distToStep, hasArrived, parseSavedNav, buildLoaderUrl, createDebouncer, osrmUrl, summarizeRoute, mapStyles, bearing, meters, CATEGORIES };

@@ -218,7 +218,7 @@ ok(/GOOGLE_MAPS_KEY/.test(srv) && !/PUBLIC_AUTH_PATHS[^;]*gmaps-config/.test(srv
   ok(G.mainMapIsGoogle("") === true && G.mainMapIsGoogle("?debug=1") === true && G.mainMapIsGoogle("?gmap3d=1") === true && G.mainMapIsGoogle("?map=vector") === false, "v3.10.93: by default the app opens on Google 3D; ?map=... still opens our map");
   ok(G.mainMapIsGoogle("?map=ours") === false && G.mainMapIsGoogle("?debug=1&map=lite") === false && G.mainMapIsGoogle("?map=raster") === false,"v3.10.77: ?map=ours / ?map=lite open our map");
   const initSrc = src.slice(src.indexOf("async function init()"), src.indexOf("const api = {"));
-  ok(initSrc.includes("if (S.enabled && mainMapIsGoogle(q)) autoOpen();"), "v3.10.77: Google opens by itself only when Google mode is configured");
+  ok(/if \(S\.enabled && mainMapIsGoogle\(q\)\) \{[\s\S]{0,500}autoOpen\(\);\n    \}/.test(initSrc), "v3.10.77: Google opens by itself only when Google mode is configured");
   const openSrc = src.slice(src.indexOf("async function open()"), src.indexOf("function close()"));
   ok(/catch \(e\) \{[\s\S]*?close\(\);[\s\S]*?ჩვენს რუკაზე ხართ/.test(openSrc), "v3.10.77: no Google map (cap, network, key) -> back to our map, not an empty layer");
   ok(/window\.__setMainMapPaused && window\.map/.test(src), "v3.10.77: auto-open waits for our map so both never render at once");
@@ -458,4 +458,9 @@ ok(/strokeColor: "#3e6ae1", strokeOpacity: 0\.7, strokeWeight: 4/.test(src) && !
   ok(/S\.gdpr = gd \?/.test(src) && /nativeDpr > 1 \? 1 : 0/.test(src) && /Object\.defineProperty\(window, "devicePixelRatio"/.test(src), 'v3.10.125: Google renders at pixel density 1 by default (?gdpr=0 = the screen density)');
   ok(/outer\.appendChild\(el\)/.test(src) && /S\.maps\[key\] = \{ map: S\.map, el: outer \}/.test(src), 'v3.10.125: ?gscale scales a wrapper (Google dropped the transform on its own div)');
   ok(/firstTilesMs: \(\) =>/.test(src), 'v3.10.125: time to the first picture is measured');
+}
+{
+  ok(/const cfg = cachedConfig\(\) \|\| await fresh/.test(src) && /else if \(c && c\.http\) localStorage\.removeItem\(CFG_KEY\)/.test(src), 'v3.10.126: the start uses the kept config, the server answer replaces it (a 401/disabled answer drops it)');
+  ok(/await Promise\.all\(\[loadGoogle\(S\.key\), pm\]\)/.test(src) && /S\.earlyPermit = permit\("mapload"\)/.test(src), 'v3.10.126: the map-load permit runs alongside the Maps script, both started in init');
+  ok(/importLibrary\("maps"\);\n\s+S\.g = \{ maps, places: null/.test(src) && /await ensurePlaces\(\);\n\s+if \(!S\.sessionToken\) newToken\(\)/.test(src), 'v3.10.126: Places loads after the first picture or at the first search');
 }
