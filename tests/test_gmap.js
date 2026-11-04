@@ -404,7 +404,7 @@ ok(/strokeColor: "#3e6ae1", strokeOpacity: 0\.7, strokeWeight: 4/.test(src) && !
 {
   ok(G.hazardLine({ kind: 'bump', distanceMeters: 96 }) === '🔺 ბარიერი 100 მეტრში' && G.hazardLine({ kind: 'rail', distanceMeters: 204 }) === '🚂 გადასასვლელი 200 მეტრში' && G.hazardLine({ kind: 'school', distanceMeters: 50 }) === '🏫 სკოლა მარშრუტზე, შეანელე', 'v3.10.118: banner lines for bump / railway crossing / school');
   ok(/updateHazards\(pos, fix\.headingDeg\)/.test(src) && /h\.kind === "bump" && h\.distanceMeters > 120/.test(src), 'v3.10.118: hazards each fix while navigating; a bump chimes only near (120 m)');
-  ok(/function updateSignalMarkers\(pos, force\)/.test(src) && /\.slice\(0, 8\)/.test(src) && /o\.d < 500/.test(src) && /getZoom\(\) \|\| 0\) >= 15/.test(src) && /S\.noSigMarkers = \/\[\?&\]gsig=0/.test(src), 'v3.10.118/120: at most 8 traffic lights within 500 m ahead, from zoom 15; ?gsig=0 none');
+  ok(/function updateSignalMarkers\(pos, force\)/.test(src) && /\.slice\(0, 8\)/.test(src) && /o\.d < 500/.test(src) && /getZoom\(\) \|\| 0\) >= 15/.test(src) && /S\.noSigMarkers = !\/\[\?&\]gsig=1/.test(src), 'v3.10.118/122: at most 8 traffic lights within 500 m ahead, from zoom 15; off unless ?gsig=1');
   const srv7 = fs.readFileSync(__dirname + '/../server.js', 'utf8');
   ok(/OVERPASS_HAZ_RE\.exec/.test(srv7), 'v3.10.118: the server accepts the combined traffic light + hazards tile');
 }

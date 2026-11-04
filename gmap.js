@@ -1047,7 +1047,7 @@
   }
   function updateSignalMarkers(pos, force) {
     const eng = window.trafficSignalsEngine;
-    if (!S.map || !S.g || !eng || !pos || S.noSigMarkers) return;   // v3.10.120: ?gsig=0 (full test) = no markers at all
+    if (!S.map || !S.g || !eng || !pos || S.noSigMarkers) return;   // v3.10.122: off unless ?gsig=1
     const now = Date.now();
     if (!force && S.sigAt && now - S.sigAt < 12000 && S.sigPos && meters(S.sigPos, pos) < 150) return;
     S.sigAt = now; S.sigPos = pos;
@@ -1898,7 +1898,7 @@
     if (gt) S.gtilt = Math.min(60, Math.max(0, parseInt(gt[1], 10)));
     S.noTraffic = /[?&]gtraffic=0(&|$)/.test(q);
     S.noAutoZoom = /[?&]gzoom=0(&|$)/.test(q);
-    S.noSigMarkers = /[?&]gsig=0(&|$)/.test(q);   // v3.10.120: no traffic light markers (full test)
+    S.noSigMarkers = !/[?&]gsig=1(&|$)/.test(q);   // v3.10.122: no traffic light markers by default (CPU profile: ~2 fps, ~480 DOM nodes); ?gsig=1 shows them
     S.sideFixed = /[?&]gside=fixed/.test(q);   // v3.10.112: the side panel never hides itself   // v3.10.110: no speed zoom (e.g. for the fps suite)
     // v3.10.79 ?gcam=gpu: GPU camera on the 3D (vector) map; ?gcamms=N ms between real camera moves (default 250)
     S.gpuOn = /[?&]gcam=gpu/.test(q);
