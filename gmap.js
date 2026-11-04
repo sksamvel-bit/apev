@@ -587,7 +587,7 @@
 
   // ---------- the mode ----------
   const S = {
-    enabled: false, key: "", open: false, map: null, traffic: null, trafficOn: true, loading: null, g: null,
+    enabled: false, key: "", open: false, map: null, traffic: null, trafficOn: false, loading: null, g: null,
     carMarker: null, carPos: null, carHeading: 0, follow: true, placeMarker: null, catMarkers: [], activeCat: null,
     routeLines: [], routes: [], routeIdx: 0, stepIdx: 0, segIdx: 0, offRouteTracker: null, rerouting: false, voice: null, glide: null, raf: null, lastFrame: 0, idle: 0, lastFix: null,
     vector: false, mapId: "", carRot: null, carTimer: null, lastCam: null, lastMarker: null, camCount: 0, gfps: 0, gscale: 0, gtilt: 20, debug: false, warned: {}, rebuilding: false,
@@ -734,7 +734,10 @@
     }
     S.carMarker = null; S.carRot = null; S.lastMarker = null; S.lastCam = null;
     S.traffic = new TrafficLayer();
-    try { S.trafficOn = localStorage.getItem("gmapTraffic") !== "0"; } catch (_) { S.trafficOn = true; }
+    // v3.10.124 (Samvel: "everything to the minimum"): traffic is off until the driver turns it on (new key, so the old
+    // default-on choice does not carry over); the car tests showed the layer costs 30-50% fps on the MCU2. ?gtraffic=1 forces it on.
+    try { S.trafficOn = localStorage.getItem("gmapTraffic2") === "1"; } catch (_) { S.trafficOn = false; }
+    if (S.forceTraffic) S.trafficOn = true;
     if (S.noTraffic) S.trafficOn = false;   // v3.10.93 ?gtraffic=0 (test): no traffic layer, the saved choice is left alone
     applyTraffic();
   }
@@ -793,7 +796,7 @@
 
   // Arrow/camera rate: 20 fps on both maps (v3.10.95: the 3D map was 10 fps; the parked car test showed 20 smoother).
   // ?gfps=N (2..30) overrides both, for measuring in the car.
-  function carFrameMs() { return S.gfps ? 1000 / S.gfps : (S.vector ? (S.gpuOn ? 16 : 50) : 50); }   // GPU camera: the turn is cheap, 60 fps
+  function carFrameMs() { return S.gfps ? 1000 / S.gfps : (S.vector ? (S.gpuOn ? 16 : 100) : 50); }   // v3.10.124: 3D camera 10/s (car: the best row standing, the MCU2 draws 3-5/s moving anyway)   // GPU camera: the turn is cheap, 60 fps
 
   /** One frame of the glide: arrow position/rotation, and the camera while following (heading-up on the vector map). */
   function drawCar(f) {
@@ -1866,7 +1869,7 @@
       // v3.10.123: a tap while the layer is auto-paused shows it again and keeps it for this visit (no more auto-pause)
       if (S.trafficOn && S.trafficPaused) { S.trafficPaused = false; S.trafficManual = true; applyTraffic(); return; }
       S.trafficOn = !S.trafficOn;
-      try { localStorage.setItem("gmapTraffic", S.trafficOn ? "1" : "0"); } catch (_) {}
+      try { localStorage.setItem("gmapTraffic2", S.trafficOn ? "1" : "0"); } catch (_) {}
       applyTraffic();
     });
     on("gmap-btn-night", "click", () => { if (window.toggleNightMode) window.toggleNightMode(); syncNight(); });
@@ -1936,6 +1939,7 @@
     const gt = /[?&]gtilt=(\d+)/.exec(q);
     if (gt) S.gtilt = Math.min(60, Math.max(0, parseInt(gt[1], 10)));
     S.noTraffic = /[?&]gtraffic=0(&|$)/.test(q);
+    S.forceTraffic = /[?&]gtraffic=1(&|$)/.test(q);   // v3.10.124 (test): traffic on although the default is off
     S.noAutoZoom = /[?&]gzoom=0(&|$)/.test(q);
     S.noTrafficAuto = /[?&]gtrafficauto=0(&|$)/.test(q);   // v3.10.123: keep the traffic layer while driving fast
     const gzl = /[?&]gzoom=(1[4-9]|20)(&|$)/.exec(q);   // v3.10.123 (test): ?gzoom=N fixes the zoom at N (14..20)
