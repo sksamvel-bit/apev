@@ -426,3 +426,27 @@ ok(/strokeColor: "#3e6ae1", strokeOpacity: 0\.7, strokeWeight: 4/.test(src) && !
   ok(/if \(!ll \|\| S\.navigating/.test(src) && /tap: true/.test(src) && /if \(!p\.tap\) rememberPlace/.test(src), 'v3.10.121: not while navigating; a tapped point stays out of the recents');
   ok(/\/api\/reverse\?lat=/.test(src.slice(src.indexOf('function tapPlace'))), 'v3.10.121: the area name comes from our OSM reverse, not Google');
 }
+
+// v3.10.123: traffic auto-pause while driving freely on a slow car (the layer costs 30-50% fps on the MCU2)
+{
+  const g = G.createTrafficGovernor();
+  let t = 0, cam = 0, p = false;
+  for (; t <= 20000; t += 1000) { cam += 4; p = g.update(t, 40, cam); if (t === 14000) ok(p === false, 'v3.10.123: 14 s fast at 4 cam/s: traffic still shown'); }
+  ok(p === true, 'v3.10.123: 15+ s above 15 km/h at 4 cam/s pauses traffic');
+  for (let k = 0; k < 4; k++, t += 1000) p = g.update(t, 3, cam);
+  ok(p === true, 'v3.10.123: 4 s standing: still paused (no flicker at a short stop)');
+  for (let k = 0; k < 4; k++, t += 1000) p = g.update(t, 3, cam);
+  ok(p === false, 'v3.10.123: 6+ s below 7 km/h shows traffic again');
+  const f = G.createTrafficGovernor();
+  let c2 = 0, p2 = false;
+  for (let t2 = 0; t2 <= 40000; t2 += 1000) { c2 += 20; p2 = p2 || f.update(t2, 60, c2); }
+  ok(p2 === false, 'v3.10.123: a fast car (20 cam/s, MCU3) never pauses traffic');
+  const h = G.createTrafficGovernor();
+  let c3 = 0, p3 = false;
+  for (let t3 = 0; t3 <= 40000; t3 += 1000) { c3 += 4; p3 = p3 || h.update(t3, 10, c3); }
+  ok(p3 === false, 'v3.10.123: slow city traffic (10 km/h) keeps the layer');
+  ok(/trafficTick\(S\.lastKmh\)/.test(src) && /S\.trafficManual = true/.test(src) && /gtrafficauto=0/.test(src), 'v3.10.123: runs per fix; a tap on the paused button shows it for the visit; ?gtrafficauto=0 turns it off');
+}
+{
+  ok(/gzoom=\(1\[4-9\]\|20\)/.test(src) && /zoom: S\.fixedZoom \|\| 16/.test(src), 'v3.10.123: ?gzoom=N (14..20) fixes the zoom for the fps suite');
+}

@@ -358,6 +358,32 @@
     };
   }
 
+  /** v3.10.123: traffic auto-pause. The car tests (v3.10.120/122) showed the traffic layer costs 30-50% of the frame rate on
+   *  the MCU2 (GPU side). While the car drives freely (> 15 km/h for 15 s) and the map manages under 8 camera moves a second,
+   *  the layer is hidden; it comes back after 6 s below 7 km/h (a jam or a red light: when traffic matters and you look).
+   *  A fast car (MCU3) never drops under 8, so it keeps the layer. update() returns true while the layer should be paused. */
+  function createTrafficGovernor(opt) {
+    const o = Object.assign({ fastKmh: 15, slowKmh: 7, hideAfterMs: 15000, showAfterMs: 6000, minCamPerS: 8 }, opt || {});
+    let paused = false, fastSince = null, slowSince = null, lastT = null, lastCam = null, rate = null;
+    return {
+      update(t, kmh, camCount) {
+        if (lastT !== null && t - lastT >= 900) {
+          const r = (camCount - lastCam) * 1000 / (t - lastT);
+          rate = rate === null ? r : rate * 0.7 + r * 0.3;
+          lastT = t; lastCam = camCount;
+        } else if (lastT === null) { lastT = t; lastCam = camCount; }
+        if (kmh > o.fastKmh) { if (fastSince === null) fastSince = t; slowSince = null; }
+        else if (kmh < o.slowKmh) { if (slowSince === null) slowSince = t; fastSince = null; }
+        else { fastSince = null; slowSince = null; }
+        if (!paused && fastSince !== null && t - fastSince >= o.hideAfterMs && rate !== null && rate < o.minCamPerS) paused = true;
+        else if (paused && slowSince !== null && t - slowSince >= o.showAfterMs) paused = false;
+        return paused;
+      },
+      paused: () => paused,
+      reset() { paused = false; fastSince = null; slowSince = null; lastT = null; rate = null; }
+    };
+  }
+
   /** The n nearest chargers within maxM metres of center, nearest first (our charger records use lat/lon). */
   function nearestChargers(list, center, n, maxM) {
     const out = [];
@@ -678,7 +704,7 @@
     const box = $("gmap-canvas");
     S.night = !!window.__night;
     const key = mapKey(S.vector, S.night);
-    const v = view || { center: currentCenter(), zoom: 16 };
+    const v = view || { center: currentCenter(), zoom: S.fixedZoom || 16 };
     S.maps = S.maps || {};
     // the overlays live on one map at a time: take them off the one we leave
     if (S.carMarker) S.carMarker.setMap(null);
@@ -714,9 +740,19 @@
   }
 
   function applyTraffic() {
-    if (S.traffic) S.traffic.setMap(S.trafficOn ? S.map : null);
+    const show = S.trafficOn && !S.trafficPaused;
+    if (S.traffic && S.trafficShown !== show) { S.traffic.setMap(show ? S.map : null); S.trafficShown = show; }
+    else if (S.traffic && show) S.traffic.setMap(S.map);
     const b = $("gmap-btn-traffic");
-    if (b) b.classList.toggle("active", S.trafficOn);
+    if (b) { b.classList.toggle("active", S.trafficOn); b.classList.toggle("paused", S.trafficOn && !!S.trafficPaused); }
+  }
+
+  /** v3.10.123: once per GPS fix, the traffic auto-pause (only for the 3D map while following; ?gtrafficauto=0 turns it off). */
+  function trafficTick(kmh) {
+    if (S.noTrafficAuto || S.trafficManual || !S.trafficOn || !S.traffic) return;
+    if (!S.trafficGov) S.trafficGov = createTrafficGovernor();
+    const p = S.vector && S.follow ? S.trafficGov.update(performance.now(), kmh, S.camCount) : false;
+    if (p !== !!S.trafficPaused) { S.trafficPaused = p; applyTraffic(); }
   }
 
   /** Re-creates the map (vector on/off, or night on a vector map) and puts our overlays back on it. */
@@ -955,6 +991,7 @@
     S.lastKmh = (fix.speedMs || 0) * 3.6 || window.currentSpeedKmhForLock || 0;
     updateSignalMarkers({ lat: fix.lat, lng: fix.lng });
     applyAutoZoom(fix);
+    trafficTick(S.lastKmh);
     if (!S.glide && window.MapGL) S.glide = createCarGlide(window.MapGL);
     if (S.glide) { S.glide.setFix(fix, performance.now()); wakeCar(); }
     const pos = { lat: fix.lat, lng: fix.lng };
@@ -1826,6 +1863,8 @@
       wakeCar();   // the glide re-centres (and on the vector map turns heading-up) on its next frame
     });
     on("gmap-btn-traffic", "click", () => {
+      // v3.10.123: a tap while the layer is auto-paused shows it again and keeps it for this visit (no more auto-pause)
+      if (S.trafficOn && S.trafficPaused) { S.trafficPaused = false; S.trafficManual = true; applyTraffic(); return; }
       S.trafficOn = !S.trafficOn;
       try { localStorage.setItem("gmapTraffic", S.trafficOn ? "1" : "0"); } catch (_) {}
       applyTraffic();
@@ -1898,6 +1937,9 @@
     if (gt) S.gtilt = Math.min(60, Math.max(0, parseInt(gt[1], 10)));
     S.noTraffic = /[?&]gtraffic=0(&|$)/.test(q);
     S.noAutoZoom = /[?&]gzoom=0(&|$)/.test(q);
+    S.noTrafficAuto = /[?&]gtrafficauto=0(&|$)/.test(q);   // v3.10.123: keep the traffic layer while driving fast
+    const gzl = /[?&]gzoom=(1[4-9]|20)(&|$)/.exec(q);   // v3.10.123 (test): ?gzoom=N fixes the zoom at N (14..20)
+    if (gzl) { S.noAutoZoom = true; S.fixedZoom = parseInt(gzl[1], 10); }
     S.noSigMarkers = !/[?&]gsig=1(&|$)/.test(q);   // v3.10.122: no traffic light markers by default (CPU profile: ~2 fps, ~480 DOM nodes); ?gsig=1 shows them
     S.sideFixed = /[?&]gside=fixed/.test(q);   // v3.10.112: the side panel never hides itself   // v3.10.110: no speed zoom (e.g. for the fps suite)
     // v3.10.79 ?gcam=gpu: GPU camera on the 3D (vector) map; ?gcamms=N ms between real camera moves (default 250)
@@ -1913,7 +1955,7 @@
     if (S.enabled && mainMapIsGoogle(q)) autoOpen();
   }
 
-  const api = { init, open, close, isOpen: () => S.open, isEnabled: () => S.enabled, camMoves: () => S.camCount, isVector: () => !!S.vector, tilt: () => (S.map && S.map.getTilt ? Math.round(S.map.getTilt() || 0) : 0), renderType: () => (S.map && S.map.getRenderingType ? String(S.map.getRenderingType() || "") : ""), gpuOn: () => !!S.gpuOn, mainMapIsGoogle, MAIN_MAP_KEY, selectMap, shownMap, currentMainMap, MAP_KINDS, gpuPlan, openWithQuery, openWithDestination, focusPlace, SIDE_PROXIES, mapKey, distToPolylineM, nearestOnPolyline, createOffRouteTracker, createVoiceCues, nearestChargers, createCarGlide, aheadPoint, mapOptions, cameraNeedsUpdate, createFpsMeter, scaledBoxStyle, capText, warnText, decodePolyline, parseRoutesResponse, routesRequestBody, nextStepIndex, fmtDist, hazardLine, whenText, planState, nearForm, routeWeatherPoints, weatherHazard, hazardText, addRecent, thenPhrase, thenIsClose, autoZoom, sideShouldHide, maneuverIcon, routeCum, remainingOnRoute, etaInfo, stepAlongs, nextStepAlong, distToStep, hasArrived, parseSavedNav, buildLoaderUrl, createDebouncer, osrmUrl, summarizeRoute, mapStyles, bearing, meters, CATEGORIES };
+  const api = { init, open, close, isOpen: () => S.open, isEnabled: () => S.enabled, camMoves: () => S.camCount, isVector: () => !!S.vector, tilt: () => (S.map && S.map.getTilt ? Math.round(S.map.getTilt() || 0) : 0), renderType: () => (S.map && S.map.getRenderingType ? String(S.map.getRenderingType() || "") : ""), gpuOn: () => !!S.gpuOn, mainMapIsGoogle, MAIN_MAP_KEY, selectMap, shownMap, currentMainMap, MAP_KINDS, gpuPlan, openWithQuery, openWithDestination, focusPlace, SIDE_PROXIES, mapKey, distToPolylineM, nearestOnPolyline, createOffRouteTracker, createVoiceCues, nearestChargers, createCarGlide, aheadPoint, mapOptions, cameraNeedsUpdate, createFpsMeter, createTrafficGovernor, scaledBoxStyle, capText, warnText, decodePolyline, parseRoutesResponse, routesRequestBody, nextStepIndex, fmtDist, hazardLine, whenText, planState, nearForm, routeWeatherPoints, weatherHazard, hazardText, addRecent, thenPhrase, thenIsClose, autoZoom, sideShouldHide, maneuverIcon, routeCum, remainingOnRoute, etaInfo, stepAlongs, nextStepAlong, distToStep, hasArrived, parseSavedNav, buildLoaderUrl, createDebouncer, osrmUrl, summarizeRoute, mapStyles, bearing, meters, CATEGORIES };
   if (typeof document !== "undefined") {
     if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", () => init());
     else init();
