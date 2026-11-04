@@ -419,3 +419,10 @@ ok(/strokeColor: "#3e6ae1", strokeOpacity: 0\.7, strokeWeight: 4/.test(src) && !
   const v3 = G.createVoiceCues();
   ok(/^480 მეტრში/.test(v3.update(5, st, 480, 50) || ''), 'v3.10.119: far from the next tier the prompt is still said');
 }
+
+// v3.10.121: a tap on the Google map opens the place card for that point (Google mode is the start map, the tap was only on ours)
+{
+  ok(/tapPlace\(e && e\.latLng\)/.test(src) && /if \(S\.sideOpen && !S\.sideFixed\) \{ setSideOpen\(false\); return; \}/.test(src), 'v3.10.121: a map tap closes the open side panel, otherwise marks a destination');
+  ok(/if \(!ll \|\| S\.navigating/.test(src) && /tap: true/.test(src) && /if \(!p\.tap\) rememberPlace/.test(src), 'v3.10.121: not while navigating; a tapped point stays out of the recents');
+  ok(/\/api\/reverse\?lat=/.test(src.slice(src.indexOf('function tapPlace'))), 'v3.10.121: the area name comes from our OSM reverse, not Google');
+}

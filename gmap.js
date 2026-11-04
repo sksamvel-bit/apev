@@ -701,7 +701,10 @@
       // v3.10.96: the car photos showed a flat map with tilt 45 in the options; set it again once the first tiles are in
       if (S.vector && S.gtilt) { const m = S.map; const l = m.addListener("tilesloaded", () => { l.remove(); if (m.setTilt) m.setTilt(S.gtilt); }); }
       S.map.addListener("dragstart", () => { S.follow = false; $("gmap-btn-me") && $("gmap-btn-me").classList.remove("active"); });
-      S.map.addListener("click", () => { if (S.sideOpen && !S.sideFixed) setSideOpen(false); });   // v3.10.112: a tap on the map tucks the panel away
+      S.map.addListener("click", (e) => {   // v3.10.112: a tap on the map tucks the panel away; v3.10.121: otherwise it marks a destination
+        if (S.sideOpen && !S.sideFixed) { setSideOpen(false); return; }
+        tapPlace(e && e.latLng);
+      });
     }
     S.carMarker = null; S.carRot = null; S.lastMarker = null; S.lastCam = null;
     S.traffic = new TrafficLayer();
@@ -1231,7 +1234,7 @@
     const loc = p.loc && typeof p.loc.lat === "function" ? { lat: p.loc.lat(), lng: p.loc.lng() } : p.loc;
     if (!loc) return;
     S.place = { name: p.name, address: p.address, loc };
-    rememberPlace(S.place);
+    if (!p.tap) rememberPlace(S.place);   // v3.10.121: a stray map tap stays out of the recents
     resetRoutes();
     if (!S.placeMarker) S.placeMarker = new S.g.core.Marker({ map: S.map, zIndex: 900 });
     S.placeMarker.setPosition(loc);
@@ -1255,6 +1258,26 @@
     if (S.placeMarker) S.placeMarker.setMap(null);
     resetRoutes();
     S.place = null;
+  }
+
+  /** v3.10.121: a tap on the Google map opens the place card for that point ("მარშრუტი" routes there), as on our map.
+   *  Not while navigating, so a stray touch never drops the active route. The area name comes from /api/reverse (OSM). */
+  function tapPlace(ll) {
+    if (!ll || S.navigating || typeof ll.lat !== "function") return;
+    const loc = { lat: ll.lat(), lng: ll.lng() };
+    const coords = loc.lat.toFixed(5) + ", " + loc.lng.toFixed(5);
+    showPlace({ name: "მონიშნული ადგილი", address: coords, loc, tap: true });
+    const seq = (S.tapSeq = (S.tapSeq || 0) + 1);
+    fetch("/api/reverse?lat=" + loc.lat.toFixed(4) + "&lon=" + loc.lng.toFixed(4), { credentials: "same-origin" })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((j) => {
+        const name = j && j.name;
+        if (!name || seq !== S.tapSeq || !S.place || S.place.loc !== loc) return;
+        S.place.address = name + " · " + coords;
+        const a = $("gmap-card-addr");
+        if (a) a.textContent = S.place.address;
+      })
+      .catch(() => {});
   }
 
   // ---------- route: our OSRM line on the Google map ----------
