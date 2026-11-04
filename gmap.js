@@ -720,10 +720,17 @@
     } else {
       const el = document.createElement("div");   // a fresh element per map: a Map ID cannot be added to an existing map
       // the GPU camera turns the vector map picture: its div is larger than the screen (?gscale does not apply then)
-      el.style.cssText = S.gpuOn && S.vector ? "position:absolute;left:-25%;top:-25%;width:150%;height:150%;will-change:transform" : scaledBoxStyle(S.gscale);
-      box.appendChild(el);
+      // v3.10.125: ?gscale goes on a wrapper; Google rewrites the map div's own style and dropped the transform (the map
+      // covered only the top-left s x s of the screen, so every earlier "70%" test row measured a smaller map)
+      let outer = el;
+      if (S.gpuOn && S.vector) el.style.cssText = "position:absolute;left:-25%;top:-25%;width:150%;height:150%;will-change:transform";
+      else if (S.gscale > 0 && S.gscale < 1) { outer = document.createElement("div"); outer.style.cssText = scaledBoxStyle(S.gscale); el.style.cssText = "position:absolute;inset:0"; outer.appendChild(el); }
+      else el.style.cssText = scaledBoxStyle(0);
+      box.appendChild(outer);
       S.map = new Map(el, mapOptions(S.vector, S.night, v));
-      S.maps[key] = { map: S.map, el };
+      S.maps[key] = { map: S.map, el: outer };
+      // v3.10.125: how long the first picture takes (the car: "the light map loads with difficulty"); full test / HUD
+      { const m = S.map, t0 = performance.now(); const l = m.addListener("tilesloaded", () => { l.remove(); S.firstTilesMs = Math.round(performance.now() - t0); }); }
       // v3.10.96: the car photos showed a flat map with tilt 45 in the options; set it again once the first tiles are in
       if (S.vector && S.gtilt) { const m = S.map; const l = m.addListener("tilesloaded", () => { l.remove(); if (m.setTilt) m.setTilt(S.gtilt); }); }
       S.map.addListener("dragstart", () => { S.follow = false; $("gmap-btn-me") && $("gmap-btn-me").classList.remove("active"); });
@@ -1939,6 +1946,15 @@
     const gt = /[?&]gtilt=(\d+)/.exec(q);
     if (gt) S.gtilt = Math.min(60, Math.max(0, parseInt(gt[1], 10)));
     S.noTraffic = /[?&]gtraffic=0(&|$)/.test(q);
+    // v3.10.125 ?gdpr=N (0.75..2): the pixel density Google's map renders at. The car screen is 1.53; Google reads
+    // window.devicePixelRatio, so it is overridden before the Maps script loads (our MapLibre map sets its own pixelRatio,
+    // the page's text stays sharp, and taps stay exact; ?gscale scaled the picture and put taps off by 1.4-2x)
+    const gd = /[?&]gdpr=(\d(?:\.\d+)?)(&|$)/.exec(q);
+    // v3.10.125 (Samvel: "the minimum"): 1 by default on a denser screen (the car: 1.53 -> 43% of the pixels for the MCU2 GPU);
+    // ?gdpr=0 keeps the screen's own density
+    const nativeDpr = (typeof window !== "undefined" && window.devicePixelRatio) || 1;
+    S.gdpr = gd ? (parseFloat(gd[1]) === 0 ? 0 : Math.min(2, Math.max(0.75, parseFloat(gd[1])))) : (nativeDpr > 1 ? 1 : 0);
+    if (S.gdpr) { try { Object.defineProperty(window, "devicePixelRatio", { get: () => S.gdpr, configurable: true }); } catch (_) {} }
     S.forceTraffic = /[?&]gtraffic=1(&|$)/.test(q);   // v3.10.124 (test): traffic on although the default is off
     S.noAutoZoom = /[?&]gzoom=0(&|$)/.test(q);
     S.noTrafficAuto = /[?&]gtrafficauto=0(&|$)/.test(q);   // v3.10.123: keep the traffic layer while driving fast
@@ -1959,7 +1975,7 @@
     if (S.enabled && mainMapIsGoogle(q)) autoOpen();
   }
 
-  const api = { init, open, close, isOpen: () => S.open, isEnabled: () => S.enabled, camMoves: () => S.camCount, isVector: () => !!S.vector, tilt: () => (S.map && S.map.getTilt ? Math.round(S.map.getTilt() || 0) : 0), renderType: () => (S.map && S.map.getRenderingType ? String(S.map.getRenderingType() || "") : ""), gpuOn: () => !!S.gpuOn, mainMapIsGoogle, MAIN_MAP_KEY, selectMap, shownMap, currentMainMap, MAP_KINDS, gpuPlan, openWithQuery, openWithDestination, focusPlace, SIDE_PROXIES, mapKey, distToPolylineM, nearestOnPolyline, createOffRouteTracker, createVoiceCues, nearestChargers, createCarGlide, aheadPoint, mapOptions, cameraNeedsUpdate, createFpsMeter, createTrafficGovernor, scaledBoxStyle, capText, warnText, decodePolyline, parseRoutesResponse, routesRequestBody, nextStepIndex, fmtDist, hazardLine, whenText, planState, nearForm, routeWeatherPoints, weatherHazard, hazardText, addRecent, thenPhrase, thenIsClose, autoZoom, sideShouldHide, maneuverIcon, routeCum, remainingOnRoute, etaInfo, stepAlongs, nextStepAlong, distToStep, hasArrived, parseSavedNav, buildLoaderUrl, createDebouncer, osrmUrl, summarizeRoute, mapStyles, bearing, meters, CATEGORIES };
+  const api = { init, open, close, isOpen: () => S.open, isEnabled: () => S.enabled, camMoves: () => S.camCount, firstTilesMs: () => S.firstTilesMs || null, isVector: () => !!S.vector, tilt: () => (S.map && S.map.getTilt ? Math.round(S.map.getTilt() || 0) : 0), renderType: () => (S.map && S.map.getRenderingType ? String(S.map.getRenderingType() || "") : ""), gpuOn: () => !!S.gpuOn, mainMapIsGoogle, MAIN_MAP_KEY, selectMap, shownMap, currentMainMap, MAP_KINDS, gpuPlan, openWithQuery, openWithDestination, focusPlace, SIDE_PROXIES, mapKey, distToPolylineM, nearestOnPolyline, createOffRouteTracker, createVoiceCues, nearestChargers, createCarGlide, aheadPoint, mapOptions, cameraNeedsUpdate, createFpsMeter, createTrafficGovernor, scaledBoxStyle, capText, warnText, decodePolyline, parseRoutesResponse, routesRequestBody, nextStepIndex, fmtDist, hazardLine, whenText, planState, nearForm, routeWeatherPoints, weatherHazard, hazardText, addRecent, thenPhrase, thenIsClose, autoZoom, sideShouldHide, maneuverIcon, routeCum, remainingOnRoute, etaInfo, stepAlongs, nextStepAlong, distToStep, hasArrived, parseSavedNav, buildLoaderUrl, createDebouncer, osrmUrl, summarizeRoute, mapStyles, bearing, meters, CATEGORIES };
   if (typeof document !== "undefined") {
     if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", () => init());
     else init();

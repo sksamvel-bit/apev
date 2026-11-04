@@ -155,7 +155,7 @@ ok(/GOOGLE_MAPS_KEY/.test(srv) && !/PUBLIC_AUTH_PATHS[^;]*gmaps-config/.test(srv
 {
   const appSrc = fs.readFileSync(__dirname + '/../app.js', 'utf8');
   const used = [...new Set([...appSrc.matchAll(/GMapMode\.(\w+)/g)].map((m) => m[1]))].sort();
-  ok(JSON.stringify(used) === JSON.stringify(['camMoves', 'close', 'focusPlace', 'gpuOn', 'isEnabled', 'isOpen', 'isVector', 'openWithDestination', 'openWithQuery', 'renderType', 'selectMap', 'shownMap', 'tilt']), 'app.js only opens Google mode (text / our destination or charger in; isOpen/isVector/gpuOn are yes/no, camMoves our own counter; tilt the camera angle in degrees, renderType VECTOR/RASTER (test table, v3.10.96/98); close only closes it; selectMap/shownMap switch maps), never reads Google data back: ' + used.join(', '));
+  ok(JSON.stringify(used) === JSON.stringify(['camMoves', 'close', 'firstTilesMs', 'focusPlace', 'gpuOn', 'isEnabled', 'isOpen', 'isVector', 'openWithDestination', 'openWithQuery', 'renderType', 'selectMap', 'shownMap', 'tilt']), 'app.js only opens Google mode (text / our destination or charger in; isOpen/isVector/gpuOn are yes/no, camMoves our own counter, firstTilesMs our own load timer (v3.10.125); tilt the camera angle in degrees, renderType VECTOR/RASTER (test table, v3.10.96/98); close only closes it; selectMap/shownMap switch maps), never reads Google data back: ' + used.join(', '));
   ok(typeof G.openWithQuery === 'function' && typeof G.openWithDestination === 'function' && typeof G.isEnabled === 'function', 'gmap.js exports the two shortcuts and isEnabled');
   const owq = src.slice(src.indexOf('async function openWithQuery'), src.indexOf('async function openWithDestination'));
   const owd = src.slice(src.indexOf('async function openWithDestination'), src.indexOf('// ---------- open / close'));
@@ -453,4 +453,9 @@ ok(/strokeColor: "#3e6ae1", strokeOpacity: 0\.7, strokeWeight: 4/.test(src) && !
 {
   ok(/S\.trafficOn = localStorage\.getItem\("gmapTraffic2"\) === "1"/.test(src) && /gtraffic=1\(&\|\$\)/.test(src), 'v3.10.124: traffic off by default (new key), ?gtraffic=1 forces it on');
   ok(/S\.gpuOn \? 16 : 100\) : 50\)/.test(src), 'v3.10.124: 3D camera 10/s by default');
+}
+{
+  ok(/S\.gdpr = gd \?/.test(src) && /nativeDpr > 1 \? 1 : 0/.test(src) && /Object\.defineProperty\(window, "devicePixelRatio"/.test(src), 'v3.10.125: Google renders at pixel density 1 by default (?gdpr=0 = the screen density)');
+  ok(/outer\.appendChild\(el\)/.test(src) && /S\.maps\[key\] = \{ map: S\.map, el: outer \}/.test(src), 'v3.10.125: ?gscale scales a wrapper (Google dropped the transform on its own div)');
+  ok(/firstTilesMs: \(\) =>/.test(src), 'v3.10.125: time to the first picture is measured');
 }
