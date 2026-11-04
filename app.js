@@ -136,7 +136,7 @@ function initClock() {
 const OFM_STYLE_URL = "https://tiles.openfreemap.org/styles/liberty";
 const OFM_STYLE_CACHE_KEY = "tesla_nav_ofm_style_v1";
 const MAP_STYLE_KEYS = ["openfreemap", "google-roads"];
-const APP_VERSION = "3.10.126";
+const APP_VERSION = "3.10.127";
 const MAP_DEFAULT_ZOOM = 16;      // MapLibre zoom (Leaflet-equivalent 17)
 // Performance experiments (all default to the normal behaviour): ?labels=0 hides the base-map labels/icons, ?markers=0 skips the
 // charger DOM markers, ?pitch=N sets the heading-up tilt (0-60). Used to find what makes the car's browser slow.
@@ -2657,11 +2657,11 @@ function initRemoteSession() {
   // (traffic off never helped in the car); the rows compare the tilt; the last row is the v3.10.93 default (flat, 10/s).
   const SUITE = [
     { name: "Google 3D, უძრავი (ბრუნვის გარეშე)", q: "gmap3d=1&gzoom=17", google: true, idle: true },
-    // v3.10.124/125: the default is the minimum (no traffic, camera 10/s, no markers, tilt 20, Google at pixel density 1); the rows add one thing back each
+    // v3.10.124/125/127: the default is the minimum (no traffic, camera 20/s, no markers, tilt 20, Google at pixel density 1); the rows add one thing back each
     { name: "ახალი მინიმუმი (ზუმი 17)", q: "gmap3d=1&gzoom=17", google: true },
     { name: "მინიმუმი, ზუმი 18", q: "gmap3d=1&gzoom=18", google: true },
     { name: "მინიმუმი + საცობები", q: "gmap3d=1&gzoom=17&gtraffic=1&gtrafficauto=0", google: true },
-    { name: "მინიმუმი, კამერა 20/წმ (ძველი)", q: "gmap3d=1&gzoom=17&gfps=20", google: true },
+    { name: "მინიმუმი, კამერა 10/წმ", q: "gmap3d=1&gzoom=17&gfps=10", google: true },
     { name: "მინიმუმი, სრული სიმკვრივე 1.53 (ძველი)", q: "gmap3d=1&gzoom=17&gdpr=0", google: true },
     { name: "მინიმუმი, ბრტყელი 0°", q: "gmap3d=1&gzoom=17&gtilt=0", google: true },
     { name: "ძველი სრული (საცობები, 20/წმ, 1.53)", q: "gmap3d=1&gzoom=17&gtraffic=1&gtrafficauto=0&gfps=20&gdpr=0", google: true }

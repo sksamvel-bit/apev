@@ -816,7 +816,7 @@
 
   // Arrow/camera rate: 20 fps on both maps (v3.10.95: the 3D map was 10 fps; the parked car test showed 20 smoother).
   // ?gfps=N (2..30) overrides both, for measuring in the car.
-  function carFrameMs() { return S.gfps ? 1000 / S.gfps : (S.vector ? (S.gpuOn ? 16 : 100) : 50); }   // v3.10.124: 3D camera 10/s (car: the best row standing, the MCU2 draws 3-5/s moving anyway)   // GPU camera: the turn is cheap, 60 fps
+  function carFrameMs() { return S.gfps ? 1000 / S.gfps : (S.vector ? (S.gpuOn ? 16 : 50) : 50); }   // v3.10.127: 20/s again (the emulated full test: 6.2 real camera moves/s vs 4.6 at 10/s, same CPU busy)   // GPU camera: the turn is cheap, 60 fps
 
   /** One frame of the glide: arrow position/rotation, and the camera while following (heading-up on the vector map). */
   function drawCar(f) {

@@ -336,7 +336,7 @@ test("debug HUD stays cheap and the bench records long tasks (v3.10.82)", () => 
   assert.ok(/__benchActive/.test(hud), "HUD pauses during the bench");
   assert.ok(/PerformanceObserver/.test(src) && /type: "longtask"/.test(src), "long tasks are observed");
   assert.ok(/tile\.openstreetmap\.org/.test(src) && src.includes('if (MAP_RASTER && styleKey === "openfreemap")'), "?map=raster: OSM picture tiles (v3.10.84)");
-  assert.ok(hud.includes('q: "gmap3d=1&gzoom=17"') && hud.includes('q: "gmap3d=1&gzoom=17&gtraffic=1&gtrafficauto=0"') && hud.includes('q: "gmap3d=1&gzoom=17&gfps=20"') && !hud.includes('gsig=1"'), "v3.10.93/124: the full test measures only Google 3D variants (the minimum, then one thing back per row)");
+  assert.ok(hud.includes('q: "gmap3d=1&gzoom=17"') && hud.includes('q: "gmap3d=1&gzoom=17&gtraffic=1&gtrafficauto=0"') && hud.includes('q: "gmap3d=1&gzoom=17&gfps=10"') && !hud.includes('gsig=1"'), "v3.10.93/124: the full test measures only Google 3D variants (the minimum, then one thing back per row)");
   assert.ok(src.includes('/^line/.test(String(l.layout["symbol-placement"]'), "street-name variants hide only the labels along the roads (v3.10.85)");
   assert.ok(/res\.longPct/.test(hud) && /res\.gpsMsPerS/.test(hud), "bench stores long-task % and GPS cost");
 });
