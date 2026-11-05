@@ -2441,3 +2441,4 @@ body.dock-v2 .dock-divider {
 }
 body.dock-v2 .dock-controls { grid-auto-rows: auto; }
 body.dock-v2 .dock-controls > .dock-btn { height: 50px; }
+#gmap-btn-places[hidden] { display: none; }

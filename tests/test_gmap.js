@@ -187,6 +187,9 @@ ok(/GOOGLE_MAPS_KEY/.test(srv) && !/PUBLIC_AUTH_PATHS[^;]*gmaps-config/.test(srv
   ok(G.mapKey(false, true) === "raster" && G.mapKey(true, false) === "vector-light" && G.mapKey(true, true) === "vector-dark", "v3.10.59: one map per look (raster night is a style, not a new map)");
   // v3.10.128: the Tesla-like looks (satellite, dark plain) are maps of their own, flat, and do not follow the night mode
   ok(G.mapKey(true, true, "sat") === "vector-sat" && G.mapKey(true, false, "dark") === "vector-min" && G.mapKey(false, false, "sat") === "raster" && G.mapKey(true, false, "3d") === "vector-light", "v3.10.128: satellite / dark plain get their own kept map");
+  // v3.10.130: 📍 hides the places by switching to a second Map ID (GOOGLE_MAP_ID_CLEAN); its map is kept apart
+  ok(G.mapKey(true, false, "dark", true) === "vector-min-clean" && G.mapKey(true, true, "3d", false) === "vector-dark" && G.mapKey(false, false, "3d", true) === "raster", "v3.10.130: the map without places is its own kept map");
+  ok(src.includes('o.mapId = (cleanOn() && S.mapIdClean) || S.mapId || "DEMO_MAP_ID";') && src.includes("b.hidden = !S.mapIdClean;") && fs.readFileSync(__dirname + "/../server.js", "utf8").includes("GOOGLE_MAP_ID_CLEAN") && fs.readFileSync(__dirname + "/../index.html", "utf8").includes('id="gmap-btn-places"'), "v3.10.130: 📍 button only when the server has the second Map ID");
   ok(G.lookOf("gsat") === "sat" && G.lookOf("gdark") === "dark" && G.lookOf("google3d") === "3d", "v3.10.128: picker kind -> look");
   ok(src.includes('if (S.look === "sat") o.mapTypeId = "hybrid";') && src.includes('return S.look === "sat" || S.look === "dark" ? 0 : (S.gtilt || 0);') && src.includes("glook=(sat|dark|3d)"), "v3.10.128: satellite = hybrid, both Tesla-like looks flat, ?glook test switch");
   // v3.10.79: GPU camera on the Google 3D map (?gcam=gpu)

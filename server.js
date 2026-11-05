@@ -1487,7 +1487,10 @@ const server = http.createServer((req, res) => {
     res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' });
     // GOOGLE_MAP_ID (optional): a vector Map ID from Google Cloud for the heading-up test map; without it the page uses DEMO_MAP_ID
     const mapId = (process.env.GOOGLE_MAP_ID || '').trim();
-    res.end(JSON.stringify(key ? { enabled: true, key, mapId } : { enabled: false }));
+    // v3.10.130 GOOGLE_MAP_ID_CLEAN (optional): a second Map ID whose Cloud style hides the places (shops, cafes); the 📍 button
+    // on the Google panel switches between the two (a Map ID map ignores runtime styles, so this is the only way to hide them)
+    const mapIdClean = (process.env.GOOGLE_MAP_ID_CLEAN || '').trim();
+    res.end(JSON.stringify(key ? { enabled: true, key, mapId, mapIdClean } : { enabled: false }));
     return;
   }
 

@@ -298,3 +298,4 @@ v3.10.126 (Claude): gmap.js cachedConfig/storeConfig (gmapCfg1), init-ში ა
 v3.10.127 (Claude): gmap.js carFrameMs 3D 50 ms; SUITE 'კამერა 10/წმ' სტრიქონი. CDP x9 სრული ტესტი v3.10.126: საცობებით ჩატვირთვა 14.0/14.5 წმ, მათ გარეშე 3.9-6.8 წმ. მანქანაში არ შემოწმებულა.
 v3.10.128: glook sat/dark Tesla-like flat looks; emulated x9 no CPU difference; dark keeps POIs (Map ID ignores styles)
 v3.10.129: classic raster Google map removed from picker/settings; S.vector always true; saved 'google' -> google3d
+v3.10.130: places toggle button via GOOGLE_MAP_ID_CLEAN second Map ID

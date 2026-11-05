@@ -51,7 +51,8 @@
     volumeOff: "M4 10v4h4l5 4V6L8 10zM17 10l4 4M21 10l-4 4",
     phone: "M9 3h6a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H9a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2zM11 18h2",
     settings: "M12 9a3 3 0 1 0 0 6a3 3 0 1 0 0-6zM12 2v3M12 19v3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M2 12h3M19 12h3M4.9 19.1L7 17M17 7l2.1-2.1",
-    close: "M6 6l12 12M18 6L6 18"
+    close: "M6 6l12 12M18 6L6 18",
+    pin: "M12 21s-6-5.6-6-11a6 6 0 0 1 12 0c0 5.4-6 11-6 11zM12 7.5a2.5 2.5 0 1 0 0 5a2.5 2.5 0 1 0 0-5z"
   };
   /** Puts icon `name` into button `b` (DOM only, no innerHTML); tone = the colour family in style.css. */
   function setPanelIcon(b, name, tone) {
@@ -683,7 +684,7 @@
       const r = await fetch("/api/gmaps-config", { cache: "no-store", credentials: "same-origin" });
       if (!r.ok) return { enabled: false, http: r.status };
       const j = await r.json();
-      return j && j.enabled && typeof j.key === "string" && j.key ? { enabled: true, key: j.key, mapId: typeof j.mapId === "string" ? j.mapId : "" } : { enabled: false, http: 200 };
+      return j && j.enabled && typeof j.key === "string" && j.key ? { enabled: true, key: j.key, mapId: typeof j.mapId === "string" ? j.mapId : "", mapIdClean: typeof j.mapIdClean === "string" ? j.mapIdClean : "" } : { enabled: false, http: 200 };
     } catch (_) { return { enabled: false }; }
   }
 
@@ -696,7 +697,7 @@
   function mapOptions(vector, night, view) {
     const o = { center: view.center, zoom: view.zoom, disableDefaultUI: true, gestureHandling: "greedy", clickableIcons: false, keyboardShortcuts: false };
     if (!vector) { o.styles = mapStyles(night); return o; }
-    o.mapId = S.mapId || "DEMO_MAP_ID";   // DEMO_MAP_ID is Google's test id; set GOOGLE_MAP_ID on the server for real use
+    o.mapId = (cleanOn() && S.mapIdClean) || S.mapId || "DEMO_MAP_ID";   // v3.10.130: 📍 off = the Map ID without places   // DEMO_MAP_ID is Google's test id; set GOOGLE_MAP_ID on the server for real use
     o.renderingType = "VECTOR";
     o.colorScheme = night ? "DARK" : "LIGHT";   // a Map ID map ignores `styles`; the colour scheme is fixed at creation
     o.heading = view.heading || 0;
@@ -714,11 +715,12 @@
 
   /** One map per look: classic, vector light, vector dark (a vector map's colour scheme is fixed when it is created);
    *  v3.10.128: satellite and the dark plain look are maps of their own (their colours do not follow the night mode). */
-  function mapKey(vector, night, look) {
-    if (vector && look === "sat") return "vector-sat";
-    if (vector && look === "dark") return "vector-min";
-    return vector ? (night ? "vector-dark" : "vector-light") : "raster";
+  function mapKey(vector, night, look, clean) {
+    const k = vector && look === "sat" ? "vector-sat" : vector && look === "dark" ? "vector-min" : vector ? (night ? "vector-dark" : "vector-light") : "raster";
+    return vector && clean ? k + "-clean" : k;   // v3.10.130: the map without places is another Map ID, so another kept map
   }
+  /** v3.10.130: places hidden (📍 off) and a second Map ID for that exists (GOOGLE_MAP_ID_CLEAN on the server). */
+  function cleanOn() { return !!(S.clean && S.mapIdClean); }
 
   /**
    * Shows the map for the current look. v3.10.59: a map made once is kept and shown again (Antigravity's review: a new
@@ -729,7 +731,7 @@
     const { Map, TrafficLayer } = S.g.maps;
     const box = $("gmap-canvas");
     S.night = !!window.__night;
-    const key = mapKey(S.vector, S.night, S.look);
+    const key = mapKey(S.vector, S.night, S.look, cleanOn());
     const v = view || { center: currentCenter(), zoom: S.fixedZoom || 16 };
     S.maps = S.maps || {};
     // the overlays live on one map at a time: take them off the one we leave
@@ -796,7 +798,7 @@
   async function rebuildMap(onDenied) {
     if (!S.map || S.rebuilding) return;
     S.rebuilding = true;
-    const kept = S.maps && S.maps[mapKey(S.vector, !!window.__night, S.look)];   // showing a kept map again is not a new map load
+    const kept = S.maps && S.maps[mapKey(S.vector, !!window.__night, S.look, cleanOn())];   // showing a kept map again is not a new map load
     if (!kept) { try { await permit("mapload"); } catch (_) { S.rebuilding = false; if (onDenied) onDenied(); return; } }
     S.rebuilding = false;
     if (!S.map) return;
@@ -810,7 +812,25 @@
     wakeCar();
   }
 
+  /** v3.10.130 (Samvel: one button to hide / show the places at once): switches to the second Map ID and back. The first
+   *  switch is one new map load; after that both maps are kept and switching is instant. */
+  function togglePlaces() {
+    if (!S.mapIdClean) { say("ადგილების გათიშვას სჭირდება მეორე Map ID (GOOGLE_MAP_ID_CLEAN Render-ში)"); return; }
+    S.clean = !S.clean;
+    try { localStorage.setItem("gmapClean", S.clean ? "1" : "0"); } catch (_) {}
+    updatePlacesBtn();
+    if (S.map) rebuildMap(() => { S.clean = !S.clean; try { localStorage.setItem("gmapClean", S.clean ? "1" : "0"); } catch (_) {} updatePlacesBtn(); });
+  }
+  function updatePlacesBtn() {
+    const b = $("gmap-btn-places");
+    if (!b) return;
+    b.hidden = !S.mapIdClean;
+    b.classList.toggle("active", !cleanOn());   // lit = the places are shown
+    b.title = cleanOn() ? "ადგილები: დამალულია (დააჭირე საჩვენებლად)" : "ადგილები: ჩანს (დააჭირე დასამალად)";
+  }
+
   function updatePanelButtons() {
+    updatePlacesBtn();
     const v = $("gmap-btn-vector"); if (v) v.classList.toggle("active", S.vector);
     const n = $("gmap-btn-night"); if (n) n.classList.toggle("active", !!window.__night);
   }
@@ -1927,6 +1947,7 @@
       applyTraffic();
     });
     on("gmap-btn-night", "click", () => { if (window.toggleNightMode) window.toggleNightMode(); syncNight(); });
+    on("gmap-btn-places", "click", (e) => { if (e) e.stopPropagation(); togglePlaces(); });
     // v3.10.80: this button opens the map picker (Google 3D / Google classic / ours) instead of toggling 3D
     on("gmap-btn-vector", "click", (e) => { if (e) e.stopPropagation(); if (window.openMapPicker) window.openMapPicker(); });
     on("gmap-card-close", "click", closeCard);
@@ -1947,7 +1968,7 @@
     const side = document.querySelector(".gmap-side"), closeBtn = $("gmap-btn-close");
     if (side) {
       // v3.10.113: the buttons written in index.html get the same line icons
-      [["gmap-btn-traffic", "traffic", "green"], ["gmap-btn-night", "night", "violet"], ["gmap-btn-vector", "map", "sky"], ["gmap-btn-me", "locate", "sky"],
+      [["gmap-btn-traffic", "traffic", "green"], ["gmap-btn-places", "pin", "amber"], ["gmap-btn-night", "night", "violet"], ["gmap-btn-vector", "map", "sky"], ["gmap-btn-me", "locate", "sky"],
         ["gmap-btn-zoom-in", "plus", ""], ["gmap-btn-zoom-out", "minus", ""], ["gmap-btn-close", "close", "red"]].forEach(([id, ic, tone]) => setPanelIcon($(id), ic, tone));
       const add = (icon, title, fn) => {
         const b = document.createElement("button");
@@ -1984,6 +2005,10 @@
     S.enabled = cfg.enabled;
     S.key = cfg.key || "";
     S.mapId = cfg.mapId || "";
+    S.mapIdClean = cfg.mapIdClean || "";
+    try { S.clean = localStorage.getItem("gmapClean") === "1"; } catch (_) { S.clean = false; }
+    // the cached config is used at once; a new GOOGLE_MAP_ID_CLEAN on the server shows the 📍 button when the fresh answer comes
+    fresh.then((c) => { if (c && c.enabled && (c.mapIdClean || "") !== S.mapIdClean && !S.map) S.mapIdClean = c.mapIdClean || ""; updatePlacesBtn(); }).catch(() => {});
     const q = (typeof location !== "undefined" && location.search) || "";
     S.debug = /[?&]debug=1/.test(q);
     const gf = /[?&]gfps=(\d+)/.exec(q);
@@ -2030,7 +2055,7 @@
     }
   }
 
-  const api = { init, open, close, isOpen: () => S.open, isEnabled: () => S.enabled, camMoves: () => S.camCount, firstTilesMs: () => S.firstTilesMs || null, isVector: () => !!S.vector, tilt: () => (S.map && S.map.getTilt ? Math.round(S.map.getTilt() || 0) : 0), renderType: () => (S.map && S.map.getRenderingType ? String(S.map.getRenderingType() || "") : ""), gpuOn: () => !!S.gpuOn, mainMapIsGoogle, MAIN_MAP_KEY, selectMap, lookOf, look: () => S.look || "3d", shownMap, currentMainMap, MAP_KINDS, gpuPlan, openWithQuery, openWithDestination, focusPlace, SIDE_PROXIES, mapKey, distToPolylineM, nearestOnPolyline, createOffRouteTracker, createVoiceCues, nearestChargers, createCarGlide, aheadPoint, mapOptions, cameraNeedsUpdate, createFpsMeter, createTrafficGovernor, scaledBoxStyle, capText, warnText, decodePolyline, parseRoutesResponse, routesRequestBody, nextStepIndex, fmtDist, hazardLine, whenText, planState, nearForm, routeWeatherPoints, weatherHazard, hazardText, addRecent, thenPhrase, thenIsClose, autoZoom, sideShouldHide, maneuverIcon, routeCum, remainingOnRoute, etaInfo, stepAlongs, nextStepAlong, distToStep, hasArrived, parseSavedNav, buildLoaderUrl, createDebouncer, osrmUrl, summarizeRoute, mapStyles, bearing, meters, CATEGORIES };
+  const api = { init, open, close, isOpen: () => S.open, isEnabled: () => S.enabled, camMoves: () => S.camCount, firstTilesMs: () => S.firstTilesMs || null, isVector: () => !!S.vector, tilt: () => (S.map && S.map.getTilt ? Math.round(S.map.getTilt() || 0) : 0), renderType: () => (S.map && S.map.getRenderingType ? String(S.map.getRenderingType() || "") : ""), gpuOn: () => !!S.gpuOn, mainMapIsGoogle, MAIN_MAP_KEY, selectMap, lookOf, placesHidden: () => cleanOn(), togglePlaces, look: () => S.look || "3d", shownMap, currentMainMap, MAP_KINDS, gpuPlan, openWithQuery, openWithDestination, focusPlace, SIDE_PROXIES, mapKey, distToPolylineM, nearestOnPolyline, createOffRouteTracker, createVoiceCues, nearestChargers, createCarGlide, aheadPoint, mapOptions, cameraNeedsUpdate, createFpsMeter, createTrafficGovernor, scaledBoxStyle, capText, warnText, decodePolyline, parseRoutesResponse, routesRequestBody, nextStepIndex, fmtDist, hazardLine, whenText, planState, nearForm, routeWeatherPoints, weatherHazard, hazardText, addRecent, thenPhrase, thenIsClose, autoZoom, sideShouldHide, maneuverIcon, routeCum, remainingOnRoute, etaInfo, stepAlongs, nextStepAlong, distToStep, hasArrived, parseSavedNav, buildLoaderUrl, createDebouncer, osrmUrl, summarizeRoute, mapStyles, bearing, meters, CATEGORIES };
   if (typeof document !== "undefined") {
     if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", () => init());
     else init();
