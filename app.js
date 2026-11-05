@@ -136,7 +136,7 @@ function initClock() {
 const OFM_STYLE_URL = "https://tiles.openfreemap.org/styles/liberty";
 const OFM_STYLE_CACHE_KEY = "tesla_nav_ofm_style_v1";
 const MAP_STYLE_KEYS = ["openfreemap", "google-roads"];
-const APP_VERSION = "3.10.136";
+const APP_VERSION = "3.10.137";
 const MAP_DEFAULT_ZOOM = 16;      // MapLibre zoom (Leaflet-equivalent 17)
 // Performance experiments (all default to the normal behaviour): ?labels=0 hides the base-map labels/icons, ?markers=0 skips the
 // charger DOM markers, ?pitch=N sets the heading-up tilt (0-60). Used to find what makes the car's browser slow.
@@ -531,7 +531,7 @@ function initMap() {
     } catch (_) {}
   };
   setInterval(() => {
-    if (!PERF.lite) return;
+    if (!PERF.lite || window.__mainMapPaused) return;   // v3.10.137 (perf audit Q3): nothing to do under the Google map
     if (currentSpeedKmh < 3) { if (!stillSince) stillSince = Date.now(); if (Date.now() - stillSince > 2000) setDetail(true); }
     else { stillSince = 0; setDetail(false); }
   }, 500);
@@ -540,6 +540,7 @@ function initMap() {
   // Hides only at highway speeds (> 75 km/h) to conserve resources where house numbers do not exist.
   let hnOn = null;
   setInterval(() => {
+    if (window.__mainMapPaused) return;   // v3.10.137 (perf audit Q3): our map is hidden under Google; checked again when it shows
     const want = currentSpeedKmh <= 75;
     if (want === hnOn) return;
     hnOn = want;
@@ -2367,6 +2368,19 @@ function getOrGenerateSessionCode() {
   return currentSessionCode;
 }
 
+/** v3.10.137 (perf audit Q6): qrcode.min.js on demand (still precached by the service worker for offline use). */
+let qrLibLoading = null;
+function loadQrLib() {
+  if (window.QRCode) return Promise.resolve();
+  return qrLibLoading || (qrLibLoading = new Promise((resolve, reject) => {
+    const s = document.createElement("script");
+    s.src = "qrcode.min.js";
+    s.onload = resolve;
+    s.onerror = () => { qrLibLoading = null; reject(new Error("qr")); };
+    document.head.appendChild(s);
+  }));
+}
+
 function initRemoteSession() {
   const code = getOrGenerateSessionCode();
   const codeEl = document.getElementById("remote-code-text");
@@ -2389,19 +2403,23 @@ function initRemoteSession() {
         linkEl.textContent = remoteUrl;
       }
 
+      // v3.10.137 (perf audit Q6): the QR library loads only when the pairing window is open (it was parsed at every start)
       const qrContainer = document.getElementById("qrcode");
-      if (qrContainer) {
-        qrContainer.innerHTML = "";
-        if (window.QRCode) {
-          new QRCode(qrContainer, {
-            text: remoteUrl,
-            width: 170,   // v3.10.109: the pairing window fits the 601 px car screen without scrolling
-            height: 170,
-            colorDark: "#0a0d14",
-            colorLight: "#ffffff",
-            correctLevel: QRCode.CorrectLevel.M
-          });
-        }
+      const pairOpen = document.getElementById("remote-modal");
+      if (qrContainer && pairOpen && pairOpen.classList.contains("open")) {
+        loadQrLib().then(() => {
+          qrContainer.innerHTML = "";
+          if (window.QRCode) {
+            new QRCode(qrContainer, {
+              text: remoteUrl,
+              width: 170,   // v3.10.109: the pairing window fits the 601 px car screen without scrolling
+              height: 170,
+              colorDark: "#0a0d14",
+              colorLight: "#ffffff",
+              correctLevel: QRCode.CorrectLevel.M
+            });
+          }
+        }).catch(() => {});
       }
     })
     .catch(err => console.warn("Failed to fetch server info for QR:", err));

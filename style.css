@@ -431,7 +431,8 @@ html, body {
   border-radius: 50%;
   background: var(--accent-green);
   box-shadow: 0 0 10px var(--accent-green);
-  animation: pulse-dot 2s infinite ease-in-out;
+  /* v3.10.137 (perf audit Q2): no endless pulse (the screen never rested: ~50 fps and style work while parked); it pulses
+     only on a weak signal (.gps-weak below), when it needs the driver's attention */
 }
 
 .gps-dot.simulated {
@@ -452,6 +453,7 @@ html, body {
 .gps-dot.gps-weak {
   background: #ffab00;
   box-shadow: 0 0 8px #ffab00;
+  animation: pulse-dot 2s infinite ease-in-out;
 }
 
 /* v3.10.107: GPS stopped while driving (red, no pulse) and no internet (📵) */
@@ -472,8 +474,7 @@ html, body {
   width: 320px;
   max-width: 340px;
   background: rgba(14, 18, 26, 0.94);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
+  /* v3.10.137 (perf audit Q1): backdrop-filter blur removed (forbidden on the MCU2; the 94% background reads without it) */
   border: 1px solid rgba(255, 255, 255, 0.14);
   border-radius: 16px;
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5), 0 0 1px rgba(255, 255, 255, 0.2);

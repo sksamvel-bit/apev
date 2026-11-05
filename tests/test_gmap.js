@@ -496,3 +496,13 @@ ok(/strokeColor: "#3e6ae1", strokeOpacity: 0\.7, strokeWeight: 4/.test(src) && !
   ok(css.includes('#gmap-search-input::-webkit-search-cancel-button { display: none;') && css.includes('#gmap-card-route:empty, #gmap-card-routes:empty { display: none; }'), 'v3.10.136 (audit A4/B1): one clear button, no empty card rows');
   ok(!/[🛰🌑🧭]/u.test(html.slice(html.indexOf('map-style-list'), html.indexOf('map-style-list') + 4000)) && html.includes('class="gmap-splash-text"'), 'v3.10.136 (audit B4/C1): line icons in the map menu, loading text on the splash');
 }
+{
+  const css = fs.readFileSync(__dirname + '/../style.css', 'utf8');
+  const appSrc = fs.readFileSync(__dirname + '/../app.js', 'utf8');
+  const html = fs.readFileSync(__dirname + '/../index.html', 'utf8');
+  ok(!/^\s*backdrop-filter:\s*blur/m.test(css) && !/^\s*-webkit-backdrop-filter:\s*blur/m.test(css), 'v3.10.137 (perf Q1): no backdrop-filter blur anywhere in style.css');
+  const dot = css.slice(css.indexOf('.gps-dot {'), css.indexOf('}', css.indexOf('.gps-dot {')));
+  ok(!/animation:/.test(dot) && /\.gps-dot\.gps-weak \{[^}]*animation: pulse-dot/.test(css), 'v3.10.137 (perf Q2): the GPS dot pulses only on a weak signal');
+  ok((appSrc.match(/window\.__mainMapPaused\) return;/g) || []).length >= 3, 'v3.10.137 (perf Q3): the hidden-map intervals stop under the Google map');
+  ok(!html.includes('<script src="qrcode.min.js">') && appSrc.includes('function loadQrLib()') && appSrc.includes('loadQrLib().then('), 'v3.10.137 (perf Q6): the QR library loads on demand');
+}
