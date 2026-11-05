@@ -190,6 +190,7 @@ ok(/GOOGLE_MAPS_KEY/.test(srv) && !/PUBLIC_AUTH_PATHS[^;]*gmaps-config/.test(srv
   // v3.10.130: 📍 hides the places by switching to a second Map ID (GOOGLE_MAP_ID_CLEAN); its map is kept apart
   ok(G.mapKey(true, false, "dark", true) === "vector-min-clean" && G.mapKey(true, true, "3d", false) === "vector-dark" && G.mapKey(false, false, "3d", true) === "raster", "v3.10.130: the map without places is its own kept map");
   ok(src.includes('o.mapId = (cleanOn() && S.mapIdClean) || S.mapId || "DEMO_MAP_ID";') && src.includes("b.hidden = !S.mapIdClean;") && fs.readFileSync(__dirname + "/../server.js", "utf8").includes("GOOGLE_MAP_ID_CLEAN") && fs.readFileSync(__dirname + "/../index.html", "utf8").includes('id="gmap-btn-places"'), "v3.10.130: 📍 button only when the server has the second Map ID");
+  ok(src.includes("S.clean = /[?&]gclean=1(&|$)/.test(location.search);"), "v3.10.131: the full test rows choose the clean map with ?gclean=1, the saved 📍 choice does not leak into them");
   ok(G.lookOf("gsat") === "sat" && G.lookOf("gdark") === "dark" && G.lookOf("google3d") === "3d", "v3.10.128: picker kind -> look");
   ok(src.includes('if (S.look === "sat") o.mapTypeId = "hybrid";') && src.includes('return S.look === "sat" || S.look === "dark" ? 0 : (S.gtilt || 0);') && src.includes("glook=(sat|dark|3d)"), "v3.10.128: satellite = hybrid, both Tesla-like looks flat, ?glook test switch");
   // v3.10.79: GPU camera on the Google 3D map (?gcam=gpu)
@@ -212,7 +213,7 @@ ok(/GOOGLE_MAPS_KEY/.test(srv) && !/PUBLIC_AUTH_PATHS[^;]*gmaps-config/.test(srv
   {
     const appS = fs.readFileSync(__dirname + "/../app.js", "utf8");
     const steps = (appS.slice(appS.indexOf("const SUITE = ["), appS.indexOf("const suiteUrl")).match(/\{ name: /g) || []).length;
-    ok(steps === 8 && appS.includes('location.href = i + 1 < SUITE.length ? suiteUrl(i + 1) : "/?suite=done&map=ours&debug=1"'), "v3.10.81: the full test runs 13 variants (v3.10.83: + map at rest, v3.10.84: + raster, v3.10.85: + street-name variants, v3.10.89: + upright names, v3.10.90: CARTO row removed) one after another and ends on the table");
+    ok(steps === 11 && appS.includes('location.href = i + 1 < SUITE.length ? suiteUrl(i + 1) : "/?suite=done&map=ours&debug=1"'), "v3.10.81: the full test runs 13 variants (v3.10.83: + map at rest, v3.10.84: + raster, v3.10.85: + street-name variants, v3.10.89: + upright names, v3.10.90: CARTO row removed) one after another and ends on the table");
     ok(src.includes("if (/[?&]gmap3d=1/.test(q)) return true;") && src.includes("/[?&]gmap3d=1/.test(location.search) ? \"3d\""), "v3.10.81: ?gmap3d=1 opens Google 3D for a test without changing the saved main map");
   }
   // v3.10.80: three maps in one picker, Google 3D is the main map

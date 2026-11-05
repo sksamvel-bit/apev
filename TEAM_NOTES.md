@@ -299,3 +299,4 @@ v3.10.127 (Claude): gmap.js carFrameMs 3D 50 ms; SUITE 'კამერა 10/�
 v3.10.128: glook sat/dark Tesla-like flat looks; emulated x9 no CPU difference; dark keeps POIs (Map ID ignores styles)
 v3.10.129: classic raster Google map removed from picker/settings; S.vector always true; saved 'google' -> google3d
 v3.10.130: places toggle button via GOOGLE_MAP_ID_CLEAN second Map ID
+v3.10.131: suite +3 clean rows (?gclean=1); clean Map ID live in Render

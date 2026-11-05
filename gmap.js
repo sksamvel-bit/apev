@@ -2007,6 +2007,8 @@
     S.mapId = cfg.mapId || "";
     S.mapIdClean = cfg.mapIdClean || "";
     try { S.clean = localStorage.getItem("gmapClean") === "1"; } catch (_) { S.clean = false; }
+    // v3.10.131: the full test (?gmap3d=1) measures the normal map unless the row says ?gclean=1 (nothing saved)
+    if (/[?&]gmap3d=1/.test((typeof location !== "undefined" && location.search) || "")) S.clean = /[?&]gclean=1(&|$)/.test(location.search);
     // the cached config is used at once; a new GOOGLE_MAP_ID_CLEAN on the server shows the 📍 button when the fresh answer comes
     fresh.then((c) => { if (c && c.enabled && (c.mapIdClean || "") !== S.mapIdClean && !S.map) S.mapIdClean = c.mapIdClean || ""; updatePlacesBtn(); }).catch(() => {});
     const q = (typeof location !== "undefined" && location.search) || "";

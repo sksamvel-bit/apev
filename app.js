@@ -136,7 +136,7 @@ function initClock() {
 const OFM_STYLE_URL = "https://tiles.openfreemap.org/styles/liberty";
 const OFM_STYLE_CACHE_KEY = "tesla_nav_ofm_style_v1";
 const MAP_STYLE_KEYS = ["openfreemap", "google-roads"];
-const APP_VERSION = "3.10.130";
+const APP_VERSION = "3.10.131";
 const MAP_DEFAULT_ZOOM = 16;      // MapLibre zoom (Leaflet-equivalent 17)
 // Performance experiments (all default to the normal behaviour): ?labels=0 hides the base-map labels/icons, ?markers=0 skips the
 // charger DOM markers, ?pitch=N sets the heading-up tilt (0-60). Used to find what makes the car's browser slow.
@@ -2635,7 +2635,7 @@ function initRemoteSession() {
       const suiteBtn = document.createElement("button");
       suiteBtn.id = "bench-suite-btn";
       suiteBtn.type = "button";
-      suiteBtn.textContent = "🧪 Google 3D ტესტი: 8 ვარიანტი (~4 წთ)";
+      suiteBtn.textContent = "🧪 Google 3D ტესტი: " + SUITE.length + " ვარიანტი (~" + Math.ceil(SUITE.length * 0.5) + " წთ)";
       suiteBtn.style.cssText = "position:fixed;left:8px;bottom:172px;z-index:99999;min-height:44px;padding:8px 14px;border-radius:10px;border:1px solid #7CFC7C;background:rgba(0,0,0,.85);color:#7CFC7C;font:600 14px sans-serif;";
       suiteBtn.addEventListener("click", (e) => { e.stopPropagation(); startSuite(); });
       document.body.appendChild(suiteBtn);
@@ -2665,7 +2665,11 @@ function initRemoteSession() {
     { name: "ტესლასავით: თანამგზავრი", q: "gmap3d=1&gzoom=17&glook=sat", google: true },
     { name: "ტესლასავით: მუქი", q: "gmap3d=1&gzoom=17&glook=dark", google: true },
     { name: "თანამგზავრი + საცობები", q: "gmap3d=1&gzoom=17&glook=sat&gtraffic=1&gtrafficauto=0", google: true },
-    { name: "მუქი + საცობები", q: "gmap3d=1&gzoom=17&glook=dark&gtraffic=1&gtrafficauto=0", google: true }
+    { name: "მუქი + საცობები", q: "gmap3d=1&gzoom=17&glook=dark&gtraffic=1&gtrafficauto=0", google: true },
+    // v3.10.131: 📍 off (the second Map ID without places and buildings, GOOGLE_MAP_ID_CLEAN); without it these rows equal the ones above
+    { name: "3D სუფთა (📍 გამორთ.)", q: "gmap3d=1&gzoom=17&gclean=1", google: true },
+    { name: "მუქი სუფთა (📍 გამორთ.)", q: "gmap3d=1&gzoom=17&glook=dark&gclean=1", google: true },
+    { name: "თანამგზავრი სუფთა (📍 გამორთ.)", q: "gmap3d=1&gzoom=17&glook=sat&gclean=1", google: true }
   ];
   const suiteUrl = (i) => "/?suite=" + i + "&debug=1&" + SUITE[i].q;
   function readSuite() { try { return JSON.parse(localStorage.getItem(SUITE_KEY) || "null"); } catch (_) { return null; } }
