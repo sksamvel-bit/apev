@@ -1794,6 +1794,12 @@ button svg * {
   font-size: 1.5rem;
   flex-shrink: 0;
 }
+/* v3.10.136 (audit B4): line icons like the side panel instead of emoji */
+.map-opt-icon svg { width: 28px; height: 28px; display: block; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.map-opt-icon[data-tone="sky"] { color: #38bdf8; }
+.map-opt-icon[data-tone="violet"] { color: #a78bfa; }
+.map-opt-icon[data-tone="green"] { color: #22c55e; }
+.map-opt-icon[data-tone="amber"] { color: #fbbf24; }
 
 .map-opt-text {
   display: flex;
@@ -1863,6 +1869,8 @@ html, body {
 }
 
 /* TESLA TOAST NOTIFICATION (Non-blocking modern alert replacement) */
+/* v3.10.136 (audit B7): while the map menu is open the message goes to the bottom (it covered the menu title) */
+body:has(.map-style-menu.open) .tesla-toast-container { top: auto; bottom: 24px; }
 .tesla-toast-container {
   position: fixed;
   top: 80px;
@@ -2089,7 +2097,7 @@ input {
 .cd-close { width: 48px; height: 48px; border: 0; border-radius: 10px; background: rgba(255,255,255,0.08); color: #fff; font-size: 1.1rem; }
 .cd-filter { min-height: 44px; border: 1px solid rgba(255,255,255,0.15); border-radius: 10px; background: transparent; color: #cbd5e1; font-size: 0.95rem; }
 .cd-filter.active { background: rgba(16,185,129,0.2); border-color: var(--accent-green); color: #34d399; }
-.cd-list { flex: 1; overflow-y: auto; -webkit-overflow-scrolling: touch; display: flex; flex-direction: column; gap: 6px; }
+.cd-list { flex: 1; overflow-y: auto; -webkit-overflow-scrolling: touch; display: flex; flex-direction: column; gap: 6px; scrollbar-width: thin; scrollbar-color: #475569 transparent; }   /* v3.10.136 (audit B2): no white system bar */
 .cd-row { display: flex; align-items: center; gap: 8px; min-height: 64px; padding: 8px 10px; border-radius: 10px; background: rgba(255,255,255,0.05); }
 .cd-info { flex: 1; min-width: 0; }
 .cd-name { font-weight: 600; font-size: 1.05rem; color: #fff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -2099,7 +2107,7 @@ input {
 .cd-kw.ultra { color: #10b981; }
 .cd-side { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; }
 .cd-dist { font-size: 0.95rem; color: #fbbf24; font-weight: 700; }
-.cd-go { min-height: 40px; padding: 0 12px; font-size: 0.95rem; border: 0; border-radius: 8px; background: linear-gradient(135deg, #059669, #10b981); color: #fff; font-weight: 600; }
+.cd-go { min-height: 40px; padding: 0 12px; font-size: 0.95rem; border: 0; border-radius: 8px; background: var(--accent-blue); color: #fff; font-weight: 600; }   /* v3.10.136 (audit A5): the same blue as the place card's route button */
 .cd-empty { padding: 24px; text-align: center; color: #94a3b8; }
 
 /* ---- search suggestions (local first) ---- */
@@ -2128,6 +2136,7 @@ input {
 #gmap-canvas { position: absolute; inset: 0; }
 .gmap-top { position: absolute; top: 12px; left: 12px; width: min(420px, 46vw); z-index: 2; display: flex; flex-direction: column; gap: 8px; }
 .gmap-search { display: flex; background: var(--bg-card); border: 1px solid rgba(255,255,255,0.12); border-radius: 14px; overflow: hidden; }
+#gmap-search-input::-webkit-search-cancel-button { display: none; -webkit-appearance: none; }   /* v3.10.136 (audit A4): our ✕ only */
 .gmap-search input { flex: 1; min-width: 0; background: transparent; border: 0; outline: 0; color: #fff; font-size: 1.1rem; padding: 14px 16px; }
 .gmap-search button { background: transparent; border: 0; color: #9aa0a8; font-size: 1.1rem; padding: 0 16px; cursor: pointer; }
 #gmap-results { display: none; max-height: 62vh; overflow-y: auto; background: var(--bg-card); border: 1px solid rgba(255,255,255,0.12); border-radius: 14px; }
@@ -2152,6 +2161,7 @@ input {
 #gmap-card-title { font-size: 1.25rem; font-weight: 600; padding-right: 44px; }
 #gmap-card-addr { color: #9aa0a8; font-size: 0.95rem; margin: 4px 0 8px; }
 #gmap-card-route { font-size: 1rem; margin-bottom: 10px; min-height: 1.2em; }
+#gmap-card-route:empty, #gmap-card-routes:empty { display: none; }   /* v3.10.136 (audit B1): ~70 px of empty card */
 #gmap-card-go { width: 100%; background: var(--accent-blue); color: #fff; border: 0; border-radius: 12px; padding: 14px; font-size: 1.05rem; cursor: pointer; }
 #gmap-card-go:disabled { opacity: 0.6; }
 /* Google mode covers the whole screen: switch the main UI off underneath, so the browser does not keep compositing it
@@ -2161,6 +2171,8 @@ body.gmap-open #map-viewport { visibility: hidden; }
    out (opacity only, no animation while it shows: the MCU2 GPU) */
 #gmap-splash { position: fixed; inset: 0; z-index: 3000; background: #000; display: flex; align-items: center; justify-content: center; opacity: 0; visibility: hidden; pointer-events: none; transition: opacity 0.3s ease-out, visibility 0s linear 0.3s; }
 #gmap-splash svg { width: 120px; height: 120px; }
+#gmap-splash { flex-direction: column; gap: 18px; }
+.gmap-splash-text { color: #94a3b8; font-size: 0.95rem; }   /* v3.10.136 (audit C1): a still screen read as "stuck" */
 body.gmap-loading #gmap-splash { opacity: 1; visibility: visible; pointer-events: auto; transition: none; }
 body.gmap-open #nav-hud, body.gmap-open #route-preview-card,
 /* v3.10.80: the map menu stays available over the Google map (it switches between the three maps) */
@@ -2169,7 +2181,8 @@ body.gmap-open #chargers-drawer { z-index: 950; }   /* v3.10.56: the list works 
    lifted clear of the Google logo in the bottom-left corner (Google's terms: the logo must not be covered) */
 body.gmap-open .car-hud-stats { z-index: 950; bottom: 72px; }
 /* v3.10.100: the place / route card sits in the same bottom-left corner: speed + limit step aside while it is open */
-body.gmap-open:has(#gmap-card.show) .car-hud-stats { visibility: hidden; }
+/* v3.10.136 (design audit A3): the place card no longer hides the speed; it sits right of the speed box instead */
+body.gmap-open #gmap-card { left: 150px; width: min(400px, calc(100vw - 150px - 100px)); }
 .gmap-nav-signal { display: none; margin-top: 5px; padding: 3px 8px; border-radius: 8px; background: rgba(0,0,0,0.25); color: #fde68a; font-size: 0.95rem; font-weight: 700; }
 .gmap-nav-signal.show { display: block; }
 /* v3.10.115: "შემდეგ: მარცხნივ" when two maneuvers come close together; quick places under the Google search */
@@ -2260,10 +2273,20 @@ body.gmap-open #gmap-nav { top: 60px; }
 .gmap-side .gmap-btn.gmap-close { margin-top: 6px; background: rgba(225, 29, 72, 0.22); border-color: rgba(225, 29, 72, 0.6); }
 /* v3.10.113 (Samvel, panel style 3 "coloured categories"): line icons, one colour per kind of function; a switched-on
    button gets a soft tint of its own colour instead of the shared blue */
-.gmap-side .gmap-btn { color: #cbd5e1; }
+.gmap-side .gmap-btn { color: #f1f5f9; }   /* v3.10.136 (audit A2): was #cbd5e1 */
 /* v3.10.135 (Samvel chose 60% from the test screenshots): the side panel is see-through, no backdrop blur (MCU2), a lighter
    shadow; ?gglass=N (20..90) tries another strength */
 .gmap-side { background: rgba(14, 18, 26, var(--gside-alpha, 0.6)); box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.08); }
+/* v3.10.136 (design audit): A2 over the light 3D day map 60% made a muddy gray (icons 2-3.4:1), so that map gets 85% (>= 4.5:1);
+   A1 14 buttons needed ~760 px of the 601: 36 px buttons (70x36 = 2520 px2 >= S4) and the rare ones behind ⋯ */
+html.gmap-light .gmap-side { --gside-alpha: 0.85; }
+.gmap-side { max-height: calc(100vh - 134px); }
+.gmap-side .gmap-btn { height: 36px; }
+.gmap-side:not(.more-open) .gmap-extra { display: none; }
+.gmap-side .gmap-btn.gmap-close { margin-top: 0; }
+/* B6: a dark compass on the dark looks and at night (a white disc was the brightest spot) */
+html.gmap-dim .gmap-compass { background: #1e293b; border-color: #475569; }
+html.gmap-dim .gmap-compass text[fill="#475569"] { fill: #cbd5e1; }
 .gmap-side .gmap-btn svg { width: 22px; height: 22px; pointer-events: none; }
 .gmap-side .gmap-btn[data-tone="green"] { color: #22c55e; }
 .gmap-side .gmap-btn[data-tone="violet"] { color: #a78bfa; }
@@ -2271,7 +2294,7 @@ body.gmap-open #gmap-nav { top: 60px; }
 .gmap-side .gmap-btn[data-tone="amber"] { color: #fbbf24; }
 .gmap-side .gmap-btn[data-tone="red"] { color: #f87171; }
 .gmap-side .gmap-btn[data-tone="teal"] { color: #2dd4bf; }
-.gmap-side .gmap-btn[data-tone="gray"] { color: #94a3b8; }
+.gmap-side .gmap-btn[data-tone="gray"] { color: #e2e8f0; }   /* v3.10.136 (audit A2): was #94a3b8, 2:1 over the light map */
 .gmap-side .gmap-btn.active { background: color-mix(in srgb, currentColor 18%, transparent); border-color: color-mix(in srgb, currentColor 40%, transparent); }
 /* v3.10.123: traffic auto-paused while driving freely (a dashed ring: "on, waiting"); a tap shows it again */
 .gmap-btn.active.paused { border-style: dashed; opacity: 0.6; }

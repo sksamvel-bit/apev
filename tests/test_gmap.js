@@ -245,7 +245,7 @@ ok(/GOOGLE_MAPS_KEY/.test(srv) && !/PUBLIC_AUTH_PATHS[^;]*gmaps-config/.test(srv
 }
 
 // v3.10.100: speed / limit badges do not overlap the Google route card
-ok(/body\.gmap-open:has\(#gmap-card\.show\) \.car-hud-stats \{ visibility: hidden; \}/.test(fs.readFileSync(__dirname + '/../style.css', 'utf8')), 'v3.10.100: speed HUD hidden while the Google route card is open');
+ok(fs.readFileSync(__dirname + '/../style.css', 'utf8').includes('body.gmap-open #gmap-card { left: 150px;') && !fs.readFileSync(__dirname + '/../style.css', 'utf8').includes('body.gmap-open:has(#gmap-card.show) .car-hud-stats { visibility: hidden; }'), 'v3.10.136 (was v3.10.100): the route card sits right of the speed box, the speed stays visible');
 
 // v3.10.101: turn arrow in the banner + arrival strip (time · min · km)
 {
@@ -487,4 +487,12 @@ ok(/strokeColor: "#3e6ae1", strokeOpacity: 0\.7, strokeWeight: 4/.test(src) && !
 {
   const css = fs.readFileSync(__dirname + '/../style.css', 'utf8');
   ok(css.includes('.gmap-side { background: rgba(14, 18, 26, var(--gside-alpha, 0.6));') && !css.split("\n").some((l) => l.includes(".gmap-side") && l.includes("backdrop-filter")) && src.includes("gglass=(\\d{2})"), 'v3.10.135: the side panel is 60% see-through (no blur), ?gglass=N tries another strength');
+}
+{
+  const css = fs.readFileSync(__dirname + '/../style.css', 'utf8');
+  const html = fs.readFileSync(__dirname + '/../index.html', 'utf8');
+  ok(css.includes('.gmap-side .gmap-btn { height: 36px; }') && css.includes('.gmap-side:not(.more-open) .gmap-extra { display: none; }') && src.includes('closeBtn.classList.add("gmap-extra")') && /ikey: "settings"[^}]*extra: true/.test(src), 'v3.10.136 (audit A1): 36 px buttons, phone/settings/close behind the more button');
+  ok(css.includes('html.gmap-light .gmap-side { --gside-alpha: 0.85; }') && src.includes('classList.toggle("gmap-light"') && src.includes('classList.toggle("gmap-dim"'), 'v3.10.136 (audit A2/B6): darker panel on the light map, dark compass on the dark looks');
+  ok(css.includes('#gmap-search-input::-webkit-search-cancel-button { display: none;') && css.includes('#gmap-card-route:empty, #gmap-card-routes:empty { display: none; }'), 'v3.10.136 (audit A4/B1): one clear button, no empty card rows');
+  ok(!/[🛰🌑🧭]/u.test(html.slice(html.indexOf('map-style-list'), html.indexOf('map-style-list') + 4000)) && html.includes('class="gmap-splash-text"'), 'v3.10.136 (audit B4/C1): line icons in the map menu, loading text on the splash');
 }

@@ -31,8 +31,8 @@
     { icon: "📋", ikey: "list", tone: "amber", title: "დამტენების სია", target: "btn-chargers-list", activeClass: "active" },
     { icon: "📷", ikey: "camera", tone: "red", title: "სიჩქარის კამერები", target: "btn-toggle-cameras", activeClass: "signals-active" },
     { icon: "🔊", iconOff: "🔇", ikey: "volume", ikeyOff: "volumeOff", tone: "teal", title: "ხმოვანი ნავიგაცია", target: "btn-toggle-voice", activeClass: "active" },
-    { icon: "📱", ikey: "phone", tone: "gray", title: "ტელეფონით მართვა", target: "btn-remote-phone" },
-    { icon: "⚙️", ikey: "settings", tone: "gray", title: "პარამეტრები", target: "btn-settings" }
+    { icon: "📱", ikey: "phone", tone: "gray", title: "ტელეფონით მართვა", target: "btn-remote-phone", extra: true },
+    { icon: "⚙️", ikey: "settings", tone: "gray", title: "პარამეტრები", target: "btn-settings", extra: true }
   ];
 
   /** v3.10.113 (Samvel, panel style 3 "coloured categories"): one line-icon set instead of emoji (emoji differ per system
@@ -52,6 +52,7 @@
     phone: "M9 3h6a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H9a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2zM11 18h2",
     settings: "M12 9a3 3 0 1 0 0 6a3 3 0 1 0 0-6zM12 2v3M12 19v3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M2 12h3M19 12h3M4.9 19.1L7 17M17 7l2.1-2.1",
     close: "M6 6l12 12M18 6L6 18",
+    more: "M5 10.5a1.5 1.5 0 1 0 0 3a1.5 1.5 0 1 0 0-3zM12 10.5a1.5 1.5 0 1 0 0 3a1.5 1.5 0 1 0 0-3zM19 10.5a1.5 1.5 0 1 0 0 3a1.5 1.5 0 1 0 0-3z",
     pin: "M12 21s-6-5.6-6-11a6 6 0 0 1 12 0c0 5.4-6 11-6 11zM12 7.5a2.5 2.5 0 1 0 0 5a2.5 2.5 0 1 0 0-5z"
   };
   /** Puts icon `name` into button `b` (DOM only, no innerHTML); tone = the colour family in style.css. */
@@ -732,6 +733,11 @@
     const box = $("gmap-canvas");
     S.night = !!window.__night;
     const key = mapKey(S.vector, S.night, S.look, cleanOn());
+    // v3.10.136 (design audit): the light 3D day map gets a darker side panel (A2), the dark looks a dark compass (B6)
+    if (typeof document !== "undefined") {
+      document.documentElement.classList.toggle("gmap-light", S.look !== "sat" && S.look !== "dark" && !S.night);
+      document.documentElement.classList.toggle("gmap-dim", S.look === "dark" || !!S.night);
+    }
     const v = view || { center: currentCenter(), zoom: S.fixedZoom || 16 };
     S.maps = S.maps || {};
     // the overlays live on one map at a time: take them off the one we leave
@@ -1998,6 +2004,7 @@
         if (!main) return;
         const b = add(p.icon, p.title, () => { main.click(); mirror(); });
         setPanelIcon(b, p.ikey, p.tone);
+        if (p.extra) b.classList.add("gmap-extra");
         const mirror = () => {
           const on = !!p.activeClass && main.classList.contains(p.activeClass);
           b.classList.toggle("active", on);
@@ -2006,6 +2013,19 @@
         mirror();
         if (typeof MutationObserver !== "undefined" && p.activeClass) new MutationObserver(mirror).observe(main, { attributes: true, attributeFilter: ["class"] });
       });
+      // v3.10.136 (design audit A1): 14 buttons did not fit the car's 601 px (⚙️ and ✕ were cut off at the bottom); the rare
+      // ones (📱 phone, ⚙️ settings, ✕ our map, which the map menu also offers) wait behind one ⋯ button
+      if (closeBtn) closeBtn.classList.add("gmap-extra");
+      const firstExtra = side.querySelector(".gmap-extra");
+      if (firstExtra) {
+        const more = add("⋯", "მეტი", (b) => {
+          const open = side.classList.toggle("more-open");
+          b.classList.toggle("active", open);
+          if (open) side.scrollTop = side.scrollHeight;
+        });
+        side.insertBefore(more, firstExtra);
+        setPanelIcon(more, "more", "");
+      }
     }
   }
 

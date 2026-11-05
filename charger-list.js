@@ -109,14 +109,17 @@
       info.className = "cd-info";
       const name = document.createElement("div");
       name.className = "cd-name";
-      name.textContent = st.name || "EV დამტენი";
+      // v3.10.136 (design audit B3): many stations are named only by the city ("თბილისი"); then the operator leads the name
+      const nm = st.name || "EV დამტენი";
+      const generic = !!st.operator && nm.length <= 14 && !/[\d,.]/.test(nm);
+      name.textContent = generic ? st.operator + " · " + nm : nm;
       const meta = document.createElement("div");
       meta.className = "cd-meta";
       const kw = document.createElement("span");
       kw.className = "cd-kw" + (r.kw >= 100 ? " ultra" : r.kw >= FAST_DC_KW ? " fast" : "");
       kw.textContent = st.power || "—";
       meta.appendChild(kw);
-      const rest = [st.type, st.operator, st.price].filter(Boolean).join(" · ");
+      const rest = [st.type, generic ? "" : st.operator, st.price].filter(Boolean).join(" · ");
       if (rest) meta.appendChild(document.createTextNode(" " + rest));
       info.appendChild(name);
       info.appendChild(meta);
