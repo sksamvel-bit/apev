@@ -1816,8 +1816,8 @@
     S.open = true;
     layer.classList.add("show");
     document.body.classList.add("gmap-open");
-    // v3.10.132 (Samvel: "it loads slowly at first"): until Google draws its first picture our map stays on the screen (no dark
-    // empty layer with "loading..."); then the Google map fades in over it
+    // v3.10.132 (Samvel: "it loads slowly at first"): until Google draws its first picture a cover stays on the screen (no dark
+    // empty layer with "loading..."); v3.10.133: the cover is the Tesla logo (#gmap-splash), then the Google map shows
     if (!S.map) document.body.classList.add("gmap-loading");
     dockSearch(true);
     if (window.__setMainMapPaused) window.__setMainMapPaused(true);   // one map rendering at a time on the MCU2
@@ -1872,7 +1872,7 @@
     S.look = gl ? gl[1] : (/[?&]gmap3d=1/.test(location.search) ? "3d" : lookOf(currentMainMap()));
     let tries = 0;
     const t = setInterval(() => {
-      if (S.open || ++tries > 100) { clearInterval(t); return; }
+      if (S.open || ++tries > 100) { clearInterval(t); if (!S.open) document.body.classList.remove("gmap-loading"); return; }
       if (window.__setMainMapPaused && window.map) { clearInterval(t); open(); }
     }, 150);   // v3.10.126: was 500 ms (up to half a second before the first picture even started)
   }
@@ -2066,7 +2066,7 @@
       loadGoogle(S.key).catch(() => {});
       S.earlyPermit = permit("mapload"); S.earlyPermit.catch(() => {});
       autoOpen();
-    }
+    } else document.body.classList.remove("gmap-loading");   // v3.10.133: no Google map at the start: no logo
   }
 
   const api = { init, open, close, isOpen: () => S.open, isEnabled: () => S.enabled, camMoves: () => S.camCount, firstTilesMs: () => S.firstTilesMs || null, isVector: () => !!S.vector, tilt: () => (S.map && S.map.getTilt ? Math.round(S.map.getTilt() || 0) : 0), renderType: () => (S.map && S.map.getRenderingType ? String(S.map.getRenderingType() || "") : ""), gpuOn: () => !!S.gpuOn, mainMapIsGoogle, MAIN_MAP_KEY, selectMap, lookOf, placesHidden: () => cleanOn(), togglePlaces, look: () => S.look || "3d", shownMap, currentMainMap, MAP_KINDS, gpuPlan, openWithQuery, openWithDestination, focusPlace, SIDE_PROXIES, mapKey, distToPolylineM, nearestOnPolyline, createOffRouteTracker, createVoiceCues, nearestChargers, createCarGlide, aheadPoint, mapOptions, cameraNeedsUpdate, createFpsMeter, createTrafficGovernor, scaledBoxStyle, capText, warnText, decodePolyline, parseRoutesResponse, routesRequestBody, nextStepIndex, fmtDist, hazardLine, whenText, planState, nearForm, routeWeatherPoints, weatherHazard, hazardText, addRecent, thenPhrase, thenIsClose, autoZoom, sideShouldHide, maneuverIcon, routeCum, remainingOnRoute, etaInfo, stepAlongs, nextStepAlong, distToStep, hasArrived, parseSavedNav, buildLoaderUrl, createDebouncer, osrmUrl, summarizeRoute, mapStyles, bearing, meters, CATEGORIES };

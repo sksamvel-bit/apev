@@ -473,6 +473,8 @@ ok(/strokeColor: "#3e6ae1", strokeOpacity: 0\.7, strokeWeight: 4/.test(src) && !
 }
 {
   const css = fs.readFileSync(__dirname + '/../style.css', 'utf8');
-  ok(/if \(!S\.map\) document\.body\.classList\.add\("gmap-loading"\)/.test(src) && /if \(!S\.map\) \{ createMap\(\); revealWhenDrawn\(S\.map\); \}/.test(src) && /function close\(\) \{\n\s+document\.body\.classList\.remove\("gmap-loading"\)/.test(src), 'v3.10.132: our map stays visible until the first Google tiles, close() always clears it');
-  ok(css.includes('body.gmap-open.gmap-loading #map-viewport { visibility: visible; }') && css.includes('body.gmap-loading #gmap-layer { opacity: 0; pointer-events: none; }'), 'v3.10.132: the loading layer is invisible and lets taps through');
+  ok(/if \(!S\.map\) document\.body\.classList\.add\("gmap-loading"\)/.test(src) && /if \(!S\.map\) \{ createMap\(\); revealWhenDrawn\(S\.map\); \}/.test(src) && /function close\(\) \{\n\s+document\.body\.classList\.remove\("gmap-loading"\)/.test(src), 'v3.10.132: the cover stays until the first Google tiles, close() always clears it');
+  const html = fs.readFileSync(__dirname + '/../index.html', 'utf8');
+  ok(css.includes('body.gmap-loading #gmap-splash { opacity: 1; visibility: visible;') && html.includes('id="gmap-splash"') && html.includes('document.body.classList.remove("gmap-loading"); }, 20000)'), 'v3.10.133: the Tesla logo covers the start and always goes after 20 s');
+  ok(src.includes('} else document.body.classList.remove("gmap-loading");') && src.includes('if (!S.open) document.body.classList.remove("gmap-loading")'), 'v3.10.133: no logo when Google does not open by itself or autoOpen gives up');
 }

@@ -2157,10 +2157,11 @@ input {
 /* Google mode covers the whole screen: switch the main UI off underneath, so the browser does not keep compositing it
    (the GPS dot pulses forever, MapLibre's canvas and DOM markers). visibility keeps MapLibre's size for resume(). */
 body.gmap-open #map-viewport { visibility: hidden; }
-/* v3.10.132: while the Google map draws its first picture our map stays visible under the invisible layer, then it fades in */
-body.gmap-open.gmap-loading #map-viewport { visibility: visible; }
-body.gmap-loading #gmap-layer { opacity: 0; pointer-events: none; }
-#gmap-layer.show { transition: opacity 0.25s ease-out; }
+/* v3.10.133 (Samvel): the Tesla logo on black from the page start until the Google map has its first picture, then it fades
+   out (opacity only, no animation while it shows: the MCU2 GPU) */
+#gmap-splash { position: fixed; inset: 0; z-index: 3000; background: #000; display: flex; align-items: center; justify-content: center; opacity: 0; visibility: hidden; pointer-events: none; transition: opacity 0.3s ease-out, visibility 0s linear 0.3s; }
+#gmap-splash svg { width: 120px; height: 120px; }
+body.gmap-loading #gmap-splash { opacity: 1; visibility: visible; pointer-events: auto; transition: none; }
 body.gmap-open #nav-hud, body.gmap-open #route-preview-card,
 /* v3.10.80: the map menu stays available over the Google map (it switches between the three maps) */
 body.gmap-open #chargers-drawer { z-index: 950; }   /* v3.10.56: the list works over the Google map too */
