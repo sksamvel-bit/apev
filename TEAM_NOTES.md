@@ -300,3 +300,4 @@ v3.10.128: glook sat/dark Tesla-like flat looks; emulated x9 no CPU difference; 
 v3.10.129: classic raster Google map removed from picker/settings; S.vector always true; saved 'google' -> google3d
 v3.10.130: places toggle button via GOOGLE_MAP_ID_CLEAN second Map ID
 v3.10.131: suite +3 clean rows (?gclean=1); clean Map ID live in Render
+- 2026-11-05 Claude: v3.10.132. Samvel: რუკა თავიდან ნელა იტვირთება. გაზომვა (CPU ×9 + 150 ms ქსელი): პირველი სურათი 7–9 წმ ყველა იერზე, უმეტესად Google-ის კოდია. Google სკრიპტის გვერდის თავში ადრე დაწყება და preconnect ვცადე: ხმაურის ფარგლებში, გაუქმდა. ამის მაგივრად: ჩატვირთვისას `body.gmap-loading` — Google ფენა უხილავია (opacity 0, ტაპები გადის), ჩვენი რუკა ჩანს; პირველ `tilesloaded`-ზე (ან 15 წმ) ფენა 0.25 წმ-ში ჩნდება. ემულაციაში შემოწმდა სკრინშოტებით (თანამგზავრი). **შეუმოწმებელია** მანქანაში: გადასვლის სირბილე MCU2-ზე.

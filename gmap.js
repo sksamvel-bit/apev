@@ -1816,6 +1816,9 @@
     S.open = true;
     layer.classList.add("show");
     document.body.classList.add("gmap-open");
+    // v3.10.132 (Samvel: "it loads slowly at first"): until Google draws its first picture our map stays on the screen (no dark
+    // empty layer with "loading..."); then the Google map fades in over it
+    if (!S.map) document.body.classList.add("gmap-loading");
     dockSearch(true);
     if (window.__setMainMapPaused) window.__setMainMapPaused(true);   // one map rendering at a time on the MCU2
     setStatus("Google რუკა იტვირთება...");
@@ -1825,7 +1828,7 @@
       S.earlyPermit = null;
       await Promise.all([loadGoogle(S.key), pm]);
       if (!S.open) return;
-      if (!S.map) createMap();
+      if (!S.map) { createMap(); revealWhenDrawn(S.map); }
       setTimeout(() => { ensurePlaces().catch(() => {}); }, 4000);   // search ready a few seconds after the first picture
       setStatus("");
       S.follow = true;
@@ -1903,7 +1906,16 @@
     return true;
   }
 
+  /** v3.10.132: shows the Google layer once the map has its first tiles (at the latest after 15 s). */
+  function revealWhenDrawn(m) {
+    const done = () => { clearTimeout(t); document.body.classList.remove("gmap-loading"); };
+    const t = setTimeout(done, 15000);
+    if (!m || !m.addListener) { done(); return; }
+    const l = m.addListener("tilesloaded", () => { l.remove(); done(); });
+  }
+
   function close() {
+    document.body.classList.remove("gmap-loading");
     if (!S.open) return;
     S.open = false;
     gpuReset();

@@ -471,3 +471,8 @@ ok(/strokeColor: "#3e6ae1", strokeOpacity: 0\.7, strokeWeight: 4/.test(src) && !
   ok(/await Promise\.all\(\[loadGoogle\(S\.key\), pm\]\)/.test(src) && /S\.earlyPermit = permit\("mapload"\)/.test(src), 'v3.10.126: the map-load permit runs alongside the Maps script, both started in init');
   ok(/importLibrary\("maps"\);\n\s+S\.g = \{ maps, places: null/.test(src) && /await ensurePlaces\(\);\n\s+if \(!S\.sessionToken\) newToken\(\)/.test(src), 'v3.10.126: Places loads after the first picture or at the first search');
 }
+{
+  const css = fs.readFileSync(__dirname + '/../style.css', 'utf8');
+  ok(/if \(!S\.map\) document\.body\.classList\.add\("gmap-loading"\)/.test(src) && /if \(!S\.map\) \{ createMap\(\); revealWhenDrawn\(S\.map\); \}/.test(src) && /function close\(\) \{\n\s+document\.body\.classList\.remove\("gmap-loading"\)/.test(src), 'v3.10.132: our map stays visible until the first Google tiles, close() always clears it');
+  ok(css.includes('body.gmap-open.gmap-loading #map-viewport { visibility: visible; }') && css.includes('body.gmap-loading #gmap-layer { opacity: 0; pointer-events: none; }'), 'v3.10.132: the loading layer is invisible and lets taps through');
+}
