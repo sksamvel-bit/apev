@@ -1843,7 +1843,7 @@
   function autoOpen() {
     // v3.10.80: Google 3D unless "google" (classic) was chosen; wait until our map exists (open() pauses it) so the two never
     // render at once; give up quietly after ~15 s
-    S.vector = /[?&]gmap3d=1/.test(location.search) || currentMainMap() !== "google";   // ?gmap3d=1: the full test forces 3D (nothing saved)
+    S.vector = true;   // v3.10.129 (Samvel): the classic (raster) Google map is gone; every Google look is the vector map
     // v3.10.128: the look of the vector map; ?glook=sat|dark|3d (test) wins, the full test (?gmap3d=1) is 3D unless ?glook says otherwise
     const gl = /[?&]glook=(sat|dark|3d)(&|$)/.exec(location.search);
     S.look = gl ? gl[1] : (/[?&]gmap3d=1/.test(location.search) ? "3d" : lookOf(currentMainMap()));
@@ -1856,7 +1856,8 @@
 
   // ---- v3.10.80 one map picker (Samvel): "google3d" (default, main), "google" (classic), "ours" (OSM). The choice is shown at
   // once and opens with the app next time. Used by the map menu of our dock and of the Google side panel, and the settings. ----
-  const MAP_KINDS = ["google3d", "gsat", "gdark", "google", "ours"];   // v3.10.128: + satellite and dark plain (Tesla-like, flat)
+  // v3.10.128: + satellite and dark plain (Tesla-like, flat); v3.10.129: the classic "google" map removed (a saved "google" opens Google 3D)
+  const MAP_KINDS = ["google3d", "gsat", "gdark", "ours"];
   function lookOf(kind) { return kind === "gsat" ? "sat" : kind === "gdark" ? "dark" : "3d"; }
   function currentMainMap() {
     let v = null;
@@ -1864,19 +1865,19 @@
     return MAP_KINDS.includes(v) ? v : "google3d";   // v3.10.93: Google 3D is the start map again (Samvel: only Google 3D)
   }
   /** The map on the screen right now. */
-  function shownMap() { return S.open ? (S.vector ? (S.look === "sat" ? "gsat" : S.look === "dark" ? "gdark" : "google3d") : "google") : "ours"; }
+  function shownMap() { return S.open ? (S.look === "sat" ? "gsat" : S.look === "dark" ? "gdark" : "google3d") : "ours"; }
   function selectMap(kind) {
     if (!MAP_KINDS.includes(kind)) return false;
     try { localStorage.setItem(MAIN_MAP_KEY, kind); } catch (_) {}
     if (kind === "ours") { close(); return true; }
     if (!S.enabled) { say("Google რუკა მიუწვდომელია (გასაღები არ არის): ჩვენს რუკაზე ხართ"); return false; }
-    const want = kind !== "google", look = lookOf(kind);
-    try { localStorage.setItem("gmapVector", want ? "1" : "0"); } catch (_) {}
-    if (!S.open) { S.vector = want; S.look = look; open(); return true; }
-    if (S.vector !== want || (want && S.look !== look)) {
-      const was = { vector: S.vector, look: S.look };
-      S.vector = want; S.look = look;
-      rebuildMap(() => { S.vector = was.vector; S.look = was.look; try { localStorage.setItem("gmapVector", S.vector ? "1" : "0"); } catch (_) {} updatePanelButtons(); });
+    const look = lookOf(kind);
+    S.vector = true;
+    if (!S.open) { S.look = look; open(); return true; }
+    if (S.look !== look) {
+      const was = S.look;
+      S.look = look;
+      rebuildMap(() => { S.look = was; updatePanelButtons(); });
       updatePanelButtons();
     }
     return true;
@@ -2016,7 +2017,8 @@
     const gm = /[?&]gcamms=(\d+)/.exec(q);
     S.gpuMs = gm ? Math.min(2000, Math.max(50, parseInt(gm[1], 10))) : 250;
     if (S.gpuOn) document.body.classList.add("gcam-gpu");
-    try { S.vector = localStorage.getItem("gmapVector") === "1"; } catch (_) { S.vector = false; }
+    S.vector = true;   // v3.10.129: no classic (raster) Google map any more
+    try { localStorage.removeItem("gmapVector"); } catch (_) {}
     const btn = $("btn-google-mode");
     if (btn) btn.hidden = !S.enabled;
     if (S.enabled && mainMapIsGoogle(q)) {

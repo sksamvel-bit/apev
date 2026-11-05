@@ -297,3 +297,4 @@ v3.10.125 (Claude): gmap.js ?gdpr (default 1 თუ ეკრანი >1; windo
 v3.10.126 (Claude): gmap.js cachedConfig/storeConfig (gmapCfg1), init-ში ადრეული loadGoogle + earlyPermit, open-ში Promise.all, ensurePlaces, autoOpen 150 ms. CDP x9: პირველი სურათი ~7.5-8.5 წმ (Google-ის სკრიპტი ~2 წმ + ფილები ~4 წმ = მისი საკუთარი სამუშაო); ძებნა დაუყოვნებლივ მუშაობს. მანქანაში არ შემოწმებულა.
 v3.10.127 (Claude): gmap.js carFrameMs 3D 50 ms; SUITE 'კამერა 10/წმ' სტრიქონი. CDP x9 სრული ტესტი v3.10.126: საცობებით ჩატვირთვა 14.0/14.5 წმ, მათ გარეშე 3.9-6.8 წმ. მანქანაში არ შემოწმებულა.
 v3.10.128: glook sat/dark Tesla-like flat looks; emulated x9 no CPU difference; dark keeps POIs (Map ID ignores styles)
+v3.10.129: classic raster Google map removed from picker/settings; S.vector always true; saved 'google' -> google3d
