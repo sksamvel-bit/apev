@@ -478,3 +478,9 @@ ok(/strokeColor: "#3e6ae1", strokeOpacity: 0\.7, strokeWeight: 4/.test(src) && !
   ok(css.includes('body.gmap-loading #gmap-splash { opacity: 1; visibility: visible;') && html.includes('id="gmap-splash"') && html.includes('document.body.classList.remove("gmap-loading"); }, 20000)'), 'v3.10.133: the Tesla logo covers the start and always goes after 20 s');
   ok(src.includes('} else document.body.classList.remove("gmap-loading");') && src.includes('if (!S.open) document.body.classList.remove("gmap-loading")'), 'v3.10.133: no logo when Google does not open by itself or autoOpen gives up');
 }
+{
+  const h = fs.readFileSync(__dirname + '/../index.html', 'utf8');
+  const pos = (s) => h.indexOf(s);
+  ok(pos('data-map="gsat"') < pos('data-map="gdark"') && pos('data-map="gdark"') < pos('data-map="google3d"') && pos('data-map="google3d"') < pos('data-map="ours"') &&
+     pos('<option value="gsat">') < pos('<option value="gdark">') && pos('<option value="gdark">') < pos('<option value="google3d">') && pos('<option value="google3d">') < pos('<option value="ours">'), 'v3.10.134: menu and settings order: satellite, dark, 3D, ours');
+}
