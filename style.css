@@ -2261,6 +2261,9 @@ body.gmap-open #gmap-nav { top: 60px; }
 /* v3.10.113 (Samvel, panel style 3 "coloured categories"): line icons, one colour per kind of function; a switched-on
    button gets a soft tint of its own colour instead of the shared blue */
 .gmap-side .gmap-btn { color: #cbd5e1; }
+/* v3.10.135 (Samvel chose 60% from the test screenshots): the side panel is see-through, no backdrop blur (MCU2), a lighter
+   shadow; ?gglass=N (20..90) tries another strength */
+.gmap-side { background: rgba(14, 18, 26, var(--gside-alpha, 0.6)); box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.08); }
 .gmap-side .gmap-btn svg { width: 22px; height: 22px; pointer-events: none; }
 .gmap-side .gmap-btn[data-tone="green"] { color: #22c55e; }
 .gmap-side .gmap-btn[data-tone="violet"] { color: #a78bfa; }

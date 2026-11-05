@@ -484,3 +484,7 @@ ok(/strokeColor: "#3e6ae1", strokeOpacity: 0\.7, strokeWeight: 4/.test(src) && !
   ok(pos('data-map="gsat"') < pos('data-map="gdark"') && pos('data-map="gdark"') < pos('data-map="google3d"') && pos('data-map="google3d"') < pos('data-map="ours"') &&
      pos('<option value="gsat">') < pos('<option value="gdark">') && pos('<option value="gdark">') < pos('<option value="google3d">') && pos('<option value="google3d">') < pos('<option value="ours">'), 'v3.10.134: menu and settings order: satellite, dark, 3D, ours');
 }
+{
+  const css = fs.readFileSync(__dirname + '/../style.css', 'utf8');
+  ok(css.includes('.gmap-side { background: rgba(14, 18, 26, var(--gside-alpha, 0.6));') && !css.split("\n").some((l) => l.includes(".gmap-side") && l.includes("backdrop-filter")) && src.includes("gglass=(\\d{2})"), 'v3.10.135: the side panel is 60% see-through (no blur), ?gglass=N tries another strength');
+}

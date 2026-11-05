@@ -2048,6 +2048,9 @@
     const gzl = /[?&]gzoom=(1[4-9]|20)(&|$)/.exec(q);   // v3.10.123 (test): ?gzoom=N fixes the zoom at N (14..20)
     if (gzl) { S.noAutoZoom = true; S.fixedZoom = parseInt(gzl[1], 10); }
     S.noSigMarkers = !/[?&]gsig=1(&|$)/.test(q);   // v3.10.122: no traffic light markers by default (CPU profile: ~2 fps, ~480 DOM nodes); ?gsig=1 shows them
+    // v3.10.135 (Samvel: a see-through panel, 60% by default in style.css): ?gglass=N (20..90) tries another strength
+    const gg = /[?&]gglass=(\d{2})(&|$)/.exec(q);
+    if (gg) { document.documentElement.style.setProperty("--gside-alpha", String(Math.min(90, Math.max(20, parseInt(gg[1], 10))) / 100)); }
     S.sideFixed = /[?&]gside=fixed/.test(q);   // v3.10.112: the side panel never hides itself   // v3.10.110: no speed zoom (e.g. for the fps suite)
     // v3.10.79 ?gcam=gpu: GPU camera on the 3D (vector) map; ?gcamms=N ms between real camera moves (default 250)
     S.gpuOn = /[?&]gcam=gpu/.test(q);
