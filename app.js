@@ -136,7 +136,7 @@ function initClock() {
 const OFM_STYLE_URL = "https://tiles.openfreemap.org/styles/liberty";
 const OFM_STYLE_CACHE_KEY = "tesla_nav_ofm_style_v1";
 const MAP_STYLE_KEYS = ["openfreemap", "google-roads"];
-const APP_VERSION = "3.10.137";
+const APP_VERSION = "3.10.138";
 const MAP_DEFAULT_ZOOM = 16;      // MapLibre zoom (Leaflet-equivalent 17)
 // Performance experiments (all default to the normal behaviour): ?labels=0 hides the base-map labels/icons, ?markers=0 skips the
 // charger DOM markers, ?pitch=N sets the heading-up tilt (0-60). Used to find what makes the car's browser slow.
@@ -2308,6 +2308,12 @@ function initEventListeners() {
     // v3.10.77: which map opens with the app (gmap.js reads it on the next start)
     const mm = document.getElementById("input-main-map");
     if (mm) { try { localStorage.setItem("tesla_nav_main_map", ["google3d", "gsat", "gdark", "ours"].includes(mm.value) ? mm.value : "google3d"); } catch (_) {} }
+    // v3.10.138 (perf audit): Lite mode is read by gmap.js before the Google script loads, so a change reloads the page
+    const li = document.getElementById("input-lite");
+    if (li) {
+      let was = "0"; try { was = localStorage.getItem("teslaLite") === "1" ? "1" : "0"; localStorage.setItem("teslaLite", li.value === "1" ? "1" : "0"); } catch (_) {}
+      if ((li.value === "1" ? "1" : "0") !== was) setTimeout(() => location.reload(), 300);
+    }
     const lc = document.getElementById("input-limit-chime");   // v3.10.107: read by speed-limit.js limitChangeChime
     if (lc) { try { localStorage.setItem("limit_chime", lc.value === "0" ? "0" : "1"); } catch (_) {} }
     localStorage.setItem("saved_home", document.getElementById("input-home-addr").value.trim());
@@ -2318,6 +2324,7 @@ function initEventListeners() {
   });
 
   // Populate settings inputs
+  { const li = document.getElementById("input-lite"); if (li) { let v = "0"; try { if (localStorage.getItem("teslaLite") === "1") v = "1"; } catch (_) {} li.value = v; } }
   { const lc = document.getElementById("input-limit-chime"); if (lc) { let v = "1"; try { if (localStorage.getItem("limit_chime") === "0") v = "0"; } catch (_) {} lc.value = v; } }
   { const mm = document.getElementById("input-main-map"); if (mm) { let v = "google3d"; try { const s = localStorage.getItem("tesla_nav_main_map"); if (["google3d", "gsat", "gdark", "ours"].includes(s)) v = s; } catch (_) {} mm.value = v; } }
   document.getElementById("input-home-addr").value = localStorage.getItem("saved_home") || "";
@@ -2687,7 +2694,9 @@ function initRemoteSession() {
     // v3.10.131: 📍 off (the second Map ID without places and buildings, GOOGLE_MAP_ID_CLEAN); without it these rows equal the ones above
     { name: "3D სუფთა (📍 გამორთ.)", q: "gmap3d=1&gzoom=17&gclean=1", google: true },
     { name: "მუქი სუფთა (📍 გამორთ.)", q: "gmap3d=1&gzoom=17&glook=dark&gclean=1", google: true },
-    { name: "თანამგზავრი სუფთა (📍 გამორთ.)", q: "gmap3d=1&gzoom=17&glook=sat&gclean=1", google: true }
+    { name: "თანამგზავრი სუფთა (📍 გამორთ.)", q: "gmap3d=1&gzoom=17&glook=sat&gclean=1", google: true },
+    { name: "⚡ Lite (3D)", q: "gmap3d=1&gzoom=17&tlite=1", google: true },   // v3.10.138: the Lite switch, to compare with row 1
+    { name: "⚡ Lite მუქი", q: "gmap3d=1&gzoom=17&glook=dark&tlite=1", google: true }
   ];
   const suiteUrl = (i) => "/?suite=" + i + "&debug=1&" + SUITE[i].q;
   function readSuite() { try { return JSON.parse(localStorage.getItem(SUITE_KEY) || "null"); } catch (_) { return null; } }

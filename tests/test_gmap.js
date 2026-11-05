@@ -213,7 +213,7 @@ ok(/GOOGLE_MAPS_KEY/.test(srv) && !/PUBLIC_AUTH_PATHS[^;]*gmaps-config/.test(srv
   {
     const appS = fs.readFileSync(__dirname + "/../app.js", "utf8");
     const steps = (appS.slice(appS.indexOf("const SUITE = ["), appS.indexOf("const suiteUrl")).match(/\{ name: /g) || []).length;
-    ok(steps === 11 && appS.includes('location.href = i + 1 < SUITE.length ? suiteUrl(i + 1) : "/?suite=done&map=ours&debug=1"'), "v3.10.81: the full test runs 13 variants (v3.10.83: + map at rest, v3.10.84: + raster, v3.10.85: + street-name variants, v3.10.89: + upright names, v3.10.90: CARTO row removed) one after another and ends on the table");
+    ok(steps === 13 && appS.includes('location.href = i + 1 < SUITE.length ? suiteUrl(i + 1) : "/?suite=done&map=ours&debug=1"'), "v3.10.81: the full test runs 13 variants (v3.10.83: + map at rest, v3.10.84: + raster, v3.10.85: + street-name variants, v3.10.89: + upright names, v3.10.90: CARTO row removed) one after another and ends on the table");
     ok(src.includes("if (/[?&]gmap3d=1/.test(q)) return true;") && src.includes("/[?&]gmap3d=1/.test(location.search) ? \"3d\""), "v3.10.81: ?gmap3d=1 opens Google 3D for a test without changing the saved main map");
   }
   // v3.10.80: three maps in one picker, Google 3D is the main map
@@ -505,4 +505,13 @@ ok(/strokeColor: "#3e6ae1", strokeOpacity: 0\.7, strokeWeight: 4/.test(src) && !
   ok(!/animation:/.test(dot) && /\.gps-dot\.gps-weak \{[^}]*animation: pulse-dot/.test(css), 'v3.10.137 (perf Q2): the GPS dot pulses only on a weak signal');
   ok((appSrc.match(/window\.__mainMapPaused\) return;/g) || []).length >= 3, 'v3.10.137 (perf Q3): the hidden-map intervals stop under the Google map');
   ok(!html.includes('<script src="qrcode.min.js">') && appSrc.includes('function loadQrLib()') && appSrc.includes('loadQrLib().then('), 'v3.10.137 (perf Q6): the QR library loads on demand');
+}
+{
+  const css = fs.readFileSync(__dirname + '/../style.css', 'utf8');
+  const appSrc = fs.readFileSync(__dirname + '/../app.js', 'utf8');
+  const html = fs.readFileSync(__dirname + '/../index.html', 'utf8');
+  const iL = src.indexOf('S.lite = lite;'), iD = src.indexOf('S.gdpr = gd ?');
+  ok(iL > 0 && iL < iD && src.includes('(S.lite ? 0.75 :') && /if \(!gt\) S\.gtilt = 0;/.test(src) && /if \(!gf\) S\.gfps = 6;/.test(src) && src.includes('if (S.mapIdClean) S.clean = true;'), 'v3.10.138: Lite sets flat, 6 camera moves/s, dpr 0.75, no traffic, no places before the Google script reads them');
+  ok(html.includes('id="input-lite"') && appSrc.includes('localStorage.setItem("teslaLite"') && css.includes('html.tesla-lite *, html.tesla-lite *::before'), 'v3.10.138: Lite switch in the settings, no animations in Lite');
+  ok(appSrc.includes('q: "gmap3d=1&gzoom=17&tlite=1"'), 'v3.10.138: the full test has Lite rows');
 }

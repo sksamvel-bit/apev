@@ -2281,6 +2281,9 @@ body.gmap-open #gmap-nav { top: 60px; }
 /* v3.10.136 (design audit): A2 over the light 3D day map 60% made a muddy gray (icons 2-3.4:1), so that map gets 85% (>= 4.5:1);
    A1 14 buttons needed ~760 px of the 601: 36 px buttons (70x36 = 2520 px2 >= S4) and the rare ones behind ⋯ */
 html.gmap-light .gmap-side { --gside-alpha: 0.85; }
+/* v3.10.138 (perf audit): Lite mode, no animations or transitions anywhere, an opaque side panel without shadow */
+html.tesla-lite *, html.tesla-lite *::before, html.tesla-lite *::after { animation: none !important; transition: none !important; }
+html.tesla-lite .gmap-side { --gside-alpha: 0.94; box-shadow: none; }
 .gmap-side { max-height: calc(100vh - 134px); }
 .gmap-side .gmap-btn { height: 36px; }
 .gmap-side:not(.more-open) .gmap-extra { display: none; }

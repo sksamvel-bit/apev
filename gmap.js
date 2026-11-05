@@ -2053,6 +2053,20 @@
     const gt = /[?&]gtilt=(\d+)/.exec(q);
     if (gt) S.gtilt = Math.min(60, Math.max(0, parseInt(gt[1], 10)));
     S.noTraffic = /[?&]gtraffic=0(&|$)/.test(q);
+    // v3.10.138 (perf audit, Samvel): Lite mode = the lightest Google map in one switch (settings, or ?tlite=1 / ?tlite=0 for tests).
+    // The URL test flags (?gdpr ?gtilt ?gfps ?gtraffic) still win. Not changed: the chosen map look (satellite stays satellite).
+    let lite = false;
+    try { lite = localStorage.getItem("teslaLite") === "1"; } catch (_) {}
+    const tl = /[?&]tlite=([01])(&|$)/.exec(q);
+    if (tl) lite = tl[1] === "1";
+    S.lite = lite;
+    if (lite) {
+      document.documentElement.classList.add("tesla-lite");
+      if (!gt) S.gtilt = 0;                 // flat 3D map (the tilt costs 30-40% in the car tests)
+      if (!gf) S.gfps = 6;                  // at most 6 camera moves a second (the emulated car makes ~6; this caps the peaks)
+      if (!/[?&]gtraffic=1(&|$)/.test(q)) S.noTraffic = true;   // no traffic layer at all
+      if (S.mapIdClean) S.clean = true;      // the Map ID without places (no 📍 icons to draw)
+    }
     // v3.10.125 ?gdpr=N (0.75..2): the pixel density Google's map renders at. The car screen is 1.53; Google reads
     // window.devicePixelRatio, so it is overridden before the Maps script loads (our MapLibre map sets its own pixelRatio,
     // the page's text stays sharp, and taps stay exact; ?gscale scaled the picture and put taps off by 1.4-2x)
@@ -2060,7 +2074,7 @@
     // v3.10.125 (Samvel: "the minimum"): 1 by default on a denser screen (the car: 1.53 -> 43% of the pixels for the MCU2 GPU);
     // ?gdpr=0 keeps the screen's own density
     const nativeDpr = (typeof window !== "undefined" && window.devicePixelRatio) || 1;
-    S.gdpr = gd ? (parseFloat(gd[1]) === 0 ? 0 : Math.min(2, Math.max(0.75, parseFloat(gd[1])))) : (nativeDpr > 1 ? 1 : 0);
+    S.gdpr = gd ? (parseFloat(gd[1]) === 0 ? 0 : Math.min(2, Math.max(0.75, parseFloat(gd[1])))) : (S.lite ? 0.75 : (nativeDpr > 1 ? 1 : 0));   // v3.10.138: Lite 0.75 (44% fewer pixels than 1)
     if (S.gdpr) { try { Object.defineProperty(window, "devicePixelRatio", { get: () => S.gdpr, configurable: true }); } catch (_) {} }
     S.forceTraffic = /[?&]gtraffic=1(&|$)/.test(q);   // v3.10.124 (test): traffic on although the default is off
     S.noAutoZoom = /[?&]gzoom=0(&|$)/.test(q);
