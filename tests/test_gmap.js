@@ -185,6 +185,10 @@ ok(/GOOGLE_MAPS_KEY/.test(srv) && !/PUBLIC_AUTH_PATHS[^;]*gmaps-config/.test(srv
   const cm = src.slice(src.indexOf("function createMap"), src.indexOf("function applyTraffic"));
   ok(cm.includes("if (S.maps[key]) {") && !cm.includes("box.textContent = \"\"") && src.includes("const kept = S.maps && S.maps[mapKey(") && src.includes("if (!kept) { try { await permit(\"mapload\")"), "v3.10.59: 3D / night toggles reuse the kept map (at most 3 maps = bounded WebGL contexts, no extra map loads)");
   ok(G.mapKey(false, true) === "raster" && G.mapKey(true, false) === "vector-light" && G.mapKey(true, true) === "vector-dark", "v3.10.59: one map per look (raster night is a style, not a new map)");
+  // v3.10.128: the Tesla-like looks (satellite, dark plain) are maps of their own, flat, and do not follow the night mode
+  ok(G.mapKey(true, true, "sat") === "vector-sat" && G.mapKey(true, false, "dark") === "vector-min" && G.mapKey(false, false, "sat") === "raster" && G.mapKey(true, false, "3d") === "vector-light", "v3.10.128: satellite / dark plain get their own kept map");
+  ok(G.lookOf("gsat") === "sat" && G.lookOf("gdark") === "dark" && G.lookOf("google3d") === "3d", "v3.10.128: picker kind -> look");
+  ok(src.includes('if (S.look === "sat") o.mapTypeId = "hybrid";') && src.includes('return S.look === "sat" || S.look === "dark" ? 0 : (S.gtilt || 0);') && src.includes("glook=(sat|dark|3d)"), "v3.10.128: satellite = hybrid, both Tesla-like looks flat, ?glook test switch");
   // v3.10.79: GPU camera on the Google 3D map (?gcam=gpu)
   {
     const prev = { t: 0, heading: 0, center: { lat: 41.7, lng: 44.8 } };
@@ -209,7 +213,7 @@ ok(/GOOGLE_MAPS_KEY/.test(srv) && !/PUBLIC_AUTH_PATHS[^;]*gmaps-config/.test(srv
     ok(src.includes("if (/[?&]gmap3d=1/.test(q)) return true;") && src.includes("S.vector = /[?&]gmap3d=1/.test(location.search) ||"), "v3.10.81: ?gmap3d=1 opens Google 3D for a test without changing the saved main map");
   }
   // v3.10.80: three maps in one picker, Google 3D is the main map
-  ok(G.currentMainMap() === "google3d" && JSON.stringify(G.MAP_KINDS) === JSON.stringify(["google3d", "google", "ours"]), "v3.10.93: with nothing chosen the app opens Google 3D again");
+  ok(G.currentMainMap() === "google3d" && JSON.stringify(G.MAP_KINDS) === JSON.stringify(["google3d", "gsat", "gdark", "google", "ours"]), "v3.10.93: with nothing chosen the app opens Google 3D again");
   ok(typeof G.selectMap === "function" && G.selectMap("nonsense") === false, "v3.10.80: selectMap accepts only the three maps");
   ok(src.includes('currentMainMap() !== "google";   // ?gmap3d=1'), "v3.10.80: the start opens 3D unless classic was chosen");
   { const h3 = fs.readFileSync(__dirname + "/../index.html", "utf8"); ok(["google3d", "google", "ours"].every((k) => h3.includes('data-map="' + k + '"')) && h3.includes('<option value="google3d">'), "v3.10.80: the map menu and the settings list the three maps"); }

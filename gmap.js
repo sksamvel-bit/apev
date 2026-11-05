@@ -700,12 +700,25 @@
     o.renderingType = "VECTOR";
     o.colorScheme = night ? "DARK" : "LIGHT";   // a Map ID map ignores `styles`; the colour scheme is fixed at creation
     o.heading = view.heading || 0;
-    o.tilt = S.gtilt || 0;   // v3.10.98: 20 by default (best row while driving in the v3.10.97 car test; 45 cost ~30-40%); ?gtilt=0 = flat
+    o.tilt = lookTilt();   // v3.10.98: 20 by default (best row while driving in the v3.10.97 car test; 45 cost ~30-40%); ?gtilt=0 = flat
+    // v3.10.128 (Samvel's photos of the Tesla's own map, also Google): "sat" = satellite with road names, flat, like the
+    // Tesla's satellite view; "dark" = the Tesla's dark plain view: dark, flat, no places (the styles try; a Map ID map may ignore them)
+    if (S.look === "sat") o.mapTypeId = "hybrid";
+    if (S.look === "dark") { o.colorScheme = "DARK"; o.styles = MIN_STYLES; }
     return o;
   }
 
-  /** One map per look: classic, vector light, vector dark (a vector map's colour scheme is fixed when it is created). */
-  function mapKey(vector, night) { return vector ? (night ? "vector-dark" : "vector-light") : "raster"; }
+  /** v3.10.128: the tilt of the vector map: the 3D look tilts (?gtilt), the Tesla-like looks are flat like the Tesla's map. */
+  function lookTilt() { return S.look === "sat" || S.look === "dark" ? 0 : (S.gtilt || 0); }
+  const MIN_STYLES = [{ featureType: "poi", stylers: [{ visibility: "off" }] }, { featureType: "transit", stylers: [{ visibility: "off" }] }];
+
+  /** One map per look: classic, vector light, vector dark (a vector map's colour scheme is fixed when it is created);
+   *  v3.10.128: satellite and the dark plain look are maps of their own (their colours do not follow the night mode). */
+  function mapKey(vector, night, look) {
+    if (vector && look === "sat") return "vector-sat";
+    if (vector && look === "dark") return "vector-min";
+    return vector ? (night ? "vector-dark" : "vector-light") : "raster";
+  }
 
   /**
    * Shows the map for the current look. v3.10.59: a map made once is kept and shown again (Antigravity's review: a new
@@ -716,7 +729,7 @@
     const { Map, TrafficLayer } = S.g.maps;
     const box = $("gmap-canvas");
     S.night = !!window.__night;
-    const key = mapKey(S.vector, S.night);
+    const key = mapKey(S.vector, S.night, S.look);
     const v = view || { center: currentCenter(), zoom: S.fixedZoom || 16 };
     S.maps = S.maps || {};
     // the overlays live on one map at a time: take them off the one we leave
@@ -729,7 +742,7 @@
       S.map.setCenter(v.center);
       if (v.zoom) S.map.setZoom(v.zoom);
       if (S.vector && isFinite(v.heading)) S.map.setHeading(v.heading);
-      if (S.vector && S.map.setTilt) S.map.setTilt(S.gtilt || 0);
+      if (S.vector && S.map.setTilt) S.map.setTilt(lookTilt());
     } else {
       const el = document.createElement("div");   // a fresh element per map: a Map ID cannot be added to an existing map
       // the GPU camera turns the vector map picture: its div is larger than the screen (?gscale does not apply then)
@@ -745,7 +758,7 @@
       // v3.10.125: how long the first picture takes (the car: "the light map loads with difficulty"); full test / HUD
       { const m = S.map, t0 = performance.now(); const l = m.addListener("tilesloaded", () => { l.remove(); S.firstTilesMs = Math.round(performance.now() - t0); }); }
       // v3.10.96: the car photos showed a flat map with tilt 45 in the options; set it again once the first tiles are in
-      if (S.vector && S.gtilt) { const m = S.map; const l = m.addListener("tilesloaded", () => { l.remove(); if (m.setTilt) m.setTilt(S.gtilt); }); }
+      if (S.vector && lookTilt()) { const m = S.map, t = lookTilt(); const l = m.addListener("tilesloaded", () => { l.remove(); if (m.setTilt) m.setTilt(t); }); }
       S.map.addListener("dragstart", () => { S.follow = false; $("gmap-btn-me") && $("gmap-btn-me").classList.remove("active"); });
       S.map.addListener("click", (e) => {   // v3.10.112: a tap on the map tucks the panel away; v3.10.121: otherwise it marks a destination
         if (S.sideOpen && !S.sideFixed) { setSideOpen(false); return; }
@@ -783,7 +796,7 @@
   async function rebuildMap(onDenied) {
     if (!S.map || S.rebuilding) return;
     S.rebuilding = true;
-    const kept = S.maps && S.maps[mapKey(S.vector, !!window.__night)];   // showing a kept map again is not a new map load
+    const kept = S.maps && S.maps[mapKey(S.vector, !!window.__night, S.look)];   // showing a kept map again is not a new map load
     if (!kept) { try { await permit("mapload"); } catch (_) { S.rebuilding = false; if (onDenied) onDenied(); return; } }
     S.rebuilding = false;
     if (!S.map) return;
@@ -805,6 +818,7 @@
   function syncNight() {
     const night = !!window.__night;
     if (!S.map || night === S.night) return;
+    if (S.vector && (S.look === "sat" || S.look === "dark")) { S.night = night; updatePanelButtons(); return; }   // v3.10.128: these looks keep their colours
     if (S.vector) rebuildMap(() => { S.night = night; updatePanelButtons(); });   // colorScheme is fixed at creation; at the cap keep the old colours
     else { S.night = night; S.map.setOptions({ styles: mapStyles(night) }); }
     updatePanelButtons();
@@ -976,7 +990,7 @@
       const fps = meter.tick(t);
       if (fps != null) {
         box.textContent = "Google " + (S.vector ? "3D" : "classic") + "  fps " + fps.toFixed(1) + "  camera " + (S.camCount - cam0) + "/s  arrow " + Math.round(1000 / carFrameMs()) + " fps" +
-          "  traffic " + (S.trafficOn ? "on" : "off") + (S.vector && S.map.getTilt ? "  tilt " + Math.round(S.map.getTilt() || 0) + "/" + (S.gtilt || 0) : "") + (S.gscale ? "  scale " + S.gscale : "") + (S.mapId ? "" : "  DEMO_MAP_ID");
+          "  traffic " + (S.trafficOn ? "on" : "off") + (S.vector && S.map.getTilt ? "  tilt " + Math.round(S.map.getTilt() || 0) + "/" + lookTilt() + "  look " + (S.look || "3d") : "") + (S.gscale ? "  scale " + S.gscale : "") + (S.mapId ? "" : "  DEMO_MAP_ID");
         cam0 = S.camCount;
       }
       S.debugRaf = requestAnimationFrame(loop);
@@ -1830,6 +1844,9 @@
     // v3.10.80: Google 3D unless "google" (classic) was chosen; wait until our map exists (open() pauses it) so the two never
     // render at once; give up quietly after ~15 s
     S.vector = /[?&]gmap3d=1/.test(location.search) || currentMainMap() !== "google";   // ?gmap3d=1: the full test forces 3D (nothing saved)
+    // v3.10.128: the look of the vector map; ?glook=sat|dark|3d (test) wins, the full test (?gmap3d=1) is 3D unless ?glook says otherwise
+    const gl = /[?&]glook=(sat|dark|3d)(&|$)/.exec(location.search);
+    S.look = gl ? gl[1] : (/[?&]gmap3d=1/.test(location.search) ? "3d" : lookOf(currentMainMap()));
     let tries = 0;
     const t = setInterval(() => {
       if (S.open || ++tries > 100) { clearInterval(t); return; }
@@ -1839,25 +1856,27 @@
 
   // ---- v3.10.80 one map picker (Samvel): "google3d" (default, main), "google" (classic), "ours" (OSM). The choice is shown at
   // once and opens with the app next time. Used by the map menu of our dock and of the Google side panel, and the settings. ----
-  const MAP_KINDS = ["google3d", "google", "ours"];
+  const MAP_KINDS = ["google3d", "gsat", "gdark", "google", "ours"];   // v3.10.128: + satellite and dark plain (Tesla-like, flat)
+  function lookOf(kind) { return kind === "gsat" ? "sat" : kind === "gdark" ? "dark" : "3d"; }
   function currentMainMap() {
     let v = null;
     try { v = localStorage.getItem(MAIN_MAP_KEY); } catch (_) {}
     return MAP_KINDS.includes(v) ? v : "google3d";   // v3.10.93: Google 3D is the start map again (Samvel: only Google 3D)
   }
   /** The map on the screen right now. */
-  function shownMap() { return S.open ? (S.vector ? "google3d" : "google") : "ours"; }
+  function shownMap() { return S.open ? (S.vector ? (S.look === "sat" ? "gsat" : S.look === "dark" ? "gdark" : "google3d") : "google") : "ours"; }
   function selectMap(kind) {
     if (!MAP_KINDS.includes(kind)) return false;
     try { localStorage.setItem(MAIN_MAP_KEY, kind); } catch (_) {}
     if (kind === "ours") { close(); return true; }
     if (!S.enabled) { say("Google რუკა მიუწვდომელია (გასაღები არ არის): ჩვენს რუკაზე ხართ"); return false; }
-    const want = kind === "google3d";
+    const want = kind !== "google", look = lookOf(kind);
     try { localStorage.setItem("gmapVector", want ? "1" : "0"); } catch (_) {}
-    if (!S.open) { S.vector = want; open(); return true; }
-    if (S.vector !== want) {
-      S.vector = want;
-      rebuildMap(() => { S.vector = !want; try { localStorage.setItem("gmapVector", S.vector ? "1" : "0"); } catch (_) {} updatePanelButtons(); });
+    if (!S.open) { S.vector = want; S.look = look; open(); return true; }
+    if (S.vector !== want || (want && S.look !== look)) {
+      const was = { vector: S.vector, look: S.look };
+      S.vector = want; S.look = look;
+      rebuildMap(() => { S.vector = was.vector; S.look = was.look; try { localStorage.setItem("gmapVector", S.vector ? "1" : "0"); } catch (_) {} updatePanelButtons(); });
       updatePanelButtons();
     }
     return true;
@@ -2009,7 +2028,7 @@
     }
   }
 
-  const api = { init, open, close, isOpen: () => S.open, isEnabled: () => S.enabled, camMoves: () => S.camCount, firstTilesMs: () => S.firstTilesMs || null, isVector: () => !!S.vector, tilt: () => (S.map && S.map.getTilt ? Math.round(S.map.getTilt() || 0) : 0), renderType: () => (S.map && S.map.getRenderingType ? String(S.map.getRenderingType() || "") : ""), gpuOn: () => !!S.gpuOn, mainMapIsGoogle, MAIN_MAP_KEY, selectMap, shownMap, currentMainMap, MAP_KINDS, gpuPlan, openWithQuery, openWithDestination, focusPlace, SIDE_PROXIES, mapKey, distToPolylineM, nearestOnPolyline, createOffRouteTracker, createVoiceCues, nearestChargers, createCarGlide, aheadPoint, mapOptions, cameraNeedsUpdate, createFpsMeter, createTrafficGovernor, scaledBoxStyle, capText, warnText, decodePolyline, parseRoutesResponse, routesRequestBody, nextStepIndex, fmtDist, hazardLine, whenText, planState, nearForm, routeWeatherPoints, weatherHazard, hazardText, addRecent, thenPhrase, thenIsClose, autoZoom, sideShouldHide, maneuverIcon, routeCum, remainingOnRoute, etaInfo, stepAlongs, nextStepAlong, distToStep, hasArrived, parseSavedNav, buildLoaderUrl, createDebouncer, osrmUrl, summarizeRoute, mapStyles, bearing, meters, CATEGORIES };
+  const api = { init, open, close, isOpen: () => S.open, isEnabled: () => S.enabled, camMoves: () => S.camCount, firstTilesMs: () => S.firstTilesMs || null, isVector: () => !!S.vector, tilt: () => (S.map && S.map.getTilt ? Math.round(S.map.getTilt() || 0) : 0), renderType: () => (S.map && S.map.getRenderingType ? String(S.map.getRenderingType() || "") : ""), gpuOn: () => !!S.gpuOn, mainMapIsGoogle, MAIN_MAP_KEY, selectMap, lookOf, look: () => S.look || "3d", shownMap, currentMainMap, MAP_KINDS, gpuPlan, openWithQuery, openWithDestination, focusPlace, SIDE_PROXIES, mapKey, distToPolylineM, nearestOnPolyline, createOffRouteTracker, createVoiceCues, nearestChargers, createCarGlide, aheadPoint, mapOptions, cameraNeedsUpdate, createFpsMeter, createTrafficGovernor, scaledBoxStyle, capText, warnText, decodePolyline, parseRoutesResponse, routesRequestBody, nextStepIndex, fmtDist, hazardLine, whenText, planState, nearForm, routeWeatherPoints, weatherHazard, hazardText, addRecent, thenPhrase, thenIsClose, autoZoom, sideShouldHide, maneuverIcon, routeCum, remainingOnRoute, etaInfo, stepAlongs, nextStepAlong, distToStep, hasArrived, parseSavedNav, buildLoaderUrl, createDebouncer, osrmUrl, summarizeRoute, mapStyles, bearing, meters, CATEGORIES };
   if (typeof document !== "undefined") {
     if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", () => init());
     else init();

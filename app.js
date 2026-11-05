@@ -136,7 +136,7 @@ function initClock() {
 const OFM_STYLE_URL = "https://tiles.openfreemap.org/styles/liberty";
 const OFM_STYLE_CACHE_KEY = "tesla_nav_ofm_style_v1";
 const MAP_STYLE_KEYS = ["openfreemap", "google-roads"];
-const APP_VERSION = "3.10.127";
+const APP_VERSION = "3.10.128";
 const MAP_DEFAULT_ZOOM = 16;      // MapLibre zoom (Leaflet-equivalent 17)
 // Performance experiments (all default to the normal behaviour): ?labels=0 hides the base-map labels/icons, ?markers=0 skips the
 // charger DOM markers, ?pitch=N sets the heading-up tilt (0-60). Used to find what makes the car's browser slow.
@@ -2189,7 +2189,7 @@ function initEventListeners() {
       });
     }
 
-    const MAP_NAMES = { google3d: "🧭 Google 3D", google: "🚦 Google კლასიკური", ours: "🗺️ ჩვენი რუკა" };
+    const MAP_NAMES = { google3d: "🧭 Google 3D", gsat: "🛰️ Google თანამგზავრი", gdark: "🌑 Google მუქი", google: "🚦 Google კლასიკური", ours: "🗺️ ჩვენი რუკა" };
     document.querySelectorAll(".map-style-opt").forEach(opt => {
       opt.addEventListener("click", (e) => {
         e.stopPropagation();
@@ -2306,7 +2306,7 @@ function initEventListeners() {
 
     // v3.10.77: which map opens with the app (gmap.js reads it on the next start)
     const mm = document.getElementById("input-main-map");
-    if (mm) { try { localStorage.setItem("tesla_nav_main_map", ["google3d", "google", "ours"].includes(mm.value) ? mm.value : "google3d"); } catch (_) {} }
+    if (mm) { try { localStorage.setItem("tesla_nav_main_map", ["google3d", "gsat", "gdark", "google", "ours"].includes(mm.value) ? mm.value : "google3d"); } catch (_) {} }
     const lc = document.getElementById("input-limit-chime");   // v3.10.107: read by speed-limit.js limitChangeChime
     if (lc) { try { localStorage.setItem("limit_chime", lc.value === "0" ? "0" : "1"); } catch (_) {} }
     localStorage.setItem("saved_home", document.getElementById("input-home-addr").value.trim());
@@ -2318,7 +2318,7 @@ function initEventListeners() {
 
   // Populate settings inputs
   { const lc = document.getElementById("input-limit-chime"); if (lc) { let v = "1"; try { if (localStorage.getItem("limit_chime") === "0") v = "0"; } catch (_) {} lc.value = v; } }
-  { const mm = document.getElementById("input-main-map"); if (mm) { let v = "google3d"; try { const s = localStorage.getItem("tesla_nav_main_map"); if (["google3d", "google", "ours"].includes(s)) v = s; } catch (_) {} mm.value = v; } }
+  { const mm = document.getElementById("input-main-map"); if (mm) { let v = "google3d"; try { const s = localStorage.getItem("tesla_nav_main_map"); if (["google3d", "gsat", "gdark", "google", "ours"].includes(s)) v = s; } catch (_) {} mm.value = v; } }
   document.getElementById("input-home-addr").value = localStorage.getItem("saved_home") || "";
   document.getElementById("input-work-addr").value = localStorage.getItem("saved_work") || "";
   if (selectTeslaModel) selectTeslaModel.value = batteryEngine.modelKey;
@@ -2659,12 +2659,13 @@ function initRemoteSession() {
     { name: "Google 3D, უძრავი (ბრუნვის გარეშე)", q: "gmap3d=1&gzoom=17", google: true, idle: true },
     // v3.10.124/125/127: the default is the minimum (no traffic, camera 20/s, no markers, tilt 20, Google at pixel density 1); the rows add one thing back each
     { name: "ახალი მინიმუმი (ზუმი 17)", q: "gmap3d=1&gzoom=17", google: true },
-    { name: "მინიმუმი, ზუმი 18", q: "gmap3d=1&gzoom=18", google: true },
     { name: "მინიმუმი + საცობები", q: "gmap3d=1&gzoom=17&gtraffic=1&gtrafficauto=0", google: true },
-    { name: "მინიმუმი, კამერა 10/წმ", q: "gmap3d=1&gzoom=17&gfps=10", google: true },
-    { name: "მინიმუმი, სრული სიმკვრივე 1.53 (ძველი)", q: "gmap3d=1&gzoom=17&gdpr=0", google: true },
     { name: "მინიმუმი, ბრტყელი 0°", q: "gmap3d=1&gzoom=17&gtilt=0", google: true },
-    { name: "ძველი სრული (საცობები, 20/წმ, 1.53)", q: "gmap3d=1&gzoom=17&gtraffic=1&gtrafficauto=0&gfps=20&gdpr=0", google: true }
+    // v3.10.128 (Samvel's photos of the Tesla's own map): the two Tesla-like looks, flat, alone and with traffic
+    { name: "ტესლასავით: თანამგზავრი", q: "gmap3d=1&gzoom=17&glook=sat", google: true },
+    { name: "ტესლასავით: მუქი", q: "gmap3d=1&gzoom=17&glook=dark", google: true },
+    { name: "თანამგზავრი + საცობები", q: "gmap3d=1&gzoom=17&glook=sat&gtraffic=1&gtrafficauto=0", google: true },
+    { name: "მუქი + საცობები", q: "gmap3d=1&gzoom=17&glook=dark&gtraffic=1&gtrafficauto=0", google: true }
   ];
   const suiteUrl = (i) => "/?suite=" + i + "&debug=1&" + SUITE[i].q;
   function readSuite() { try { return JSON.parse(localStorage.getItem(SUITE_KEY) || "null"); } catch (_) { return null; } }
