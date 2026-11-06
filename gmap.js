@@ -2004,7 +2004,6 @@
         if (!main) return;
         const b = add(p.icon, p.title, () => { main.click(); mirror(); });
         setPanelIcon(b, p.ikey, p.tone);
-        if (p.extra) b.classList.add("gmap-extra");
         const mirror = () => {
           const on = !!p.activeClass && main.classList.contains(p.activeClass);
           b.classList.toggle("active", on);
@@ -2013,19 +2012,7 @@
         mirror();
         if (typeof MutationObserver !== "undefined" && p.activeClass) new MutationObserver(mirror).observe(main, { attributes: true, attributeFilter: ["class"] });
       });
-      // v3.10.136 (design audit A1): 14 buttons did not fit the car's 601 px (⚙️ and ✕ were cut off at the bottom); the rare
-      // ones (📱 phone, ⚙️ settings, ✕ our map, which the map menu also offers) wait behind one ⋯ button
-      if (closeBtn) closeBtn.classList.add("gmap-extra");
-      const firstExtra = side.querySelector(".gmap-extra");
-      if (firstExtra) {
-        const more = add("⋯", "მეტი", (b) => {
-          const open = side.classList.toggle("more-open");
-          b.classList.toggle("active", open);
-          if (open) side.scrollTop = side.scrollHeight;
-        });
-        side.insertBefore(more, firstExtra);
-        setPanelIcon(more, "more", "");
-      }
+      // v3.10.139 (Samvel): the more-menu of v3.10.136 is gone; all 14 buttons fit at 30 px height (style.css)
     }
   }
 

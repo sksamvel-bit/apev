@@ -491,7 +491,6 @@ ok(/strokeColor: "#3e6ae1", strokeOpacity: 0\.7, strokeWeight: 4/.test(src) && !
 {
   const css = fs.readFileSync(__dirname + '/../style.css', 'utf8');
   const html = fs.readFileSync(__dirname + '/../index.html', 'utf8');
-  ok(css.includes('.gmap-side .gmap-btn { height: 36px; }') && css.includes('.gmap-side:not(.more-open) .gmap-extra { display: none; }') && src.includes('closeBtn.classList.add("gmap-extra")') && /ikey: "settings"[^}]*extra: true/.test(src), 'v3.10.136 (audit A1): 36 px buttons, phone/settings/close behind the more button');
   ok(css.includes('html.gmap-light .gmap-side { --gside-alpha: 0.85; }') && src.includes('classList.toggle("gmap-light"') && src.includes('classList.toggle("gmap-dim"'), 'v3.10.136 (audit A2/B6): darker panel on the light map, dark compass on the dark looks');
   ok(css.includes('#gmap-search-input::-webkit-search-cancel-button { display: none;') && css.includes('#gmap-card-route:empty, #gmap-card-routes:empty { display: none; }'), 'v3.10.136 (audit A4/B1): one clear button, no empty card rows');
   ok(!/[🛰🌑🧭]/u.test(html.slice(html.indexOf('map-style-list'), html.indexOf('map-style-list') + 4000)) && html.includes('class="gmap-splash-text"'), 'v3.10.136 (audit B4/C1): line icons in the map menu, loading text on the splash');
@@ -514,4 +513,9 @@ ok(/strokeColor: "#3e6ae1", strokeOpacity: 0\.7, strokeWeight: 4/.test(src) && !
   ok(iL > 0 && iL < iD && src.includes('(S.lite ? 0.75 :') && /if \(!gt\) S\.gtilt = 0;/.test(src) && /if \(!gf\) S\.gfps = 6;/.test(src) && src.includes('if (S.mapIdClean) S.clean = true;'), 'v3.10.138: Lite sets flat, 6 camera moves/s, dpr 0.75, no traffic, no places before the Google script reads them');
   ok(html.includes('id="input-lite"') && appSrc.includes('localStorage.setItem("teslaLite"') && css.includes('html.tesla-lite *, html.tesla-lite *::before'), 'v3.10.138: Lite switch in the settings, no animations in Lite');
   ok(appSrc.includes('q: "gmap3d=1&gzoom=17&tlite=1"'), 'v3.10.138: the full test has Lite rows');
+}
+{
+  const css = fs.readFileSync(__dirname + '/../style.css', 'utf8');
+  const tail = css.slice(css.indexOf('/* v3.10.139'));
+  ok(tail.includes('.gmap-side .gmap-btn { width: 48px; height: 30px;') && !css.includes('more-open') && !src.includes('gmap-extra') && !tail.includes('.gmap-compass'), 'v3.10.139: compact panel, all 14 buttons, no more-menu, compass untouched');
 }

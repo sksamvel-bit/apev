@@ -2286,7 +2286,6 @@ html.tesla-lite *, html.tesla-lite *::before, html.tesla-lite *::after { animati
 html.tesla-lite .gmap-side { --gside-alpha: 0.94; box-shadow: none; }
 .gmap-side { max-height: calc(100vh - 134px); }
 .gmap-side .gmap-btn { height: 36px; }
-.gmap-side:not(.more-open) .gmap-extra { display: none; }
 .gmap-side .gmap-btn.gmap-close { margin-top: 0; }
 /* B6: a dark compass on the dark looks and at night (a white disc was the brightest spot) */
 html.gmap-dim .gmap-compass { background: #1e293b; border-color: #475569; }
@@ -2304,6 +2303,11 @@ html.gmap-dim .gmap-compass text[fill="#475569"] { fill: #cbd5e1; }
 .gmap-btn.active.paused { border-style: dashed; opacity: 0.6; }
 .gmap-side .gmap-btn.gmap-close { background: rgba(248, 113, 113, 0.14); border-color: rgba(248, 113, 113, 0.35); }
 .gmap-fab-me.active { color: #38bdf8; }
+/* v3.10.139 (Samvel): a compact Tesla-like column with all 14 buttons and no more-menu. Buttons 70x36 -> 48x30, so the
+   panel is 58 px wide (was 80) and ends at ~584 px of the 601 px car screen; right 20 px centres it under the compass (untouched). */
+.gmap-side { right: 20px; max-height: calc(100vh - 136px); }
+.gmap-side .gmap-btn { width: 48px; height: 30px; min-height: 30px; }
+.gmap-side .gmap-btn svg { width: 20px; height: 20px; }
 
 /* v3.10.61: devices + guest PINs, the 3rd column of the settings window (owner only). The window widens to three columns
    so everything fits without scrolling; below 1100 px the panel takes the full width under the two columns. */
