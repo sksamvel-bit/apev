@@ -527,3 +527,11 @@ ok(/strokeColor: "#3e6ae1", strokeOpacity: 0\.7, strokeWeight: 4/.test(src) && !
   ok(src.includes('if (S.navigating) { if (S.overview) exitOverview(); else enterOverview("tap"); } else toggleNorthUp();') && css.includes('#gmap-compass.overview'), 'v3.10.140: the compass during navigation toggles the route overview');
   ok(src.includes('if (S.overview && m.getZoom() > 17) m.setZoom(17);'), 'v3.10.140: a short route overview is not closer than zoom 17');
 }
+{
+  const css = fs.readFileSync(__dirname + '/../style.css', 'utf8');
+  const html = fs.readFileSync(__dirname + '/../index.html', 'utf8');
+  const sn = src.slice(src.indexOf('function stopNavigation()'), src.indexOf('function stopNavigation()') + 300);
+  ok(sn.includes('if (S.overview) exitOverview();'), 'v3.10.142: stopping navigation from the route overview brings back the 3D tilt and following');
+  ok(!src.includes('extra: true') && !/\n    more: "/.test(src) && !css.includes('.gmap-side .gmap-btn { height: 36px; }'), 'v3.10.142: the leftovers of the old more-menu are gone');
+  ok(css.includes('.setting-group:has(> #input-lite, > #input-initial-soc, > #input-main-map, > #input-limit-chime) { flex-direction: row;') && html.includes('>🔔 ლიმიტის სიგნალი:<'), 'v3.10.142: short settings choices have the label beside the control (no scrolling on 773x601)');
+}

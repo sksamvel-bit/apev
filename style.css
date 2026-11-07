@@ -2286,7 +2286,6 @@ html.gmap-light .gmap-side { --gside-alpha: 0.85; }
 html.tesla-lite *, html.tesla-lite *::before, html.tesla-lite *::after { animation: none !important; transition: none !important; }
 html.tesla-lite .gmap-side { --gside-alpha: 0.94; box-shadow: none; }
 .gmap-side { max-height: calc(100vh - 134px); }
-.gmap-side .gmap-btn { height: 36px; }
 .gmap-side .gmap-btn.gmap-close { margin-top: 0; }
 /* B6: a dark compass on the dark looks and at night (a white disc was the brightest spot) */
 html.gmap-dim .gmap-compass { background: #1e293b; border-color: #475569; }
@@ -2384,6 +2383,11 @@ html.gmap-dim .gmap-compass text[fill="#475569"] { fill: #cbd5e1; }
   .devices-title { font-size: 0.85rem; margin-bottom: 2px; }
   .devices-row { padding: 2px 6px; }
   .devices-btn { min-height: 32px; }
+  /* v3.10.142 (Samvel: the owner's window scrolled by ~54 px on the car screen): the short choices put the label beside the
+     control (one line instead of two); the addresses keep the label above, their placeholders are long */
+  .settings-modal-window .setting-group:has(> #input-lite, > #input-initial-soc, > #input-main-map, > #input-limit-chime) { flex-direction: row; align-items: center; gap: 8px; }
+  .settings-modal-window .setting-group:has(> #input-lite, > #input-initial-soc, > #input-main-map, > #input-limit-chime) > .setting-label { flex: 1 1 0; min-width: 0; line-height: 1.2; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .settings-modal-window .setting-group:has(> #input-lite, > #input-initial-soc, > #input-main-map, > #input-limit-chime) > :is(.setting-select, .setting-input) { flex: 0 0 47%; width: 47%; min-width: 0; }
 }
 
 /* v3.10.78 GPU camera (?cam=gpu): the map container is 1.5x the screen and centred, so the picture the compositor turns

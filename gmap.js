@@ -31,8 +31,8 @@
     { icon: "📋", ikey: "list", tone: "amber", title: "დამტენების სია", target: "btn-chargers-list", activeClass: "active" },
     { icon: "📷", ikey: "camera", tone: "red", title: "სიჩქარის კამერები", target: "btn-toggle-cameras", activeClass: "signals-active" },
     { icon: "🔊", iconOff: "🔇", ikey: "volume", ikeyOff: "volumeOff", tone: "teal", title: "ხმოვანი ნავიგაცია", target: "btn-toggle-voice", activeClass: "active" },
-    { icon: "📱", ikey: "phone", tone: "gray", title: "ტელეფონით მართვა", target: "btn-remote-phone", extra: true },
-    { icon: "⚙️", ikey: "settings", tone: "gray", title: "პარამეტრები", target: "btn-settings", extra: true }
+    { icon: "📱", ikey: "phone", tone: "gray", title: "ტელეფონით მართვა", target: "btn-remote-phone" },
+    { icon: "⚙️", ikey: "settings", tone: "gray", title: "პარამეტრები", target: "btn-settings" }
   ];
 
   /** v3.10.113 (Samvel, panel style 3 "coloured categories"): one line-icon set instead of emoji (emoji differ per system
@@ -52,7 +52,6 @@
     phone: "M9 3h6a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H9a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2zM11 18h2",
     settings: "M12 9a3 3 0 1 0 0 6a3 3 0 1 0 0-6zM12 2v3M12 19v3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M2 12h3M19 12h3M4.9 19.1L7 17M17 7l2.1-2.1",
     close: "M6 6l12 12M18 6L6 18",
-    more: "M5 10.5a1.5 1.5 0 1 0 0 3a1.5 1.5 0 1 0 0-3zM12 10.5a1.5 1.5 0 1 0 0 3a1.5 1.5 0 1 0 0-3zM19 10.5a1.5 1.5 0 1 0 0 3a1.5 1.5 0 1 0 0-3z",
     pin: "M12 21s-6-5.6-6-11a6 6 0 0 1 12 0c0 5.4-6 11-6 11zM12 7.5a2.5 2.5 0 1 0 0 5a2.5 2.5 0 1 0 0-5z"
   };
   /** Puts icon `name` into button `b` (DOM only, no innerHTML); tone = the colour family in style.css. */
@@ -1630,7 +1629,7 @@
 
   function stopNavigation() {
     const was = S.navigating;
-    if (S.overview) { S.overview = null; $("gmap-compass") && $("gmap-compass").classList.remove("overview"); }
+    if (S.overview) exitOverview();   // v3.10.142: back to the 3D tilt and to following the car (the overview had both off)
     if (was) { try { localStorage.removeItem(NAV_KEY); } catch (_) {} }
     S.navigating = false;
     S.carAlong = null;

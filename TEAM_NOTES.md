@@ -310,3 +310,4 @@ v3.10.131: suite +3 clean rows (?gclean=1); clean Map ID live in Render
 v3.10.139: პანელი 58 px, ღილაკები 48x30, ⋯ მენიუ მოხსნილია (gmap.js wireUi), ყველა 14 ღილაკი ჩანს, ქვედა კიდე 584/601 px. კომპასი უცვლელი. მანქანაში ჯერ არ შემოწმებულა.
 v3.10.140: gmap.js long press (mousedown/mouseup/contextmenu), enterOverview/exitOverview. ემულაციაში მაუსით შემოწმდა; თითის ხანგრძლივი დაჭერა მანქანის ეკრანზე შესამოწმებელია.
 v3.10.141: speed-limit.js limitChangeChime(…, confidence). ტესტით შემოწმდა, მანქანაში არა.
+v3.10.142: style.css (:has, max-height 650 ბლოკი), index.html 4 label, gmap.js stopNavigation→exitOverview. ემულაციაში შემოწმდა ფანჯარა (მფლობელი ტესტური 3+2 მოწყობილობით და სტუმარი); stopNavigation-ის გასწორება მხოლოდ კოდით და ტესტით (ემულატორის სესია ამოიწურა). მანქანაში არა.
