@@ -153,6 +153,9 @@ const okRes = (data) => ({ ok: true, json: async () => data });
   global.localStorage = { getItem: (k) => (k === 'limit_chime' ? '0' : null) };
   ok(lc.limitChangeChime(80, 40, 40000) === false && chimes.length === 1, 'v3.10.107: switched off in the settings -> silent');
   delete global.localStorage;
+  { const e = new SLE(), n0 = chimes.length;   // v3.10.141
+    e.limitChangeChime(60, 40, 0, 'confirmed'); const a = e.limitChangeChime(60, 40, 20000, 'estimate'), b = e.limitChangeChime(40, 40, 40000, 'estimate'), d = e.limitChangeChime(60, 40, 60000, 'confirmed'), x = e.limitChangeChime(40, 40, 80000, 'confirmed');
+    ok(!a && !b && !d && x && chimes.length === n0 + 1, 'v3.10.141: estimates (60?) never ping and are not the previous limit; a confirmed change still pings'); }
   const src = fs.readFileSync(__dirname + '/../speed-limit.js', 'utf8');
   ok(/this\.overspeedChime\(isOverspeeding, /.test(src) && /alarmAllowed = this\.currentConfidence === "confirmed"/.test(src), 'the chime follows the badge: confirmed limits only');
   const srv = fs.readFileSync(__dirname + '/../server.js', 'utf8');

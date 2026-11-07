@@ -194,7 +194,7 @@ class SpeedLimitEngine {
 
   applyDetection(lat, lng, currentSpeedKmh = 0) {
     const detected = this.detectSpeedLimit(lat, lng);
-    this.limitChangeChime(detected.limit, currentSpeedKmh);
+    this.limitChangeChime(detected.limit, currentSpeedKmh, Date.now(), detected.confidence);
     this.currentLimit = detected.limit;
     this.currentRoadName = detected.name;
     this.currentConfidence = detected.confidence || (detected.limit == null ? "unknown" : "estimate");
@@ -334,9 +334,11 @@ class SpeedLimitEngine {
    * v3.10.107 (EU ISA 3.4.1.4): a soft ping when the shown limit changes (60 -> 40), only while driving (> 5 km/h), at most
    * once in 10 s (two roads side by side must not ping back and forth). The driver can switch it off in the settings
    * (localStorage limit_chime = "0"); the voice mute button silences it too.
+   * v3.10.141 (Samvel): only CONFIRMED limits count. An estimate ("60?") neither pings nor becomes the "previous" limit, so
+   * 60 -> 60? -> 60 stays silent and 60 -> 60? -> 40 pings once.
    */
-  limitChangeChime(nextLimit, speedKmh = 0, now = Date.now()) {
-    if (typeof nextLimit !== "number" || !(nextLimit > 0)) return false;
+  limitChangeChime(nextLimit, speedKmh = 0, now = Date.now(), confidence = "confirmed") {
+    if (typeof nextLimit !== "number" || !(nextLimit > 0) || confidence !== "confirmed") return false;
     const prev = this._pingLimit;
     this._pingLimit = nextLimit;
     if (prev == null || prev === nextLimit || speedKmh <= 5) return false;
