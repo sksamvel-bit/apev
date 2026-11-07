@@ -2234,6 +2234,7 @@ body.gmap-open .dock-controls { display: none; } /* the Google layer has its own
 .gmap-compass { position: absolute; top: 72px; right: 25px; z-index: 4; width: 48px; height: 48px; padding: 0; border-radius: 50%; background: #fff; border: 2px solid #6b7fd7; box-shadow: 0 2px 8px rgba(0,0,0,0.35); display: flex; align-items: center; justify-content: center; cursor: pointer; }
 .gmap-compass svg { pointer-events: none; will-change: transform; }
 .gmap-compass.north-up { border-color: #ef4444; }
+#gmap-compass.overview { border-color: #38bdf8; }   /* v3.10.140: the whole route is shown (navigation) */
 /* v3.10.112 (design "ე"): the panel slides out to the right while driving (transform only: the compositor moves it, no
    re-layout of the map); an edge tab (48 px touch area, 16 px visible) brings it back; compass and a round ◎ stay */
 .gmap-side { transition: transform 0.22s ease, opacity 0.22s ease; }

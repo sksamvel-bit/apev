@@ -430,7 +430,7 @@ ok(/strokeColor: "#3e6ae1", strokeOpacity: 0\.7, strokeWeight: 4/.test(src) && !
 
 // v3.10.121: a tap on the Google map opens the place card for that point (Google mode is the start map, the tap was only on ours)
 {
-  ok(/tapPlace\(e && e\.latLng\)/.test(src) && /if \(S\.sideOpen && !S\.sideFixed\) \{ setSideOpen\(false\); return; \}/.test(src), 'v3.10.121: a map tap closes the open side panel, otherwise marks a destination');
+  ok(src.includes('tapPlace(e && e.latLng)') && src.includes('if (!S.sideFixed) setSideOpen(!S.sideOpen);'), 'v3.10.121/140: a map tap hides or shows the side panel, a long press marks a destination');
   ok(/if \(!ll \|\| S\.navigating/.test(src) && /tap: true/.test(src) && /if \(!p\.tap\) rememberPlace/.test(src), 'v3.10.121: not while navigating; a tapped point stays out of the recents');
   ok(/\/api\/reverse\?lat=/.test(src.slice(src.indexOf('function tapPlace'))), 'v3.10.121: the area name comes from our OSM reverse, not Google');
 }
@@ -518,4 +518,12 @@ ok(/strokeColor: "#3e6ae1", strokeOpacity: 0\.7, strokeWeight: 4/.test(src) && !
   const css = fs.readFileSync(__dirname + '/../style.css', 'utf8');
   const tail = css.slice(css.indexOf('/* v3.10.139'));
   ok(tail.includes('.gmap-side .gmap-btn { width: 48px; height: 30px;') && !css.includes('more-open') && !src.includes('gmap-extra') && !tail.includes('.gmap-compass'), 'v3.10.139: compact panel, all 14 buttons, no more-menu, compass untouched');
+}
+{
+  const css = fs.readFileSync(__dirname + '/../style.css', 'utf8');
+  ok(src.includes('const LONG_PRESS_MS = 500;') && src.includes('S.map.addListener("contextmenu"') && !/addListener\("click", \(e\) => \{[^}]*tapPlace/.test(src), 'v3.10.140: a place is marked by a long press only, a short tap just tucks the panel away');
+  const iS = src.indexOf('function startNavigation()'), sn = src.slice(iS, src.indexOf('function saveNav()'));
+  ok(sn.includes('if ((S.lastKmh || 0) < 5) enterOverview("park");') && src.includes('if (S.overview === "park" && S.navigating && S.lastKmh > 8) exitOverview();'), 'v3.10.140: navigation started while standing shows the whole route until the car drives off');
+  ok(src.includes('if (S.navigating) { if (S.overview) exitOverview(); else enterOverview("tap"); } else toggleNorthUp();') && css.includes('#gmap-compass.overview'), 'v3.10.140: the compass during navigation toggles the route overview');
+  ok(src.includes('if (S.overview && m.getZoom() > 17) m.setZoom(17);'), 'v3.10.140: a short route overview is not closer than zoom 17');
 }

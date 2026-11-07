@@ -767,10 +767,21 @@
       { const m = S.map, t0 = performance.now(); const l = m.addListener("tilesloaded", () => { l.remove(); S.firstTilesMs = Math.round(performance.now() - t0); }); }
       // v3.10.96: the car photos showed a flat map with tilt 45 in the options; set it again once the first tiles are in
       if (S.vector && lookTilt()) { const m = S.map, t = lookTilt(); const l = m.addListener("tilesloaded", () => { l.remove(); if (m.setTilt) m.setTilt(t); }); }
-      S.map.addListener("dragstart", () => { S.follow = false; $("gmap-btn-me") && $("gmap-btn-me").classList.remove("active"); });
-      S.map.addListener("click", (e) => {   // v3.10.112: a tap on the map tucks the panel away; v3.10.121: otherwise it marks a destination
-        if (S.sideOpen && !S.sideFixed) { setSideOpen(false); return; }
-        tapPlace(e && e.latLng);
+      S.map.addListener("dragstart", () => { S.follow = false; S.pressLL = null; $("gmap-btn-me") && $("gmap-btn-me").classList.remove("active"); });
+      // v3.10.140 (Tesla manual: a pin is dropped by pressing and holding): a short tap only tucks the panel away, a press of
+      // LONG_PRESS_MS without moving marks the place. A stray touch while driving no longer opens a card.
+      S.map.addListener("mousedown", (e) => { S.pressLL = e && e.latLng; S.pressAt = Date.now(); });
+      S.map.addListener("mouseup", (e) => {
+        const ll = S.pressLL; S.pressLL = null;
+        if (ll && Date.now() - (S.pressAt || 0) >= LONG_PRESS_MS) { S.longAt = Date.now(); tapPlace((e && e.latLng) || ll); }
+      });
+      S.map.addListener("contextmenu", (e) => {   // a touch screen's own long press (and a right click) does the same once
+        if (Date.now() - (S.longAt || 0) < 1500) return;
+        S.longAt = Date.now(); S.pressLL = null; tapPlace(e && e.latLng);
+      });
+      S.map.addListener("click", () => {   // v3.10.112: a tap on the map tucks the panel away; v3.10.140 (Samvel): and brings it back
+        if (Date.now() - (S.longAt || 0) < 1500) return;
+        if (!S.sideFixed) setSideOpen(!S.sideOpen);
       });
     }
     S.carMarker = null; S.carRot = null; S.lastMarker = null; S.lastCam = null;
@@ -1055,6 +1066,7 @@
     updateSignalMarkers({ lat: fix.lat, lng: fix.lng });
     applyAutoZoom(fix);
     trafficTick(S.lastKmh);
+    if (S.overview === "park" && S.navigating && S.lastKmh > 8) exitOverview();   // v3.10.140: drove off
     if (!S.glide && window.MapGL) S.glide = createCarGlide(window.MapGL);
     if (S.glide) { S.glide.setFix(fix, performance.now()); wakeCar(); }
     const pos = { lat: fix.lat, lng: fix.lng };
@@ -1372,6 +1384,7 @@
 
   /** v3.10.121: a tap on the Google map opens the place card for that point ("მარშრუტი" routes there), as on our map.
    *  Not while navigating, so a stray touch never drops the active route. The area name comes from /api/reverse (OSM). */
+  const LONG_PRESS_MS = 500;
   function tapPlace(ll) {
     if (!ll || S.navigating || typeof ll.lat !== "function") return;
     const loc = { lat: ll.lat(), lng: ll.lng() };
@@ -1552,6 +1565,38 @@
     nav.classList.add("show");
   }
 
+  /** v3.10.140 (Tesla manual): the whole route on the screen. kind "park": navigation started while standing, the map
+   *  goes to the car by itself once it drives off (syncCar); kind "tap": the compass during navigation, until the next tap. */
+  function enterOverview(kind) {
+    const r = S.routes[S.routeIdx];
+    if (!S.map || !r || !r.coords || !r.coords.length) return;
+    S.overview = kind;
+    S.follow = false;
+    $("gmap-btn-me") && $("gmap-btn-me").classList.remove("active");
+    $("gmap-compass") && $("gmap-compass").classList.add("overview");
+    if (S.vector && S.map.setHeading) S.map.setHeading(0);
+    if (S.vector && S.map.setTilt) S.map.setTilt(0);
+    updateCompass(0);
+    const b = new S.g.core.LatLngBounds();
+    r.coords.forEach((c) => b.extend(c));
+    if (S.carPos) b.extend(S.carPos);
+    S.map.fitBounds(b, { top: 110, right: 90, bottom: 70, left: 40 });
+    const m = S.map, l = m.addListener("idle", () => { l.remove(); if (S.overview && m.getZoom() > 17) m.setZoom(17); });   // a short route: not closer than driving
+  }
+  function exitOverview() {
+    if (!S.overview) return;
+    S.overview = null;
+    $("gmap-compass") && $("gmap-compass").classList.remove("overview");
+    if (!S.map) return;
+    if (S.vector && lookTilt() && S.map.setTilt) S.map.setTilt(lookTilt());
+    S.follow = true; S.manualZoomAt = 0; S.lastCam = null;
+    $("gmap-btn-me") && $("gmap-btn-me").classList.add("active");
+    S.map.setZoom(17);
+    const p = S.lastMarker || S.carPos;   // a parked car's glide has no new frame: put the camera on the car now
+    if (p) drawCar({ lat: p.lat, lng: p.lng, heading: S.carHeading || 0 });
+    wakeCar();
+  }
+
   function startNavigation() {
     if (!S.routes.length) return;
     S.navigating = true; S.follow = true; S.stepIdx = 0; S.segIdx = 0; S.carAlong = null;
@@ -1574,6 +1619,7 @@
     S.map.setZoom(17);
     wakeCar();
     updateNavBanner();
+    if ((S.lastKmh || 0) < 5) enterOverview("park");   // v3.10.140: standing, the whole route until the car drives off
   }
 
   /** Saves the running navigation; called on start and every 30 s while driving (the 10 min freshness above). */
@@ -1584,6 +1630,7 @@
 
   function stopNavigation() {
     const was = S.navigating;
+    if (S.overview) { S.overview = null; $("gmap-compass") && $("gmap-compass").classList.remove("overview"); }
     if (was) { try { localStorage.removeItem(NAV_KEY); } catch (_) {} }
     S.navigating = false;
     S.carAlong = null;
@@ -1944,7 +1991,8 @@
     const on = (id, ev, fn) => { const el = $(id); if (el) el.addEventListener(ev, fn); };
     on("btn-google-mode", "click", () => (S.open ? close() : open()));
     on("gmap-btn-close", "click", close);
-    on("gmap-compass", "click", (e) => { e.stopPropagation(); toggleNorthUp(); });
+    // v3.10.140 (Tesla manual): during navigation the compass shows the whole route; the next tap goes back to the car
+    on("gmap-compass", "click", (e) => { e.stopPropagation(); if (S.navigating) { if (S.overview) exitOverview(); else enterOverview("tap"); } else toggleNorthUp(); });
     on("gmap-side-tab", "click", (e) => { e.stopPropagation(); setSideOpen(true); });
     on("gmap-fab-me", "click", (e) => { e.stopPropagation(); const me = $("gmap-btn-me"); if (me) me.click(); sideTick(); });
     { const side = document.querySelector("#gmap-layer .gmap-side"); if (side) side.addEventListener("click", () => { S.sideTouchAt = Date.now(); }, true); }
@@ -1952,6 +2000,7 @@
     on("gmap-btn-zoom-out", "click", () => { if (!S.map) return; S.manualZoomAt = Date.now(); S.map.setZoom(S.map.getZoom() - 1); });
     on("gmap-btn-me", "click", () => {
       if (!S.map) return;
+      if (S.overview) { exitOverview(); return; }   // v3.10.140
       S.follow = true;
       S.manualZoomAt = 0;   // v3.10.110: back to the speed zoom
       $("gmap-btn-me").classList.add("active");
