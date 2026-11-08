@@ -766,7 +766,8 @@
       { const m = S.map, t0 = performance.now(); const l = m.addListener("tilesloaded", () => { l.remove(); S.firstTilesMs = Math.round(performance.now() - t0); }); }
       // v3.10.96: the car photos showed a flat map with tilt 45 in the options; set it again once the first tiles are in
       if (S.vector && lookTilt()) { const m = S.map, t = lookTilt(); const l = m.addListener("tilesloaded", () => { l.remove(); if (m.setTilt) m.setTilt(t); }); }
-      S.map.addListener("dragstart", () => { S.follow = false; S.pressLL = null; $("gmap-btn-me") && $("gmap-btn-me").classList.remove("active"); });
+      S.map.addListener("dragstart", () => { S.follow = false; S.pressLL = null; clearTimeout(S.panTimer); $("gmap-btn-me") && $("gmap-btn-me").classList.remove("active"); });
+      S.map.addListener("dragend", armPanReturn);   // v3.10.143 (Samvel, like Tesla): back to the car PAN_RETURN_MS after the finger lets go
       // v3.10.140 (Tesla manual: a pin is dropped by pressing and holding): a short tap only tucks the panel away, a press of
       // LONG_PRESS_MS without moving marks the place. A stray touch while driving no longer opens a card.
       S.map.addListener("mousedown", (e) => { S.pressLL = e && e.latLng; S.pressAt = Date.now(); });
@@ -1384,6 +1385,23 @@
   /** v3.10.121: a tap on the Google map opens the place card for that point ("მარშრუტი" routes there), as on our map.
    *  Not while navigating, so a stray touch never drops the active route. The area name comes from /api/reverse (OSM). */
   const LONG_PRESS_MS = 500;
+  // v3.10.143: after a finger pan the map goes back to the car by itself, unless a place card, the route choice or the
+  // route overview is on the screen (the driver is looking at something on purpose there). One timer, no work per frame.
+  const PAN_RETURN_MS = 10000;
+  function armPanReturn() { clearTimeout(S.panTimer); S.panTimer = setTimeout(panReturn, PAN_RETURN_MS); }
+  function panReturn() {
+    S.panTimer = null;
+    if (!S.open || !S.map || S.follow || S.overview) return;
+    const card = $("gmap-card");
+    if (card && card.classList.contains("show")) return;
+    if (S.routes.length && !S.navigating) return;
+    const p = S.lastMarker || S.carPos;
+    if (!p) return;
+    S.follow = true; S.manualZoomAt = 0; S.lastCam = null;
+    $("gmap-btn-me") && $("gmap-btn-me").classList.add("active");
+    drawCar({ lat: p.lat, lng: p.lng, heading: S.carHeading || 0 });   // a parked car's glide has no new frame
+    wakeCar();
+  }
   function tapPlace(ll) {
     if (!ll || S.navigating || typeof ll.lat !== "function") return;
     const loc = { lat: ll.lat(), lng: ll.lng() };

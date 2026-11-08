@@ -534,4 +534,7 @@ ok(/strokeColor: "#3e6ae1", strokeOpacity: 0\.7, strokeWeight: 4/.test(src) && !
   ok(sn.includes('if (S.overview) exitOverview();'), 'v3.10.142: stopping navigation from the route overview brings back the 3D tilt and following');
   ok(!src.includes('extra: true') && !/\n    more: "/.test(src) && !css.includes('.gmap-side .gmap-btn { height: 36px; }'), 'v3.10.142: the leftovers of the old more-menu are gone');
   ok(css.includes('.setting-group:has(> #input-lite, > #input-initial-soc, > #input-main-map, > #input-limit-chime) { flex-direction: row;') && html.includes('>🔔 ლიმიტის სიგნალი:<'), 'v3.10.142: short settings choices have the label beside the control (no scrolling on 773x601)');
+  const pr = src.slice(src.indexOf('function panReturn()'), src.indexOf('function panReturn()') + 600);
+  ok(src.includes('const PAN_RETURN_MS = 10000;') && src.includes('S.map.addListener("dragend", armPanReturn);') && src.includes('S.map.addListener("dragstart", () => { S.follow = false; S.pressLL = null; clearTimeout(S.panTimer);'), 'v3.10.143: a finger pan goes back to the car 10 s after the finger lets go');
+  ok(pr.includes('card.classList.contains("show")) return;') && pr.includes('if (S.routes.length && !S.navigating) return;') && pr.includes('S.follow || S.overview) return;'), 'v3.10.143: no auto-return over a place card, the route choice or the overview');
 }
