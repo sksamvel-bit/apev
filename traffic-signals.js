@@ -23,7 +23,7 @@ const SIGNALS_ICON_ID = "signal-icon";
 
 class TrafficSignalsEngine {
   constructor(map, startEnabled = true) {
-    this.map = map;
+    this.map = null;
     this.isEnabled = !!startEnabled;
     this.geo = { type: "FeatureCollection", features: [] };  // signals currently drawn
     this._geoKey = "";
@@ -48,7 +48,15 @@ class TrafficSignalsEngine {
 
     this.loadPersisted();
     this.registerMapLayers();
-    if (map && typeof map.on === "function") {
+    if (map) this.attachMap(map);
+    else this.scheduleViewport();
+  }
+
+  /** v3.10.144: our map may be built later (only when needed); the signal layer follows it from then on. */
+  attachMap(map) {
+    if (!map || this.map === map) return;
+    this.map = map;
+    if (typeof map.on === "function") {
       map.on("moveend", () => this.scheduleViewport());
       // setStyle() drops images: MapLibre asks for the icon again when a layer needs it
       map.on("styleimagemissing", (e) => { if (e.id === SIGNALS_ICON_ID) this.addIcon(); });

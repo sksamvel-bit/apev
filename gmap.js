@@ -1942,8 +1942,9 @@
     S.look = gl ? gl[1] : (/[?&]gmap3d=1/.test(location.search) ? "3d" : lookOf(currentMainMap()));
     let tries = 0;
     const t = setInterval(() => {
-      if (S.open || ++tries > 100) { clearInterval(t); if (!S.open) document.body.classList.remove("gmap-loading"); return; }
-      if (window.__setMainMapPaused && window.map) { clearInterval(t); open(); }
+      if (S.open || ++tries > 100) { clearInterval(t); if (!S.open) { document.body.classList.remove("gmap-loading"); needOurMap(); } return; }
+      // v3.10.144 (perf audit A1): our map is not built under Google any more; app.js sets this pause switch at the start
+      if (window.__setMainMapPaused) { clearInterval(t); open(); }
     }, 150);   // v3.10.126: was 500 ms (up to half a second before the first picture even started)
   }
 
@@ -1976,9 +1977,19 @@
     return true;
   }
 
-  /** v3.10.132: shows the Google layer once the map has its first tiles (at the latest after 15 s). */
+  /** v3.10.144: our MapLibre map is built only when Google is not shown (app.js ensureOurMap loads it once). */
+  function needOurMap() {
+    try { if (typeof window !== "undefined" && window.ensureOurMap) window.ensureOurMap(); } catch (_) {}
+  }
+
+  /** v3.10.132: shows the Google layer once the map has its first tiles (at the latest after 15 s). v3.10.144 (perf audit Q4):
+   *  then tells app.js ("gmap:firstpicture"), which only now starts the background downloads (chargers, cameras, limits). */
   function revealWhenDrawn(m) {
-    const done = () => { clearTimeout(t); document.body.classList.remove("gmap-loading"); };
+    const done = () => {
+      clearTimeout(t);
+      document.body.classList.remove("gmap-loading");
+      try { window.dispatchEvent(new Event("gmap:firstpicture")); } catch (_) {}
+    };
     const t = setTimeout(done, 15000);
     if (!m || !m.addListener) { done(); return; }
     const l = m.addListener("tilesloaded", () => { l.remove(); done(); });
@@ -2002,6 +2013,7 @@
     dockSearch(false);
     if (window.__setMainMapPaused) window.__setMainMapPaused(false);
     try { if (window.map && window.map.resize) setTimeout(() => window.map.resize(), 50); } catch (_) {}
+    needOurMap();   // v3.10.144: the first time our map is shown it is built now
   }
 
   function wireUi() {
@@ -2156,7 +2168,7 @@
       loadGoogle(S.key).catch(() => {});
       S.earlyPermit = permit("mapload"); S.earlyPermit.catch(() => {});
       autoOpen();
-    } else document.body.classList.remove("gmap-loading");   // v3.10.133: no Google map at the start: no logo
+    } else { document.body.classList.remove("gmap-loading"); needOurMap(); }   // v3.10.133: no Google map at the start: no logo
   }
 
   const api = { init, open, close, isOpen: () => S.open, isEnabled: () => S.enabled, camMoves: () => S.camCount, firstTilesMs: () => S.firstTilesMs || null, isVector: () => !!S.vector, tilt: () => (S.map && S.map.getTilt ? Math.round(S.map.getTilt() || 0) : 0), renderType: () => (S.map && S.map.getRenderingType ? String(S.map.getRenderingType() || "") : ""), gpuOn: () => !!S.gpuOn, mainMapIsGoogle, MAIN_MAP_KEY, selectMap, lookOf, placesHidden: () => cleanOn(), togglePlaces, look: () => S.look || "3d", shownMap, currentMainMap, MAP_KINDS, gpuPlan, openWithQuery, openWithDestination, focusPlace, SIDE_PROXIES, mapKey, distToPolylineM, nearestOnPolyline, createOffRouteTracker, createVoiceCues, nearestChargers, createCarGlide, aheadPoint, mapOptions, cameraNeedsUpdate, createFpsMeter, createTrafficGovernor, scaledBoxStyle, capText, warnText, decodePolyline, parseRoutesResponse, routesRequestBody, nextStepIndex, fmtDist, hazardLine, whenText, planState, nearForm, routeWeatherPoints, weatherHazard, hazardText, addRecent, thenPhrase, thenIsClose, autoZoom, sideShouldHide, maneuverIcon, routeCum, remainingOnRoute, etaInfo, stepAlongs, nextStepAlong, distToStep, hasArrived, parseSavedNav, buildLoaderUrl, createDebouncer, osrmUrl, summarizeRoute, mapStyles, bearing, meters, CATEGORIES };

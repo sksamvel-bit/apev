@@ -46,11 +46,17 @@ const MANEUVER_ICONS = {
 };
 
 document.addEventListener("DOMContentLoaded", () => {
+  // v3.10.144 (perf audit A1): body.gmap-loading = the Google map opens by itself (index.html, same rules as gmap.js). Then our
+  // MapLibre map (maplibre-gl.js, 784 KB, a second WebGL map) is not loaded at all; ensureOurMap() builds it only when it is
+  // really needed (Google closed or failed, "ours" chosen, a route preview on our map, the rotation test of our map).
+  const deferOurMap = ourMapCanWait();
+  installMainMapPauseStub();
   try { initClock(); } catch (e) { console.error("initClock error:", e); }
-  try { initMap(); } catch (e) { console.error("initMap error:", e); }
   try { applyNightMode(isNightMode); } catch (e) { console.error("applyNightMode error:", e); }
   try { initSubsystems(); } catch (e) { console.error("initSubsystems error:", e); }
-  try { setMapStyle(currentMapStyle, { persist: false }); } catch (e) { console.error("setMapStyle error:", e); }
+  try { setMapStyle(currentMapStyle, { persist: false }); } catch (e) { console.error("setMapStyle error:", e); }   // body classes now, the style itself when the map exists
+  if (!deferOurMap) ensureOurMap().catch((e) => console.error("initMap error:", e));
+  else setTimeout(ourMapWatchdog, 2000);
   try { initEventListeners(); } catch (e) { console.error("initEventListeners error:", e); }
   try { requestWakeLock(); } catch (e) { console.error("requestWakeLock error:", e); }
   try { initGeolocation(); } catch (e) { console.error("initGeolocation error:", e); }
@@ -136,7 +142,7 @@ function initClock() {
 const OFM_STYLE_URL = "https://tiles.openfreemap.org/styles/liberty";
 const OFM_STYLE_CACHE_KEY = "tesla_nav_ofm_style_v1";
 const MAP_STYLE_KEYS = ["openfreemap", "google-roads"];
-const APP_VERSION = "3.10.143";
+const APP_VERSION = "3.10.144";
 const MAP_DEFAULT_ZOOM = 16;      // MapLibre zoom (Leaflet-equivalent 17)
 // Performance experiments (all default to the normal behaviour): ?labels=0 hides the base-map labels/icons, ?markers=0 skips the
 // charger DOM markers, ?pitch=N sets the heading-up tilt (0-60). Used to find what makes the car's browser slow.
@@ -423,6 +429,83 @@ function fallbackToGoogleRoads(reason) {
   if (currentMapStyle !== "openfreemap") return;
   showToast(`⚠️ ვექტორული რუკა ${reason} — დროებით Google რუკაზე გადავედი`, "error", 5000);
   setMapStyle("google-roads", { persist: false });
+}
+
+// ---- v3.10.144 (perf audit A1 + Q4): our MapLibre map only when it is needed, background loads after Google's first picture ----
+let ourMapPromise = null;
+/** True when the Google map opens by itself at the start (index.html set body.gmap-loading from the saved Google config). */
+function ourMapCanWait() {
+  try {
+    if (!document.body.classList.contains("gmap-loading")) return false;
+    const g = window.GMapMode;
+    return !!(g && g.isEnabled() && g.mainMapIsGoogle(location.search));
+  } catch (_) { return false; }
+}
+/** Google mode pauses/resumes our map through this; until our map exists it only remembers the state (initMap replaces it). */
+function installMainMapPauseStub() {
+  window.__mainMapPaused = false;
+  window.__setMainMapPaused = (on) => {
+    window.__mainMapPaused = !!on;
+    try { if (window.routingEngine && window.routingEngine.setMapHidden) window.routingEngine.setMapHidden(on); } catch (_) {}
+  };
+}
+function loadMapLibreScript() {
+  if (typeof maplibregl !== "undefined") return Promise.resolve();
+  return new Promise((resolve, reject) => {
+    const s = document.createElement("script");
+    s.src = "maplibre-gl.js?v=" + APP_VERSION;   // the same URL as the service worker's precache: no download when cached
+    s.onload = resolve;
+    s.onerror = () => reject(new Error("maplibre-gl.js"));
+    document.head.appendChild(s);
+  });
+}
+/** Builds our map once (loads maplibre-gl.js first); every later call gets the same map. Resolves null when MapLibre cannot load. */
+function ensureOurMap() {
+  if (map) return Promise.resolve(map);
+  if (!ourMapPromise) {
+    ourMapPromise = loadMapLibreScript().catch((e) => console.warn("[Map] MapLibre script:", e && e.message)).then(() => {
+      const paused = !!window.__mainMapPaused;   // Google mode is on top: our map starts paused, as before
+      initMap();                                  // without the script it shows its own "map engine could not load" message
+      if (!map) { ourMapPromise = null; return null; }
+      attachOurMap(map);
+      applyMapStyle(currentMapStyle);
+      if (paused) window.__setMainMapPaused(true);
+      return map;
+    });
+  }
+  return ourMapPromise;
+}
+window.ensureOurMap = ensureOurMap;
+/** The engines were made before our map existed: give them the map (markers, layers, map events). */
+function attachOurMap(m) {
+  [trafficSignalsEngine, trafficEngine, chargersEngine, routingEngine].forEach((e) => {
+    if (!e) return;
+    try { if (typeof e.attachMap === "function") e.attachMap(m); else e.map = m; } catch (err) { console.warn("attachMap:", err); }
+  });
+}
+/** Safety net: no Google map and no map of ours ~20 s after the start (Google config or script never came): build ours. */
+function ourMapWatchdog(tries = 0) {
+  if (map || ourMapPromise) return;
+  if (window.GMapMode && window.GMapMode.isOpen()) return;   // Google is shown; its close() asks for our map when it gives up
+  if (tries >= 9) { ensureOurMap(); return; }
+  setTimeout(() => ourMapWatchdog(tries + 1), 2000);
+}
+// Q4: the first seconds belong to the Google map's first picture. Chargers (~200 KB JSON), speed cameras and the speed-limit
+// prefetch (Overpass) start after it (+0.3 s), or at once when no Google map is loading.
+let startupQuiet = false;
+function afterFirstPicture(fn) {
+  const loading = () => typeof document !== "undefined" && document.body.classList.contains("gmap-loading");
+  if (!loading()) { fn(); return; }
+  startupQuiet = true;
+  let fired = false, iv = null;
+  const go = () => {
+    if (fired) return;
+    fired = true;
+    clearInterval(iv);
+    setTimeout(() => { startupQuiet = false; try { fn(); } catch (e) { console.warn("afterFirstPicture:", e); } }, 300);
+  };
+  window.addEventListener("gmap:firstpicture", go, { once: true });
+  iv = setInterval(() => { if (!loading()) go(); }, 500);   // logo gone any other way (Google closed, the 20 s limit)
 }
 
 function initMap() {
@@ -823,7 +906,7 @@ function initSubsystems() {
   try { speechAssistant = new SpeechAssistant(); window.speechAssistant = speechAssistant; } catch (e) { console.warn("speechAssistant init notice:", e); }
   try { batteryEngine = new BatteryEngine(); window.batteryEngine = batteryEngine; } catch (e) { console.warn("batteryEngine init notice:", e); }
   try { weatherEngine = new WeatherEngine(); window.weatherEngine = weatherEngine; } catch (e) { console.warn("weatherEngine init notice:", e); }
-  try { camerasEngine = new SpeedCamerasEngine(); window.camerasEngine = camerasEngine; } catch (e) { console.warn("camerasEngine init notice:", e); }
+  try { camerasEngine = new SpeedCamerasEngine({ autoLoad: false }); window.camerasEngine = camerasEngine; afterFirstPicture(() => camerasEngine.load()); } catch (e) { console.warn("camerasEngine init notice:", e); }
   try { trafficSignalsEngine = new TrafficSignalsEngine(map, true); window.trafficSignalsEngine = trafficSignalsEngine; } catch (e) { console.warn("trafficSignalsEngine init notice:", e); }
   try { trafficEngine = new TrafficEngine(map, true); window.trafficEngine = trafficEngine; } catch (e) { console.warn("trafficEngine init notice:", e); }
   try {
@@ -831,7 +914,7 @@ function initSubsystems() {
       // "მარშრუტი" from the list while Google mode is open: the traffic route is built there, not on the hidden map
       if (window.GMapMode && window.GMapMode.isOpen()) { window.GMapMode.openWithDestination({ lat: chargerData.lat, lng: chargerData.lng, name: chargerData.name || "EV დამტენი", address: chargerData.address || "" }); return; }
       prepareRoutePreview(chargerData, chargerData.name || "EV დამტენი სადგური", chargerData.address || "ელექტრომობილის დამტენი");
-    }, false);   // map markers are OFF by default: chargers live in the list drawer (dock button); the bolt button still shows them on the map
+    }, false, { later: afterFirstPicture });   // map markers are OFF by default: chargers live in the list drawer (dock button); the bolt button still shows them on the map
     window.chargersEngine = chargersEngine;
   } catch (e) { console.warn("chargersEngine init notice:", e); }
 
@@ -843,7 +926,7 @@ function initSubsystems() {
   try {
     speedLimitEngine = new SpeedLimitEngine(routingEngine);
     window.speedLimitEngine = speedLimitEngine;
-    speedLimitEngine.update(currentPos.lat, currentPos.lng, currentSpeedKmh);
+    afterFirstPicture(() => speedLimitEngine.update(currentPos.lat, currentPos.lng, currentSpeedKmh));
   } catch (e) { console.warn("speedLimitEngine init notice:", e); }
 
   // Initial battery stats render
@@ -1300,7 +1383,7 @@ function updateVehicleMarker(lat, lng, headingDeg, speedKmh, accuracyMeters = nu
   }
 
   // Dynamic Road Speed Limit & Overspeed Alert
-  if (window.speedLimitEngine) {
+  if (window.speedLimitEngine && !startupQuiet) {   // v3.10.144 (Q4): no Overpass fetch before Google's first picture
     window.speedLimitEngine.update(lat, lng, speedKmh, currentHeading);
   }
 
@@ -1537,7 +1620,8 @@ async function prepareRoutePreview(destLatLng, destTitle = "დანიშნ�
 
     // Set destination marker
     removeDestMarker();
-    destMarker = createDestMarker([destLatLng.lng, destLatLng.lat]).addTo(map);
+    if (!map) await ensureOurMap();   // v3.10.144: the preview is drawn on our map; build it now if it was never needed
+    if (map) destMarker = createDestMarker([destLatLng.lng, destLatLng.lat]).addTo(map);
 
     if (!window.hasRealFix) {
       showToast("⚠️ GPS პოზიცია არ არის — მარშრუტი ნაგულისხმევი წერტილიდან ითვლება", "error", 4500);
@@ -2541,7 +2625,8 @@ function initRemoteSession() {
     } catch (_) { return "voices: n/a"; }
   }
   function render() {
-    if (!el || !window.map || !window.carMarker || window.__benchActive) return;   // the HUD itself must not load the test
+    if (!el || window.__benchActive) return;   // the HUD itself must not load the test
+    const ours = !!(window.map && window.carMarker);   // v3.10.144: under the Google map our map may not exist at all
     const d = window.__dbg || { fixes: [] }, fx = d.fixes, now = Date.now();
     const last = fx[fx.length - 1], prev = fx[fx.length - 2];
     let dt = null, dist = null;
@@ -2549,10 +2634,13 @@ function initRemoteSession() {
       dt = (last.t - prev.t) / 1000;
       dist = routingEngine ? routingEngine.haversineMeters(prev.lat, prev.lng, last.lat, last.lng) : null;
     }
-    const c = map.getContainer().getBoundingClientRect(), r = carMarker.getElement().getBoundingClientRect();
-    const padTop = map.getPadding().top;
-    const dx = r.x + r.width / 2 - c.x - c.width / 2;
-    const dy = r.y + r.height / 2 - c.y - (c.height / 2 + padTop / 2);
+    let padTop = 0, dx = null, dy = null;
+    if (ours) {
+      const c = map.getContainer().getBoundingClientRect(), r = carMarker.getElement().getBoundingClientRect();
+      padTop = map.getPadding().top;
+      dx = r.x + r.width / 2 - c.x - c.width / 2;
+      dy = r.y + r.height / 2 - c.y - (c.height / 2 + padTop / 2);
+    }
     const cam = window.mapCamera;
     const fps = cam ? (cam.frameCount - (el._fc || 0)) / ((now - (el._ft || now)) / 1000 || 1) : 0;
     const rfps = ((window.__renderCount || 0) - (el._rc || 0)) / ((now - (el._ft0 || now)) / 1000 || 1);
@@ -2564,8 +2652,8 @@ function initRemoteSession() {
       "gap " + f(dt) + "s  jump " + f(dist) + "m  => " + (dt && dist != null ? f(dist / dt * 3.6, 0) : "-") + " km/h",
       "follow " + isFollowCar + "  mode " + currentMapOrientation + "  fps " + f(fps, 0) + "  render " + f(rfps, 0) + "/s",
       "cost: jumpTo " + f(cam && cam.jumpMs, 1) + "ms  onFrame " + f(cam && cam.cbMs, 1) + "ms" + (CAM_GPU ? "  GPU cam: draws " + ((cam && cam.gpuRenders) || 0) : ""),
-      "flags: dpr " + f(map.getPixelRatio && map.getPixelRatio(), 2) + "  pitch " + (PERF.pitch != null ? PERF.pitch : "45*") + "  labels " + (!PERF.labels ? "OFF" : PERF.labelMode || "on") + "  markers " + (PERF.markers ? "on" : "OFF") + "  look " + (window.__teslaLook ? (window.__lookMode === "mono" ? "MONO" : "TESLA") : "classic") + "  map " + (MAP_RASTER ? "RASTER" : MAP_LIGHT ? "LIGHT" : "full") + " " + (map.getLayersOrder ? map.getLayersOrder().length : 0) + "L" + (CAM_FPS ? "  camfps " + CAM_FPS : ""),
-      "bearing " + f(map.getBearing(), 0) + "  pitch " + f(map.getPitch(), 0) + "  zoom " + f(map.getZoom(), 1) + "  pad " + padTop,
+      !ours ? "our map: not loaded (Google map on top, v3.10.144)" : "flags: dpr " + f(map.getPixelRatio && map.getPixelRatio(), 2) + "  pitch " + (PERF.pitch != null ? PERF.pitch : "45*") + "  labels " + (!PERF.labels ? "OFF" : PERF.labelMode || "on") + "  markers " + (PERF.markers ? "on" : "OFF") + "  look " + (window.__teslaLook ? (window.__lookMode === "mono" ? "MONO" : "TESLA") : "classic") + "  map " + (MAP_RASTER ? "RASTER" : MAP_LIGHT ? "LIGHT" : "full") + " " + (map.getLayersOrder ? map.getLayersOrder().length : 0) + "L" + (CAM_FPS ? "  camfps " + CAM_FPS : ""),
+      ours ? "bearing " + f(map.getBearing(), 0) + "  pitch " + f(map.getPitch(), 0) + "  zoom " + f(map.getZoom(), 1) + "  pad " + padTop : "-",
       "arrow offset from expected: dx " + f(dx, 0) + "  dy " + f(dy, 0) + " px",
       // v3.10.72 (audit L9): service worker state, the real screen size of the car browser (settings window sizing) and its name
       "sw " + (!("serviceWorker" in navigator) ? "unsupported" : navigator.serviceWorker.controller ? "active" : (window.__swError ? "FAILED " + window.__swError : "not yet")) +
@@ -2591,17 +2679,22 @@ function initRemoteSession() {
   }
   window.__cpuMs = cpuMs;
   async function runBench(target, opts) {
-    if (!window.map || !mapCamera || window.__benchActive) return;
+    if (window.__benchActive) return;
     const idle = !!(opts && opts.idle);   // v3.10.83: the map just standing (real GPS, no turning): what does it cost at rest?
-    const cpu = cpuMs();
     // target "google" (v3.10.79): measure the Google map that is open (its 3D / GPU camera); otherwise OUR map
-    const google = target === "google" && window.GMapMode && window.GMapMode.isOpen();
-    if (!google && window.GMapMode && window.GMapMode.isOpen()) window.GMapMode.close();
+    const google = !!(target === "google" && window.GMapMode && window.GMapMode.isOpen());
+    if (!google) {
+      if (window.GMapMode && window.GMapMode.isOpen()) window.GMapMode.close();
+      await ensureOurMap();   // v3.10.144: our map may not exist yet
+    }
+    if (!google && (!window.map || !mapCamera)) return;
+    const cpu = cpuMs();
     window.__benchActive = true;
-    const realSetFix = mapCamera.setFix.bind(mapCamera);
-    if (!idle) mapCamera.setFix = () => {};   // real GPS fixes wait until the test ends
+    const cam = mapCamera;   // null under Google mode (v3.10.144): the test then only feeds window.__carFix
+    const realSetFix = cam ? cam.setFix.bind(cam) : () => {};
+    if (!idle && cam) cam.setFix = () => {};   // real GPS fixes wait until the test ends
     const wasFollowing = isFollowCar;
-    try { if (!idle) { setFollowCarMode(true); mapCamera.setMode("heading-up"); } } catch (_) {}
+    try { if (!idle) { setFollowCarMode(true); if (cam) cam.setMode("heading-up"); } } catch (_) {}
     const start = Object.assign({}, currentPos || { lat: 41.7151, lng: 44.8271 });
     const speedMs = 8, turnDegS = 36, R = speedMs / (turnDegS * Math.PI / 180);   // ~12.7 m radius
     const r0 = window.__renderCount || 0, t0 = performance.now(), cam0 = google ? window.GMapMode.camMoves() : 0;
@@ -2627,14 +2720,14 @@ function initRemoteSession() {
     clearInterval(fixTimer);
     const secs = (performance.now() - t0) / 1000;
     const res = { mapFps: google ? (window.GMapMode.camMoves() - cam0) / secs : ((window.__renderCount || 0) - r0) / secs, uiFps: frames / secs, maxPauseMs: maxGap, map: google ? "google " + (window.GMapMode.isVector() ? "3D" : "classic") + (window.GMapMode.gpuOn() ? " gpu" : "") : "ours",
-      look: (MAP_RASTER ? "raster" : window.__mapLight ? "lite" : "full") + " " + (map.getLayersOrder ? map.getLayersOrder().length : 0) + "L" + (window.__camMode ? " cam " + window.__camMode : "") };
+      look: (MAP_RASTER ? "raster" : window.__mapLight ? "lite" : "full") + " " + (map && map.getLayersOrder ? map.getLayersOrder().length : 0) + "L" + (window.__camMode ? " cam " + window.__camMode : "") };
     res.cpuMs = cpu; res.idle = idle;
     if (google && window.GMapMode.tilt) res.tilt = window.GMapMode.tilt();   // v3.10.96: the tilt Google really shows
     if (google && window.GMapMode.firstTilesMs) res.tilesMs = window.GMapMode.firstTilesMs();   // v3.10.125: time to the first picture
     if (google && window.GMapMode.renderType) res.rt = window.GMapMode.renderType();   // v3.10.98: VECTOR, or RASTER when Google fell back (no turn, no tilt)
     res.longN = P.longN; res.longMs = P.longMs; res.longPct = P.longMs / (secs * 10); res.longMax = P.longMax; res.gpsMsPerS = P.gpsMs / secs; res.gpsPerS = P.gpsN / secs;
     window.__benchLast = res;
-    mapCamera.setFix = realSetFix;
+    if (cam && !idle) cam.setFix = realSetFix;
     try { if (!wasFollowing && !idle) setFollowCarMode(false); } catch (_) {}
     window.__benchActive = false;
     const prof = " · გრძელი დავალება " + P.longN + " (" + Math.round(P.longMs / secs / 10) + "% დრო, max " + Math.round(P.longMax) + " ms) · GPS " + (P.gpsMs / secs).toFixed(0) + " ms/წმ";

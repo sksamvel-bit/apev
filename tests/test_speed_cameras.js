@@ -70,7 +70,7 @@ const html = fs.readFileSync(__dirname + '/../index.html', 'utf8');
 const srv = fs.readFileSync(__dirname + '/../server.js', 'utf8');
 const src = fs.readFileSync(__dirname + '/../speed-cameras.js', 'utf8');
 ok(!/addLayer|layerRegistry|addImage/.test(src), 'speed-cameras.js draws nothing on the map');
-ok(app.includes('checkSpeedCameras({ lat, lng }, speed)') && app.includes('new SpeedCamerasEngine()'), 'app.js checks every GPS fix');
+ok(app.includes('checkSpeedCameras({ lat, lng }, speed)') && app.includes('new SpeedCamerasEngine({ autoLoad: false })') && app.includes('afterFirstPicture(() => camerasEngine.load())'), 'app.js checks every GPS fix');
 ok(/class="car-hud-stats"[\s\S]{0,600}id="camera-badge"/.test(html) && html.includes('id="btn-toggle-cameras"'), 'badge sits in the speedometer HUD (shown in Google mode too), dock has a toggle');
 ok(srv.includes("pathname === '/api/cameras'") && srv.includes("'speed-cameras.js'") && !/PUBLIC_AUTH_PATHS[^;]*cameras/.test(srv), '/api/cameras exists behind the PIN gate, the file is whitelisted');
 

@@ -16,8 +16,8 @@
 const CURATED_CHARGERS = [];
 
 class ChargersEngine {
-  constructor(map, onRouteToCharger, startEnabled = true) {
-    this.map = map;
+  constructor(map, onRouteToCharger, startEnabled = true, opts = {}) {
+    this.map = null;
     this.onRouteToCharger = onRouteToCharger;
     this.chargers = [];
     this.activeMarkers = new Map(); // key -> maplibregl.Marker
@@ -25,19 +25,29 @@ class ChargersEngine {
     this.cachedKeys = new Set();
 
     this.loadCuratedChargers();
-    this.fetchLiveChargers();
+    // v3.10.144 (perf audit Q4): opts.later(fn) runs the first download after the Google map's first picture
+    const later = typeof opts.later === "function" ? opts.later : (fn) => fn();
+    later(() => this.fetchLiveChargers());
 
     // Auto-sync live chargers periodically (every 15 mins)
     setInterval(() => this.fetchLiveChargers(), 15 * 60 * 1000);
 
+    if (map) this.attachMap(map);
+  }
+
+  /** v3.10.144: our map may be built later (only when needed); the markers follow it from then on. */
+  attachMap(map) {
+    if (!map || this.map === map) return;
+    this.map = map;
     // Update rendered markers on map panning/zooming. 'moveend' also fires every frame while the camera follows
     // the car, so this is throttled (first call arms a timer, later ones are ignored until it fires).
-    if (this.map) {
-      this.map.on("moveend", () => {
+    if (typeof map.on === "function") {
+      map.on("moveend", () => {
         if (!this.isEnabled || this._viewTimer) return;
         this._viewTimer = setTimeout(() => { this._viewTimer = null; this.updateVisibleMarkers(); }, 400);
       });
     }
+    this.updateVisibleMarkers();
   }
 
   loadCuratedChargers() {

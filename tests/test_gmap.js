@@ -229,7 +229,10 @@ ok(/GOOGLE_MAPS_KEY/.test(srv) && !/PUBLIC_AUTH_PATHS[^;]*gmaps-config/.test(srv
   ok(/if \(S\.enabled && mainMapIsGoogle\(q\)\) \{[\s\S]{0,500}autoOpen\(\);\n    \}/.test(initSrc), "v3.10.77: Google opens by itself only when Google mode is configured");
   const openSrc = src.slice(src.indexOf("async function open()"), src.indexOf("function close()"));
   ok(/catch \(e\) \{[\s\S]*?close\(\);[\s\S]*?ჩვენს რუკაზე ხართ/.test(openSrc), "v3.10.77: no Google map (cap, network, key) -> back to our map, not an empty layer");
-  ok(/window\.__setMainMapPaused && window\.map/.test(src), "v3.10.77: auto-open waits for our map so both never render at once");
+  ok(src.includes('if (window.__setMainMapPaused) { clearInterval(t); open(); }') && !/__setMainMapPaused && window\.map\)/.test(src), "v3.10.144: auto-open waits only for app.js's pause switch (our map is not built under Google)");
+  ok(src.includes('window.dispatchEvent(new Event("gmap:firstpicture"))'), "v3.10.144 (Q4): the first Google picture is announced for the background downloads");
+  { const cl = src.slice(src.indexOf('function close() {'), src.indexOf('function wireUi()'));
+    ok(cl.includes('needOurMap();') && cl.indexOf('if (!S.open) return;') < cl.indexOf('needOurMap();'), "v3.10.144: closing Google builds our map (only when Google was open)"); }
   const appSrc2 = fs.readFileSync(__dirname + "/../app.js", "utf8"), html2 = fs.readFileSync(__dirname + "/../index.html", "utf8");
   ok(html2.includes('id="input-main-map"') && appSrc2.includes('localStorage.setItem("tesla_nav_main_map"'), "v3.10.77: the main map is chosen in the settings");
 }
@@ -476,7 +479,7 @@ ok(/strokeColor: "#3e6ae1", strokeOpacity: 0\.7, strokeWeight: 4/.test(src) && !
   ok(/if \(!S\.map\) document\.body\.classList\.add\("gmap-loading"\)/.test(src) && /if \(!S\.map\) \{ createMap\(\); revealWhenDrawn\(S\.map\); \}/.test(src) && /function close\(\) \{\n\s+document\.body\.classList\.remove\("gmap-loading"\)/.test(src), 'v3.10.132: the cover stays until the first Google tiles, close() always clears it');
   const html = fs.readFileSync(__dirname + '/../index.html', 'utf8');
   ok(css.includes('body.gmap-loading #gmap-splash { opacity: 1; visibility: visible;') && html.includes('id="gmap-splash"') && html.includes('document.body.classList.remove("gmap-loading"); }, 20000)'), 'v3.10.133: the Tesla logo covers the start and always goes after 20 s');
-  ok(src.includes('} else document.body.classList.remove("gmap-loading");') && src.includes('if (!S.open) document.body.classList.remove("gmap-loading")'), 'v3.10.133: no logo when Google does not open by itself or autoOpen gives up');
+  ok(src.includes('} else { document.body.classList.remove("gmap-loading"); needOurMap(); }') && src.includes('if (!S.open) { document.body.classList.remove("gmap-loading"); needOurMap(); }'), 'v3.10.133/144: no logo and our map when Google does not open by itself or autoOpen gives up');
 }
 {
   const h = fs.readFileSync(__dirname + '/../index.html', 'utf8');
